@@ -1266,6 +1266,9 @@
                     <button class="timer-btn timer-btn-secondary" style="background: rgba(82, 229, 163, 0.15); border-color: #52E5A3; color: #1E824C;" onclick="saveEngineWorkspaceBlockData()">
                         <i data-lucide="check-circle-2"></i> Log Focus
                     </button>
+                    <button class="timer-btn timer-btn-secondary" onclick="AuraFocus.popOutTimer()" title="Float the timer in a small always-on-top window">
+                        <i data-lucide="picture-in-picture-2"></i> Pop Out
+                    </button>
                 </div>
             </div>
         </div>
@@ -1387,6 +1390,46 @@
 
                 <button class="btn btn-neon-pink" id="settings-change-password-btn" onclick="submitAccountPasswordChange()">Change Password</button>
                 <div id="settings-password-feedback" style="font-size:12px; margin-top:10px; font-weight:700;"></div>
+            </div>
+
+            <div class="card" style="max-width: 600px; margin-top: 24px;">
+                <div class="card-title">Focus Mode</div>
+                <p class="text-muted" style="font-size: 12px; margin-top: -10px; margin-bottom: 4px;">Keep your active study block visible even when you switch tabs or apps.</p>
+
+                <div class="focus-mode-row">
+                    <div>
+                        <div class="focus-mode-row-label">Float the timer when I switch tabs</div>
+                        <div class="focus-mode-row-desc">Pops the timer into a small always-on-top window the moment you start a block, and best-effort when you switch away.</div>
+                    </div>
+                    <label class="focus-toggle-switch">
+                        <input type="checkbox" id="focus-toggle-float" data-pref="floatTimer" onchange="AuraFocus.onPreferenceToggle(this)">
+                        <span class="focus-toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="focus-mode-row">
+                    <div>
+                        <div class="focus-mode-row-label">Notify me if the timer is running in the background</div>
+                        <div class="focus-mode-row-desc">A browser notification plus a live countdown in the tab title when no floating window is open.</div>
+                    </div>
+                    <label class="focus-toggle-switch">
+                        <input type="checkbox" id="focus-toggle-notify" data-pref="notify" onchange="AuraFocus.onPreferenceToggle(this)">
+                        <span class="focus-toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="focus-mode-row">
+                    <div>
+                        <div class="focus-mode-row-label">Keep my screen awake during a session</div>
+                        <div class="focus-mode-row-desc">Prevents your phone or laptop from sleeping mid-block.</div>
+                    </div>
+                    <label class="focus-toggle-switch">
+                        <input type="checkbox" id="focus-toggle-wakelock" data-pref="keepAwake" onchange="AuraFocus.onPreferenceToggle(this)">
+                        <span class="focus-toggle-slider"></span>
+                    </label>
+                </div>
+
+                <p class="text-muted" id="focus-mode-capability-note" style="font-size: 11px; margin-top: 12px; line-height: 1.5;">Checking what this browser supports…</p>
             </div>
 
             <div class="card" style="max-width: 600px; margin-top: 24px;">
@@ -1532,6 +1575,7 @@
                 loadStickyScratchpadContent();
                 refreshTodoListViewLayout();
                 if (typeof AuraSpotify !== 'undefined') AuraSpotify.init();
+                if (typeof AuraFocus !== 'undefined') AuraFocus.init();
             });
         });
 
@@ -2209,5 +2253,6 @@
          appState / saveStateToLocalStorageRegister / switchView already exist. -->
     <script src="/static/sync.js"></script>
     <script src="/static/spotify.js"></script>
+    <script src="/static/pip.js"></script>
 </body>
 </html>
