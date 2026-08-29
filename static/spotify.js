@@ -151,7 +151,24 @@
       '.as-strip-text{overflow:hidden}' +
       '.as-strip-title{font-size:11px;font-weight:800;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.as-strip-artist{font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-      '.as-strip.as-hidden{display:none}';
+      '.as-strip.as-hidden{display:none}' +
+      /* -- mobile: keep the Music panel and the timer now-playing strip usable down to 320px -- */
+      '@media (max-width:768px){' +
+      '.as-row{flex-wrap:wrap}' +
+      '.as-art{width:56px;height:56px}' +
+      '.as-controls{justify-content:center}' +
+      '.as-strip{max-width:min(240px,calc(100vw - 32px));top:12px;right:12px;padding:5px 12px 5px 5px}' +
+      '.as-strip img{width:26px;height:26px}' +
+      '}' +
+      '@media (max-width:480px){' +
+      '.as-playlist-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}' +
+      '.as-strip{max-width:min(200px,calc(100vw - 24px))}' +
+      '}' +
+      '@media (pointer:coarse){' +
+      '.as-icon-btn{width:44px;height:44px}' +
+      '.as-icon-btn.as-play{width:52px;height:52px}' +
+      '.as-volume input{min-height:24px}' +
+      '}';
     document.head.appendChild(style);
   }
 

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>AuraStudy ✨ Your Ultimate Cute Pastel Neon Workspace</title>
     <!-- Chart.js for data analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -129,6 +129,7 @@
             color: var(--text-main);
             display: flex;
             height: 100vh;
+            height: 100dvh; /* modern browsers: real visible viewport, avoids mobile browser-chrome jump */
             overflow: hidden;
         }
 
@@ -212,6 +213,44 @@
             gap: 12px;
         }
 
+        /* Mobile nav toggle (hamburger) + scrim -- hidden on desktop by default.
+           Made visible/interactive only inside the <=1024px media query below,
+           so the desktop header layout is unaffected above that breakpoint. */
+        .mobile-nav-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .mobile-nav-toggle:hover {
+            border-color: var(--neon-pink);
+            color: var(--neon-pink);
+        }
+        .mobile-nav-scrim {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(30, 15, 20, 0.45);
+            opacity: 0;
+            z-index: 900;
+            transition: opacity 0.25s ease;
+        }
+        .mobile-nav-scrim.visible {
+            display: block;
+            opacity: 1;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .mobile-nav-scrim { transition: none; }
+        }
+
         .user-profile {
             display: flex;
             align-items: center;
@@ -240,6 +279,13 @@
             background-color: rgba(255, 245, 248, 0.85);
             backdrop-filter: blur(16px);
             z-index: 5;
+        }
+
+        .header-title-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
         }
 
         .header-title-area h1 {
@@ -309,6 +355,11 @@
 
         .dashboard-row-full {
             grid-column: 1 / -1;
+        }
+
+        .analytics-chart-wrap {
+            height: 230px;
+            width: 100%;
         }
 
         .card {
@@ -483,6 +534,14 @@
             display: flex;
             gap: 12px;
             margin-bottom: 16px;
+        }
+        .todo-input-bar .form-control {
+            flex: 1;
+            min-width: 0; /* let the input shrink below its intrinsic width instead of forcing the row to overflow */
+        }
+
+        .input-group {
+            min-width: 0;
         }
         .todo-items-list-container {
             display: flex;
@@ -679,6 +738,7 @@
         .ambient-selector-bar {
             display: flex;
             gap: 10px;
+            margin-top: 40px;
             margin-bottom: 24px;
             background: rgba(255, 255, 255, 0.5);
             padding: 8px 16px;
@@ -1000,8 +1060,8 @@
 
         .toast-notification {
             position: fixed;
-            bottom: 24px;
-            right: 24px;
+            bottom: calc(24px + env(safe-area-inset-bottom));
+            right: calc(24px + env(safe-area-inset-right));
             background-color: #FFFFFF;
             border-left: 5px solid var(--neon-pink);
             padding: 20px 28px;
@@ -1017,41 +1077,260 @@
             border: 2px solid var(--border-color);
         }
         .toast-notification.show { transform: translateY(0); opacity: 1; }
+
+        /* ============================================================
+           RESPONSIVE / CROSS-DEVICE STYLES (Phase 2, Part B)
+           Purely additive: every rule below lives inside a media query
+           (or is a zero-effect-on-desktop safe-area/shrink fix already
+           placed next to its base rule above), so nothing here changes
+           the app above the 1024px desktop breakpoint.
+           Breakpoints: <=480 phones, 481-768 large phones / small tablets
+           portrait, 769-1024 tablets, >1024 desktop (unchanged).
+           ============================================================ */
+
+        /* ---- Tablets and below (769px-1024px and under): off-canvas nav ---- */
+        @media (max-width: 1024px) {
+            body { overflow-x: hidden; }
+
+            .mobile-nav-toggle { display: inline-flex; position: relative; z-index: 960; }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                height: 100dvh;
+                width: min(82vw, 300px);
+                transform: translateX(-100%);
+                transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+                z-index: 950;
+                overflow-y: auto;
+                box-shadow: none;
+                padding-top: calc(24px + env(safe-area-inset-top));
+                padding-bottom: calc(24px + env(safe-area-inset-bottom));
+                padding-left: calc(16px + env(safe-area-inset-left));
+            }
+            .sidebar.mobile-nav-open {
+                transform: translateX(0);
+                box-shadow: 8px 0 40px rgba(0, 0, 0, 0.25);
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .sidebar { transition: none; }
+            }
+
+            body.mobile-nav-locked .main-container,
+            body.mobile-nav-locked .view-panel {
+                overflow: hidden;
+            }
+
+            .top-header {
+                padding-left: calc(16px + env(safe-area-inset-left));
+                padding-right: calc(16px + env(safe-area-inset-right));
+            }
+
+            .header-title-area h1 {
+                max-width: 42vw;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            /* minmax(0, 1fr), not bare 1fr -- a bare 1fr track carries an implicit
+               "auto" minimum, so it refuses to shrink below its content's min-content
+               width and silently overflows the container. minmax(0, 1fr) removes that. */
+            .dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+
+            .view-panel { padding: 24px; }
+        }
+
+        /* ---- Large phones / small tablets portrait & down (<=768px) ---- */
+        @media (max-width: 768px) {
+            .view-panel { padding: 16px; }
+
+            .top-header {
+                height: auto;
+                min-height: 64px;
+                padding-top: calc(10px + env(safe-area-inset-top));
+                padding-bottom: 10px;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .header-title-area h1 { font-size: 19px; }
+            .header-actions .btn { padding: 8px 14px; font-size: 13px; }
+
+            /* Prevent the iOS "zoom on focus" behaviour: any focusable text field
+               must render at >=16px on screens this size. */
+            .form-control,
+            .timer-braindump-textarea { font-size: 16px; }
+
+            .analytics-chart-wrap { height: 200px; }
+
+            .course-add-row { flex-wrap: wrap; }
+            .course-add-row .input-group { flex-basis: 100%; }
+            .course-add-row button { width: 100%; }
+
+            /* Timer workspace: reclaim padding, let controls wrap, scale the clock */
+            /* justify-content:center on a flex column whose content is taller than the
+               viewport pushes the overflow off BOTH edges -- and the top overflow sits at
+               a negative offset that scrolling can never reach (scrollTop can't go below 0).
+               Switch to flex-start + let the view scroll so every control stays reachable. */
+            .timer-fullscreen-view {
+                padding: 20px;
+                justify-content: flex-start;
+                height: auto;
+                min-height: 100%;
+                padding-top: calc(76px + env(safe-area-inset-top)); /* clears the absolutely-positioned top-actions-row */
+            }
+            #view-timer.view-panel { overflow-y: auto; }
+            .timer-view-top-actions-row { top: 16px; left: 16px; right: 16px; flex-wrap: wrap; row-gap: 8px; }
+            /* Beats spotify.js's own .as-strip mobile rule (ID+class specificity) so the
+               now-playing strip still clears the top-actions-row buttons on small screens. */
+            #timer-now-playing.as-strip { top: 64px; right: 12px; max-width: min(220px, calc(100vw - 24px)); }
+            .timer-floating-interactive-trigger-btn { padding: 10px 14px; }
+            .ambient-selector-bar { flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 24px; }
+            .ambient-preset-dot { width: 28px; height: 28px; }
+            .engine-mode-tabs { margin-bottom: 16px; }
+            .mode-tab-btn { padding: 8px 14px; font-size: 12px; }
+            .timer-header-badge { padding: 6px 16px; font-size: 12px; margin-bottom: 16px; }
+            .timer-clock-display {
+                font-size: clamp(3rem, 18vw, 10rem);
+                letter-spacing: -2px;
+            }
+            .timer-meta { font-size: 12px; margin-bottom: 20px; padding: 5px 14px; }
+            .timer-controls { flex-wrap: wrap; justify-content: center; gap: 10px; }
+            .timer-btn { padding: 12px 22px; font-size: 14px; }
+
+            .trophy-view-tabs { flex-wrap: wrap; gap: 8px; }
+            .trophy-tab-trigger { padding: 8px 16px; font-size: 13px; }
+        }
+
+        /* ---- Phones (<=480px) ---- */
+        @media (max-width: 480px) {
+            .courses-list-grid,
+            .trophy-showcase-matrix {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            /* The 7 fixed-size streak dots don't fit one row at this width without
+               shrinking below a usable/tappable size -- wrap to two rows instead. */
+            .streak-container {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 12px 8px;
+            }
+            .streak-day { flex: 0 0 auto; }
+
+            .card { padding: 18px; }
+
+            .timer-braindump-postit-modal {
+                left: 16px;
+                right: 16px;
+                bottom: 16px;
+                width: auto;
+            }
+
+            .toast-notification {
+                left: 16px;
+                right: 16px;
+                bottom: calc(16px + env(safe-area-inset-bottom));
+                padding: 16px 18px;
+            }
+
+            .timer-floating-interactive-trigger-btn .tfi-label { display: none; }
+            .timer-floating-interactive-trigger-btn { padding: 12px; border-radius: 50%; }
+
+            .header-actions .hdr-btn-label { display: none; }
+            .header-actions .btn { padding: 10px; border-radius: 50%; }
+
+            .pet-container-card { gap: 14px; padding: 16px; }
+            .pet-sprite-frame { width: 64px; height: 64px; font-size: 30px; }
+        }
+
+        /* ---- Short landscape phones (e.g. 740x360) ---- */
+        @media (max-height: 460px) and (orientation: landscape) {
+            .timer-fullscreen-view { padding: 12px; justify-content: flex-start; overflow-y: auto; }
+            .timer-view-top-actions-row { position: static; margin-bottom: 8px; display: flex; }
+            #timer-now-playing.as-strip { position: static !important; margin: 0 auto 8px; }
+            .ambient-selector-bar { margin-top: 0; margin-bottom: 12px; padding: 6px 12px; }
+            .engine-mode-tabs { margin-bottom: 10px; }
+            .timer-header-badge { margin-bottom: 10px; }
+            .timer-clock-display {
+                font-size: clamp(2.25rem, 12vh, 5rem);
+                letter-spacing: -1px;
+                margin-bottom: 2px;
+            }
+            .timer-meta { margin-bottom: 12px; }
+            .timer-controls { gap: 8px; }
+            .timer-btn { padding: 10px 16px; font-size: 13px; }
+            .sidebar { padding-top: 12px; padding-bottom: 12px; }
+        }
+
+        /* ---- Touch targets: guarantee >=44x44px hit areas on touch input ---- */
+        @media (pointer: coarse) {
+            .nav-item { min-height: 44px; }
+            .mode-tab-btn,
+            .trophy-tab-trigger,
+            .subject-pill,
+            .theme-switch-btn { min-height: 44px; }
+            .btn,
+            .timer-btn,
+            .timer-floating-interactive-trigger-btn { min-height: 44px; }
+            .timer-floating-circle-btn { min-width: 44px; min-height: 44px; padding: 12px; }
+            .course-delete-trigger-btn,
+            .todo-delete-btn { min-width: 44px; min-height: 44px; }
+            .ambient-preset-dot { width: 30px; height: 30px; }
+            .form-control { min-height: 44px; }
+            .mobile-nav-toggle { width: 44px; height: 44px; }
+        }
+
+        /* ---- Reduced motion: respect the OS-level preference everywhere ---- */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
     </style>
 </head>
 <body>
 
     <canvas id="confetti-canvas"></canvas>
 
+    <!-- Scrim shown behind the sidebar when it's opened as a mobile off-canvas drawer (<=1024px).
+         Tapping it (an "outside tap") closes the drawer. -->
+    <div class="mobile-nav-scrim" id="mobile-nav-scrim" onclick="closeMobileNav()"></div>
+
     <!-- Sidebar Layout Navigation Shell -->
-    <div class="sidebar">
+    <div class="sidebar" id="app-sidebar" role="navigation" aria-label="Main navigation">
         <div>
             <div class="brand">
                 <i data-lucide="sparkles" style="color: var(--neon-pink);"></i>
                 <span>AuraStudy ✨</span>
             </div>
             <div class="nav-group">
-                <div class="nav-item active" onclick="switchView('dashboard', this)">
+                <div class="nav-item active" onclick="switchView('dashboard', this); closeMobileNav();">
                     <i data-lucide="layout-dashboard"></i>
                     <span>Dashboard</span>
                 </div>
-                <div class="nav-item" id="nav-item-timer-toggle" onclick="switchView('timer', this)">
+                <div class="nav-item" id="nav-item-timer-toggle" onclick="switchView('timer', this); closeMobileNav();">
                     <i data-lucide="clock"></i>
                     <span>Timer</span>
                 </div>
-                <div class="nav-item" onclick="switchView('courses', this)">
+                <div class="nav-item" onclick="switchView('courses', this); closeMobileNav();">
                     <i data-lucide="book-heart"></i>
                     <span>Courses</span>
                 </div>
-                <div class="nav-item" onclick="switchView('sessions', this)">
+                <div class="nav-item" onclick="switchView('sessions', this); closeMobileNav();">
                     <i data-lucide="scroll"></i>
                     <span>Sessions Log</span>
                 </div>
-                <div class="nav-item" onclick="switchView('trophies', this)">
+                <div class="nav-item" onclick="switchView('trophies', this); closeMobileNav();">
                     <i data-lucide="star"></i>
                     <span>Trophies Cabinet</span>
                 </div>
-                <div class="nav-item" id="nav-item-music-toggle" onclick="switchView('spotify', this)">
+                <div class="nav-item" id="nav-item-music-toggle" onclick="switchView('spotify', this); closeMobileNav();">
                     <i data-lucide="music"></i>
                     <span>Music</span>
                 </div>
@@ -1069,7 +1348,7 @@
                     Blue
                 </button>
             </div>
-            <div class="nav-item" onclick="switchView('settings', this)">
+            <div class="nav-item" onclick="switchView('settings', this); closeMobileNav();">
                 <i data-lucide="settings-2"></i>
                 <span>Settings</span>
             </div>
@@ -1086,15 +1365,18 @@
 
     <!-- Main Workspace Container -->
     <div class="main-container">
-        
+
         <!-- Header Bar panel -->
         <div class="top-header" id="global-header">
             <div class="header-title-area">
+                <button class="mobile-nav-toggle" id="mobile-nav-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="app-sidebar" onclick="toggleMobileNav()">
+                    <i data-lucide="menu" id="mobile-nav-toggle-icon"></i>
+                </button>
                 <h1 id="page-title">Dashboard</h1>
             </div>
             <div class="header-actions">
                 <button class="btn btn-neon-pink" onclick="switchView('timer', document.getElementById('nav-item-timer-toggle'))">
-                    <i data-lucide="heart-handshake"></i> Start :)
+                    <i data-lucide="heart-handshake"></i> <span class="hdr-btn-label">Start :)</span>
                 </button>
             </div>
         </div>
@@ -1164,7 +1446,7 @@
                         <span>Study Velocity Metric Profile Chart</span>
                         <i data-lucide="heart-pulse" style="color: var(--neon-pink);"></i>
                     </div>
-                    <div style="height: 230px; width: 100%;">
+                    <div class="analytics-chart-wrap">
                         <canvas id="analyticsChart"></canvas>
                     </div>
 
@@ -1202,9 +1484,9 @@
                 <!-- Floating Control Action Buttons available in Normal & Fullscreen Mode -->
                 <div class="timer-view-top-actions-row">
                     <!-- Brain Dump Post-It Action Toggle Button -->
-                    <button class="timer-floating-interactive-trigger-btn" onclick="toggleBrainDumpPostitPopoverState()">
+                    <button class="timer-floating-interactive-trigger-btn" onclick="toggleBrainDumpPostitPopoverState()" title="Brain Dump Note">
                         <i data-lucide="sticky-note" style="width:14px; height:14px;"></i>
-                        Brain Dump Note
+                        <span class="tfi-label">Brain Dump Note</span>
                     </button>
                     
                     <!-- FIXED TRIGGER FUNCTION: Native window element HTML5 Fullscreen Engine initialization -->
@@ -1225,7 +1507,7 @@
                 <!-- Compact Spotify now-playing strip, filled/positioned entirely by static/spotify.js -->
                 <div id="timer-now-playing"></div>
 
-                <div class="ambient-selector-bar" style="margin-top: 40px;">
+                <div class="ambient-selector-bar">
                     <div class="ambient-preset-dot active" style="background: var(--ambient-grad-cottoncandy);" title="Cotton Candy Dream" onclick="selectAmbientEnvironmentPreset('cottoncandy', false, this)"></div>
                     <div class="ambient-preset-dot" style="background: var(--ambient-grad-sunsetglow);" title="Sunset Lavender Glow" onclick="selectAmbientEnvironmentPreset('sunsetglow', false, this)"></div>
                     <div class="ambient-preset-dot" style="background: var(--ambient-grad-peachy);" title="Sweet Peach Aura" onclick="selectAmbientEnvironmentPreset('peachy', false, this)"></div>
@@ -1277,7 +1559,7 @@
         <div id="view-courses" class="view-panel">
             <div class="card" style="margin-bottom: 28px; border-color: var(--border-color);">
                 <div class="card-title">Provision New Course Vector</div>
-                <div style="display: flex; gap: 16px; align-items: flex-end;">
+                <div class="course-add-row" style="display: flex; gap: 16px; align-items: flex-end;">
                     <div class="input-group" style="flex: 1; margin-bottom: 0;">
                         <input type="text" class="form-control" id="new-course-name" placeholder="e.g. Advanced Calculus, Physics, English Literature...">
                     </div>
@@ -1594,6 +1876,64 @@
             }
             saveStateToLocalStorageRegister();
         }
+
+        // ---- Mobile off-canvas navigation drawer (<=1024px) -----------------
+        // The sidebar is repositioned fixed + translated off-screen by CSS at that
+        // breakpoint; these helpers just toggle the classes/attributes that drive it.
+        function toggleMobileNav() {
+            const sidebar = document.getElementById('app-sidebar');
+            if (!sidebar) return;
+            if (sidebar.classList.contains('mobile-nav-open')) closeMobileNav();
+            else openMobileNav();
+        }
+
+        function openMobileNav() {
+            const sidebar = document.getElementById('app-sidebar');
+            const scrim = document.getElementById('mobile-nav-scrim');
+            const toggleBtn = document.getElementById('mobile-nav-toggle');
+            const icon = document.getElementById('mobile-nav-toggle-icon');
+            if (!sidebar) return;
+            sidebar.classList.add('mobile-nav-open');
+            if (scrim) scrim.classList.add('visible');
+            document.body.classList.add('mobile-nav-locked');
+            if (toggleBtn) {
+                toggleBtn.setAttribute('aria-expanded', 'true');
+                toggleBtn.setAttribute('aria-label', 'Close navigation menu');
+            }
+            if (icon) {
+                icon.setAttribute('data-lucide', 'x');
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+
+        function closeMobileNav() {
+            const sidebar = document.getElementById('app-sidebar');
+            if (!sidebar || !sidebar.classList.contains('mobile-nav-open')) return;
+            const scrim = document.getElementById('mobile-nav-scrim');
+            const toggleBtn = document.getElementById('mobile-nav-toggle');
+            const icon = document.getElementById('mobile-nav-toggle-icon');
+            sidebar.classList.remove('mobile-nav-open');
+            if (scrim) scrim.classList.remove('visible');
+            document.body.classList.remove('mobile-nav-locked');
+            if (toggleBtn) {
+                toggleBtn.setAttribute('aria-expanded', 'false');
+                toggleBtn.setAttribute('aria-label', 'Open navigation menu');
+            }
+            if (icon) {
+                icon.setAttribute('data-lucide', 'menu');
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' || e.key === 'Esc') closeMobileNav();
+        });
+
+        // If the viewport grows past the drawer breakpoint (e.g. rotating a tablet,
+        // or resizing a browser window) make sure we don't get stuck in a locked/open state.
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 1024) closeMobileNav();
+        });
 
         // Reads a live CSS custom property so canvas drawing follows the active theme
         function readThemeToken(name, fallback) {

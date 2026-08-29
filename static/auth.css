@@ -29,10 +29,17 @@ body {
   color: var(--aura-text);
   background: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
+  /* Safe-area padding for iOS notch/home-indicator. A no-op (env() resolves to 0) unless
+     the page's <meta viewport> also sets viewport-fit=cover -- see README note below. */
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-right: max(24px, env(safe-area-inset-right));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  padding-left: max(24px, env(safe-area-inset-left));
 }
 
 .auth-page {
@@ -120,6 +127,9 @@ body {
 .auth-field input[type="text"],
 .auth-field input[type="password"] {
   font: inherit;
+  /* font:inherit above pulls the *label's* 0.85rem (13.6px) size, which sits under the
+     16px iOS Safari zoom-on-focus threshold -- override just the size back up. */
+  font-size: 1rem;
   font-weight: 500;
   padding: 13px 16px;
   border-radius: 16px;
@@ -146,12 +156,12 @@ body {
 }
 
 .auth-password-wrap input {
-  padding-right: 44px;
+  padding-right: 48px;
 }
 
 .auth-eye-toggle {
   position: absolute;
-  right: 6px;
+  right: 2px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
@@ -159,7 +169,11 @@ body {
   cursor: pointer;
   color: var(--aura-text-soft);
   padding: 6px;
+  width: 44px;
+  height: 44px;
   display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 10px;
 }
 
