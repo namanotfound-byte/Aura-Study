@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Sign up - AuraStudy{% endblock %}
+{% block content %}
+  <h1 class="auth-heading">Hi, future smartiepants ✨</h1>
+  <p class="auth-subheading">Create your account and let's start studying.</p>
+
+  <div class="auth-alert" id="form-alert" hidden></div>
+
+  <form id="auth-form" class="auth-form" novalidate>
+    <label class="auth-field">
+      <span>What should we call you? <em>(optional)</em></span>
+      <input type="text" name="display_name" id="display_name" autocomplete="nickname" placeholder="Cutie McStudy">
+    </label>
+
+    <label class="auth-field">
+      <span>Email</span>
+      <input type="email" name="email" id="email" autocomplete="email" required placeholder="you@example.com">
+      <small class="auth-field-error" data-for="email"></small>
+    </label>
+
+    <label class="auth-field">
+      <span>Password</span>
+      <div class="auth-password-wrap">
+        <input type="password" name="password" id="password" autocomplete="new-password" required placeholder="••••••••">
+        <button type="button" class="auth-eye-toggle" data-toggle-for="password" aria-label="Show password">
+          <i data-lucide="eye"></i>
+        </button>
+      </div>
+      <small class="auth-hint">At least 8 characters, with a letter and a number.</small>
+      <small class="auth-field-error" data-for="password"></small>
+    </label>
+
+    <button type="submit" class="auth-submit" id="submit-btn">
+      <span class="auth-submit-label">Create account</span>
+      <span class="auth-spinner" hidden></span>
+    </button>
+  </form>
+
+  <p class="auth-switch">Already have an account? <a href="/login">Log in</a></p>
+{% endblock %}
+{% block scripts %}
+  <script>window.AURA_AUTH_MODE = 'register';</script>
+  <script src="/static/auth.js"></script>
+{% endblock %}

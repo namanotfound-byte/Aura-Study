@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}AuraStudy{% endblock %}</title>
+  <link rel="stylesheet" href="/static/auth.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <i data-lucide="sparkles"></i>
+        <span>AuraStudy</span>
+      </div>
+      {% block content %}{% endblock %}
+    </div>
+    <p class="auth-footnote">{% block footnote %}Made with sparkles, for smartiepants everywhere.{% endblock %}</p>
+  </div>
+  <script>
+    if (window.lucide) { lucide.createIcons(); }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

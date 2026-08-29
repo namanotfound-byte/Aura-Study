@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Log in - AuraStudy{% endblock %}
+{% block content %}
+  <h1 class="auth-heading">Welcome back, smartiepants ✨</h1>
+  <p class="auth-subheading">Let's get back to studying.</p>
+
+  <div class="auth-alert" id="form-alert" hidden></div>
+
+  <div class="auth-alert auth-alert-info" id="resend-box" hidden>
+    Didn't get a verification email?
+    <button type="button" class="auth-link-btn" id="resend-btn">Resend it</button>
+  </div>
+
+  <form id="auth-form" class="auth-form" novalidate>
+    <label class="auth-field">
+      <span>Email</span>
+      <input type="email" name="email" id="email" autocomplete="email" required placeholder="you@example.com">
+      <small class="auth-field-error" data-for="email"></small>
+    </label>
+
+    <label class="auth-field">
+      <span>Password</span>
+      <div class="auth-password-wrap">
+        <input type="password" name="password" id="password" autocomplete="current-password" required placeholder="••••••••">
+        <button type="button" class="auth-eye-toggle" data-toggle-for="password" aria-label="Show password">
+          <i data-lucide="eye"></i>
+        </button>
+      </div>
+      <small class="auth-field-error" data-for="password"></small>
+    </label>
+
+    <div class="auth-row-between">
+      <a href="/forgot" class="auth-link">Forgot password?</a>
+    </div>
+
+    <button type="submit" class="auth-submit" id="submit-btn">
+      <span class="auth-submit-label">Log in</span>
+      <span class="auth-spinner" hidden></span>
+    </button>
+  </form>
+
+  <p class="auth-switch">New here? <a href="/register">Make an account</a></p>
+{% endblock %}
+{% block scripts %}
+  <script>window.AURA_AUTH_MODE = 'login';</script>
+  <script src="/static/auth.js"></script>
+{% endblock %}

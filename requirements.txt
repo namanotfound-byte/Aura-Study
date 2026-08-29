@@ -1,0 +1,5 @@
+flask
+cryptography
+requests
+python-dotenv
+pytest

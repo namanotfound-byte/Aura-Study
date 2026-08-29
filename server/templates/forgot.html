@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Forgot password - AuraStudy{% endblock %}
+{% block content %}
+  <h1 class="auth-heading">Forgot your password? ✨</h1>
+  <p class="auth-subheading">No worries -- it happens to the best of us. We'll email you a reset link.</p>
+
+  <div class="auth-alert" id="form-alert" hidden></div>
+  <div class="auth-alert auth-alert-success" id="success-box" hidden>
+    If that email has an account, a reset link is on its way. Check your inbox!
+  </div>
+
+  <form id="auth-form" class="auth-form" novalidate>
+    <label class="auth-field">
+      <span>Email</span>
+      <input type="email" name="email" id="email" autocomplete="email" required placeholder="you@example.com">
+      <small class="auth-field-error" data-for="email"></small>
+    </label>
+
+    <button type="submit" class="auth-submit" id="submit-btn">
+      <span class="auth-submit-label">Send reset link</span>
+      <span class="auth-spinner" hidden></span>
+    </button>
+  </form>
+
+  <p class="auth-switch"><a href="/login">Back to log in</a></p>
+{% endblock %}
+{% block scripts %}
+  <script>window.AURA_AUTH_MODE = 'forgot';</script>
+  <script src="/static/auth.js"></script>
+{% endblock %}

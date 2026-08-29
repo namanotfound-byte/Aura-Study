@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }} - AuraStudy{% endblock %}
+{% block content %}
+  <div class="auth-message-icon {% if success %}is-success{% else %}is-error{% endif %}">
+    <i data-lucide="{{ 'check' if success else 'x' }}"></i>
+  </div>
+  <h1 class="auth-heading">{{ heading }}</h1>
+  <p class="auth-subheading">{{ detail }}</p>
+  <a href="/login" class="auth-submit auth-submit-link">Go to log in</a>
+{% endblock %}

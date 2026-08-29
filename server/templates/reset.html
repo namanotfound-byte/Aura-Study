@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Reset password - AuraStudy{% endblock %}
+{% block content %}
+  <h1 class="auth-heading">Pick a new password ✨</h1>
+  <p class="auth-subheading">Make it a good one -- at least 8 characters, with a letter and a number.</p>
+
+  <div class="auth-alert" id="form-alert" hidden></div>
+
+  {% if token %}
+  <form id="auth-form" class="auth-form" novalidate>
+    <input type="hidden" name="token" id="token" value="{{ token }}">
+    <label class="auth-field">
+      <span>New password</span>
+      <div class="auth-password-wrap">
+        <input type="password" name="password" id="password" autocomplete="new-password" required placeholder="••••••••">
+        <button type="button" class="auth-eye-toggle" data-toggle-for="password" aria-label="Show password">
+          <i data-lucide="eye"></i>
+        </button>
+      </div>
+      <small class="auth-field-error" data-for="password"></small>
+    </label>
+
+    <button type="submit" class="auth-submit" id="submit-btn">
+      <span class="auth-submit-label">Reset password</span>
+      <span class="auth-spinner" hidden></span>
+    </button>
+  </form>
+  {% else %}
+  <div class="auth-alert auth-alert-error">This reset link is missing its token. Please request a new one.</div>
+  <p class="auth-switch"><a href="/forgot">Request a new link</a></p>
+  {% endif %}
+{% endblock %}
+{% block scripts %}
+  <script>window.AURA_AUTH_MODE = 'reset';</script>
+  <script src="/static/auth.js"></script>
+{% endblock %}
