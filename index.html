@@ -595,6 +595,14 @@
             line-height: 1.5;
         }
 
+        /* Reposition the Spotify now-playing strip (injected by static/spotify.js as
+           #timer-now-playing.as-strip) so it clears the top-actions-row buttons above it.
+           ID+class beats spotify.js's own .as-strip rule without editing that file. */
+        #timer-now-playing.as-strip {
+            top: 82px;
+            right: 24px;
+        }
+
         /* Top Bar Floating Control actions inside the timer workspace view context */
         .timer-view-top-actions-row {
             position: absolute;
@@ -1043,6 +1051,10 @@
                     <i data-lucide="star"></i>
                     <span>Trophies Cabinet</span>
                 </div>
+                <div class="nav-item" id="nav-item-music-toggle" onclick="switchView('spotify', this)">
+                    <i data-lucide="music"></i>
+                    <span>Music</span>
+                </div>
             </div>
         </div>
 
@@ -1064,6 +1076,10 @@
             <div class="user-profile">
                 <i data-lucide="heart" style="color: var(--neon-pink); fill: var(--neon-pink);"></i>
                 <span id="user-email-display">smartiepants@local.app</span>
+            </div>
+            <div class="nav-item" id="nav-item-logout" onclick="AuraSync.logout()">
+                <i data-lucide="log-out"></i>
+                <span>Log out</span>
             </div>
         </div>
     </div>
@@ -1206,6 +1222,9 @@
                     <textarea class="timer-braindump-textarea" id="sticky-scratchpad-input" placeholder="Type thoughts or side distractions here to keep your main mind clean and focused... 💕" oninput="saveStickyScratchpadContent()"></textarea>
                 </div>
 
+                <!-- Compact Spotify now-playing strip, filled/positioned entirely by static/spotify.js -->
+                <div id="timer-now-playing"></div>
+
                 <div class="ambient-selector-bar" style="margin-top: 40px;">
                     <div class="ambient-preset-dot active" style="background: var(--ambient-grad-cottoncandy);" title="Cotton Candy Dream" onclick="selectAmbientEnvironmentPreset('cottoncandy', false, this)"></div>
                     <div class="ambient-preset-dot" style="background: var(--ambient-grad-sunsetglow);" title="Sunset Lavender Glow" onclick="selectAmbientEnvironmentPreset('sunsetglow', false, this)"></div>
@@ -1321,14 +1340,17 @@
             <div id="subview-achievements" class="trophy-showcase-matrix" style="display: none;"></div>
         </div>
 
+        <!-- VIEW: SPOTIFY (all inner markup injected by static/spotify.js via AuraSpotify.renderInto) -->
+        <div id="view-spotify" class="view-panel"></div>
+
         <!-- VIEW: SETTINGS -->
         <div id="view-settings" class="view-panel">
             <div class="card" style="max-width: 600px;">
                 <div class="card-title">System Configuration Profile parameters</div>
-                
+
                 <div class="input-group" style="margin-bottom:16px;">
-                    <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Profile Handle Name</label>
-                    <input type="text" class="form-control" id="settings-user-email" value="smartiepants@local.app" onchange="updateProfileSettings()">
+                    <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Account Email</label>
+                    <input type="text" class="form-control" id="settings-user-email" value="smartiepants@local.app" readonly style="opacity:0.7; cursor:not-allowed;">
                 </div>
 
                 <div class="input-group" style="margin-bottom:16px;">
@@ -1342,6 +1364,35 @@
                 </div>
 
                 <button class="btn btn-neon-pink" onclick="triggerManualSaveNotification()">Synchronize Changes</button>
+            </div>
+
+            <div class="card" style="max-width: 600px; margin-top: 24px;">
+                <div class="card-title">Account Security</div>
+                <p class="text-muted" style="font-size: 12px; margin-top: -10px; margin-bottom: 16px;">Your login email is tied to your AuraStudy account and can't be changed here. Update your password instead:</p>
+
+                <div class="input-group" style="margin-bottom:14px;">
+                    <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Current Password</label>
+                    <input type="password" class="form-control" id="settings-current-password" autocomplete="current-password">
+                </div>
+
+                <div class="input-group" style="margin-bottom:14px;">
+                    <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">New Password</label>
+                    <input type="password" class="form-control" id="settings-new-password" autocomplete="new-password">
+                </div>
+
+                <div class="input-group" style="margin-bottom:16px;">
+                    <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Confirm New Password</label>
+                    <input type="password" class="form-control" id="settings-confirm-password" autocomplete="new-password">
+                </div>
+
+                <button class="btn btn-neon-pink" id="settings-change-password-btn" onclick="submitAccountPasswordChange()">Change Password</button>
+                <div id="settings-password-feedback" style="font-size:12px; margin-top:10px; font-weight:700;"></div>
+            </div>
+
+            <div class="card" style="max-width: 600px; margin-top: 24px;">
+                <div class="card-title">Spotify Connection</div>
+                <div id="settings-spotify-status" class="text-muted" style="font-size: 13px;">Checking Spotify status…</div>
+                <button class="btn" style="margin-top: 12px; font-size: 12px; padding: 6px 14px;" onclick="switchView('spotify', document.getElementById('nav-item-music-toggle'))">Open Music Tab</button>
             </div>
         </div>
 
@@ -1463,17 +1514,42 @@
         function checkTriathleteCondition(state) { const registry = {}; state.sessions.forEach(s => { if(!registry[s.date]) registry[s.date] = new Set(); registry[s.date].add(s.course); }); return Object.values(registry).some(setObj => setObj.size >= 3); }
 
         window.addEventListener('DOMContentLoaded', () => {
-            loadStateFromLocalStorageRegister();
-            lucide.createIcons();
-            initDashboardMetricsAndCharts();
-            renderCoursesView();
-            renderTimerSubjectPills();
-            renderSessionsTable();
-            evaluateCabinetTrophyMetrics();
-            updatePetEvolutionState();
-            loadStickyScratchpadContent();
-            refreshTodoListViewLayout();
+            // Auth gate + account state hydration must resolve BEFORE the app reads
+            // localStorage, so that if the server has a saved copy of this account's
+            // state it lands in localStorage first and the app boots from account data
+            // instead of whatever was cached locally. AuraSync.bootstrap() also handles
+            // the 401 -> /login redirect and the one-time local -> account migration.
+            AuraSync.bootstrap().then((accountUser) => {
+                loadStateFromLocalStorageRegister();
+                applyAccountIdentity(accountUser);
+                lucide.createIcons();
+                initDashboardMetricsAndCharts();
+                renderCoursesView();
+                renderTimerSubjectPills();
+                renderSessionsTable();
+                evaluateCabinetTrophyMetrics();
+                updatePetEvolutionState();
+                loadStickyScratchpadContent();
+                refreshTodoListViewLayout();
+                if (typeof AuraSpotify !== 'undefined') AuraSpotify.init();
+            });
         });
+
+        // Applies the real, server-authoritative account email over whatever local
+        // placeholder value was cached, and locks the settings email field since it's
+        // no longer a free-text profile field -- it IS the login identity now.
+        function applyAccountIdentity(user) {
+            if (!user || !user.email) return;
+            appState.profile.email = user.email;
+            const emailDisplay = document.getElementById('user-email-display');
+            if (emailDisplay) emailDisplay.innerText = user.email;
+            const emailField = document.getElementById('settings-user-email');
+            if (emailField) {
+                emailField.value = user.email;
+                emailField.readOnly = true;
+            }
+            saveStateToLocalStorageRegister();
+        }
 
         // Reads a live CSS custom property so canvas drawing follows the active theme
         function readThemeToken(name, fallback) {
@@ -1677,6 +1753,14 @@
         }
 
         function switchView(targetPanelKey, clickedAnchorRef) {
+            // Spotify's now-playing poll must only run while its view is actually
+            // visible, so stop it here before we swap the active panel away from it.
+            const previouslyActivePanel = document.querySelector('.view-panel.active');
+            const wasSpotifyActive = previouslyActivePanel && previouslyActivePanel.id === 'view-spotify';
+            if (wasSpotifyActive && targetPanelKey !== 'spotify' && typeof AuraSpotify !== 'undefined') {
+                AuraSpotify.onViewHidden();
+            }
+
             document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
             document.getElementById(`view-${targetPanelKey}`).classList.add('active');
             if (clickedAnchorRef) {
@@ -1694,6 +1778,8 @@
             else if (targetPanelKey === 'courses') renderCoursesView();
             else if (targetPanelKey === 'sessions') renderSessionsTable();
             else if (targetPanelKey === 'trophies') evaluateCabinetTrophyMetrics();
+            else if (targetPanelKey === 'spotify' && typeof AuraSpotify !== 'undefined') AuraSpotify.onViewShown();
+            else if (targetPanelKey === 'settings') refreshSettingsSpotifyStatus();
         }
 
         function changeEngineMode(modeKey) {
@@ -2015,7 +2101,88 @@
         }
 
         function triggerManualSaveNotification() { updateProfileSettings(); triggerAlertToast("Settings Updated", "Profile parameter changes applied successfully.", true); }
-        function updateProfileSettings() { appState.profile.email = document.getElementById('settings-user-email').value || "smartiepants@local.app"; appState.profile.dailyGoalHours = parseFloat(document.getElementById('settings-daily-goal').value) || 3; appState.profile.defaultTimerMinutes = parseInt(document.getElementById('settings-timer-duration').value) || 25; document.getElementById('user-email-display').innerText = appState.profile.email; localStorage.setItem('aurastudy_tinkered_flag', 'true'); saveStateToLocalStorageRegister(); }
+        function updateProfileSettings() { appState.profile.dailyGoalHours = parseFloat(document.getElementById('settings-daily-goal').value) || 3; appState.profile.defaultTimerMinutes = parseInt(document.getElementById('settings-timer-duration').value) || 25; localStorage.setItem('aurastudy_tinkered_flag', 'true'); saveStateToLocalStorageRegister(); }
+
+        // Account password change -- posts to the auth API added in server/auth.py.
+        // The email field itself is now read-only (see applyAccountIdentity), so this
+        // card is the only account-identity control left in Settings.
+        function submitAccountPasswordChange() {
+            const currentPw = document.getElementById('settings-current-password').value;
+            const newPw = document.getElementById('settings-new-password').value;
+            const confirmPw = document.getElementById('settings-confirm-password').value;
+            const feedback = document.getElementById('settings-password-feedback');
+            const btn = document.getElementById('settings-change-password-btn');
+
+            feedback.style.color = '#FF4D6D';
+            if (!currentPw || !newPw || !confirmPw) {
+                feedback.innerText = 'Please fill in all three password fields.';
+                return;
+            }
+            if (newPw !== confirmPw) {
+                feedback.innerText = 'New password and confirmation do not match.';
+                return;
+            }
+
+            btn.disabled = true;
+            const originalLabel = btn.innerText;
+            btn.innerText = 'Changing…';
+            feedback.innerText = '';
+
+            fetch('/api/auth/change-password', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ current_password: currentPw, new_password: newPw })
+            })
+                .then(res => res.json().catch(() => ({})).then(data => ({ res: res, data: data })))
+                .then(({ res, data }) => {
+                    if (res.ok) {
+                        feedback.style.color = '#1E824C';
+                        feedback.innerText = 'Password changed! You\'ll stay logged in on this device.';
+                        document.getElementById('settings-current-password').value = '';
+                        document.getElementById('settings-new-password').value = '';
+                        document.getElementById('settings-confirm-password').value = '';
+                        triggerAlertToast("Password Updated", "Your account password was changed successfully.", true);
+                    } else if (res.status === 401) {
+                        window.location.replace('/login');
+                    } else {
+                        feedback.style.color = '#FF4D6D';
+                        feedback.innerText = (data && data.message) || 'Could not change your password. Please try again.';
+                    }
+                })
+                .catch(() => {
+                    feedback.style.color = '#FF4D6D';
+                    feedback.innerText = 'Network error -- please try again.';
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerText = originalLabel;
+                });
+        }
+
+        // Small read-only Spotify status blurb inside Settings, per spec section 9
+        // ("surface Spotify connect/disconnect status here if it fits naturally").
+        // The actual connect/disconnect controls live in the Music tab (AuraSpotify).
+        function refreshSettingsSpotifyStatus() {
+            const el = document.getElementById('settings-spotify-status');
+            if (!el) return;
+            fetch('/api/spotify/status', {
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(res => res.json().catch(() => ({})).then(data => ({ res: res, data: data })))
+                .then(({ res, data }) => {
+                    if (!res.ok) { el.textContent = 'Could not load Spotify status.'; return; }
+                    if (!data.configured) {
+                        el.textContent = "Spotify isn't configured by the app owner yet -- see the README's Spotify setup section.";
+                    } else if (!data.connected) {
+                        el.textContent = 'Not connected. Open the Music tab to connect your Spotify account.';
+                    } else {
+                        el.textContent = 'Connected as ' + (data.display_name || 'your Spotify account') + ' (' + (data.premium ? 'Premium' : 'Free') + ').';
+                    }
+                })
+                .catch(() => { el.textContent = 'Could not load Spotify status.'; });
+        }
         function selectAmbientEnvironmentPreset(presetKey, isDarkActive, dotElementRef) { const containerNode = document.getElementById('timer-view-container'); appState.ambientKey = presetKey; appState.isDarkAmbient = isDarkActive; saveStateToLocalStorageRegister(); document.querySelectorAll('.ambient-preset-dot').forEach(d => d.classList.remove('active')); if(dotElementRef) dotElementRef.classList.add('active'); if(presetKey === 'cottoncandy') containerNode.style.background = "var(--ambient-grad-cottoncandy)"; else if(presetKey === 'sunsetglow') containerNode.style.background = "var(--ambient-grad-sunsetglow)"; else if(presetKey === 'peachy') containerNode.style.background = "var(--ambient-grad-peachy)"; else if(presetKey === 'mintrefresh') containerNode.style.background = "var(--ambient-grad-mintrefresh)"; else if(presetKey === 'lavenderdream') containerNode.style.background = "var(--ambient-grad-lavenderdream)"; else if(presetKey === 'auroracute') containerNode.style.background = "var(--ambient-grad-auroracute)"; else if(presetKey === 'magicaldark') containerNode.style.background = "var(--ambient-grad-magicaldark)"; if(isDarkActive) containerNode.classList.add('dark-mode-active'); else containerNode.classList.remove('dark-mode-active'); }
 
         function triggerAlertToast(title, desc, useSparklesIcon = true) {
@@ -2037,5 +2204,10 @@
             draw();
         }
     </script>
+
+    <!-- Server sync + Spotify integration, loaded AFTER the inline app script so
+         appState / saveStateToLocalStorageRegister / switchView already exist. -->
+    <script src="/static/sync.js"></script>
+    <script src="/static/spotify.js"></script>
 </body>
 </html>
