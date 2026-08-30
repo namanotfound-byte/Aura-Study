@@ -714,6 +714,36 @@
             pointer-events: auto;
         }
 
+        /* Music popover trigger + panel (content built by static/spotify.js).
+           Positioning context for the popover, which anchors to this wrapper
+           rather than the button itself so it stays put if the button's own
+           size changes (e.g. the touch-target bump at (pointer:coarse)). */
+        .timer-music-control-wrap {
+            position: relative;
+            pointer-events: auto;
+        }
+        .timer-music-popover {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            z-index: 700;
+            min-width: 176px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 10px;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+            transform-origin: top right;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+        .timer-music-popover[hidden] {
+            display: none;
+        }
+        .timer-music-popover.is-opening {
+            opacity: 0;
+            transform: translateY(-4px) scale(0.96);
+        }
+
         .engine-mode-tabs {
             display: flex;
             background: rgba(255, 255, 255, 0.5);
@@ -1451,6 +1481,49 @@
             flex-shrink: 0;
         }
 
+        /* Public-name editor, inline inside the "you" card -- see
+           openLeaderboardNameEditor()/submitLeaderboardName(). */
+        .lb-name-edit-btn {
+            background: none;
+            border: none;
+            color: var(--neon-pink);
+            font-weight: 700;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 4px 0;
+            margin-top: 2px;
+            text-decoration: underline;
+        }
+        .lb-name-form {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .lb-name-form input {
+            flex: 1;
+            min-width: 160px;
+        }
+        .lb-name-form .btn {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+        .lb-public-note {
+            width: 100%;
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin: 2px 0 0;
+        }
+        .lb-name-error {
+            width: 100%;
+            font-size: 12px;
+            color: #FF4D6D;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+
         @media (max-width: 600px) {
             .lb-header-row { flex-direction: column; }
             .lb-copy { max-width: none; }
@@ -1461,6 +1534,8 @@
             .lb-toggle-switch { width: 44px; height: 44px; }
             .lb-toggle-slider { top: 9px; bottom: 9px; left: 0; right: 0; }
             .lb-state-retry { min-height: 44px; }
+            .lb-name-edit-btn { min-height: 44px; }
+            .lb-name-form .btn { min-height: 44px; }
         }
     </style>
 </head>
@@ -1664,11 +1739,19 @@
                     </button>
 
                     <!-- Secondary utility actions, kept small and out of the way of the
-                         countdown/controls: Pop Out (float the timer) and Fullscreen. -->
+                         countdown/controls: Music (playback popover, built + wired by
+                         static/spotify.js -- see its DOM contract comment) and Fullscreen.
+                         The automatic floating-timer behaviour (opening when the user
+                         navigates away from this view) is unrelated to this button and
+                         lives entirely in static/pip.js; only the old manual "Pop out
+                         timer" trigger was removed. -->
                     <div class="timer-top-actions-right-group">
-                        <button class="timer-floating-interactive-trigger-btn timer-floating-circle-btn" onclick="AuraFocus.popOutTimer()" title="Float the timer in a small always-on-top window" aria-label="Pop out timer">
-                            <i data-lucide="picture-in-picture-2" style="width: 16px; height: 16px;"></i>
-                        </button>
+                        <div class="timer-music-control-wrap" id="timer-music-control-wrap">
+                            <button class="timer-floating-interactive-trigger-btn timer-floating-circle-btn" id="timer-music-trigger-btn" type="button" title="Music controls" aria-label="Music controls" aria-haspopup="true" aria-expanded="false" aria-controls="timer-music-popover">
+                                <i data-lucide="music" style="width: 16px; height: 16px;"></i>
+                            </button>
+                            <div class="timer-music-popover" id="timer-music-popover" role="menu" aria-label="Music controls" hidden></div>
+                        </div>
                         <!-- FIXED TRIGGER FUNCTION: Native window element HTML5 Fullscreen Engine initialization -->
                         <button class="timer-floating-interactive-trigger-btn timer-floating-circle-btn" onclick="toggleNativeWindowFullscreenEngine()" title="Toggle Fullscreen Mode">
                             <i data-lucide="maximize-2" id="fullscreen-icon-indicator" style="width: 16px; height: 16px;"></i>
@@ -1812,7 +1895,7 @@
                 <div class="lb-header-row">
                     <div>
                         <h3 style="font-weight: 800; font-size: 18px; color: var(--text-main);">This Week's Leaderboard</h3>
-                        <p class="lb-copy">Total study hours logged this week, across everyone who's opted in. Entries are fully anonymous: each person gets a random two-word alias that changes every Monday, so it can never be traced back across weeks -- or to an account.</p>
+                        <p class="lb-copy">Total study hours logged this week, across everyone who's opted in and set a public name. Your name is shown to everyone on the leaderboard -- choose something you're comfortable sharing publicly.</p>
                     </div>
                     <label class="lb-opt-row" for="leaderboard-opt-toggle">
                         <span>Show me on the board</span>
@@ -1828,7 +1911,15 @@
                 <div class="lb-you-rank" id="lb-you-rank">--</div>
                 <div class="lb-you-meta">
                     <div class="lb-you-alias" id="lb-you-alias">You</div>
-                    <div class="lb-you-sub" id="lb-you-sub">Your alias this week</div>
+                    <div class="lb-you-sub" id="lb-you-sub">Your public name this week</div>
+                    <button type="button" class="lb-name-edit-btn" id="lb-name-edit-btn" onclick="openLeaderboardNameEditor()" hidden>Change name</button>
+                    <div class="lb-name-form" id="lb-name-form" hidden>
+                        <input type="text" class="form-control" id="lb-name-input" maxlength="24" placeholder="Your public name" autocomplete="off">
+                        <button type="button" class="btn btn-neon-pink" id="lb-name-save-btn" onclick="submitLeaderboardName()">Save</button>
+                        <button type="button" class="btn" id="lb-name-cancel-btn" onclick="closeLeaderboardNameEditor()">Cancel</button>
+                        <p class="lb-public-note">Shown publicly to every other AuraStudy user on the board -- not just people you know.</p>
+                        <div class="lb-name-error" id="lb-name-error" hidden></div>
+                    </div>
                 </div>
                 <div class="lb-you-hours" id="lb-you-hours">0.0h</div>
             </div>
@@ -1933,6 +2024,17 @@
                     </div>
                     <label class="focus-toggle-switch">
                         <input type="checkbox" id="focus-toggle-wakelock" data-pref="keepAwake" onchange="AuraFocus.onPreferenceToggle(this)">
+                        <span class="focus-toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="focus-mode-row">
+                    <div>
+                        <div class="focus-mode-row-label">Play a sound when a session completes</div>
+                        <div class="focus-mode-row-desc">A short, gentle chime when a countdown finishes on its own -- so you notice even with the tab muted in the background.</div>
+                    </div>
+                    <label class="focus-toggle-switch">
+                        <input type="checkbox" id="focus-toggle-sound" data-pref="completionSound" onchange="AuraFocus.onPreferenceToggle(this)">
                         <span class="focus-toggle-slider"></span>
                     </label>
                 </div>
@@ -2411,6 +2513,14 @@
             if (wasLeaderboardActive && targetPanelKey !== 'leaderboard') {
                 stopLeaderboardPolling();
             }
+            // The Timer view's Music popover is anchored inside #view-timer, so it
+            // has nowhere sensible to sit once that panel is hidden -- close it
+            // rather than leave it open-but-invisible with its outside-click/
+            // Escape listeners still attached.
+            const wasTimerActive = previouslyActivePanel && previouslyActivePanel.id === 'view-timer';
+            if (wasTimerActive && targetPanelKey !== 'timer' && typeof AuraSpotify !== 'undefined') {
+                AuraSpotify.closeMusicPopover();
+            }
 
             document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
             document.getElementById(`view-${targetPanelKey}`).classList.add('active');
@@ -2691,11 +2801,15 @@
         // panel (started/stopped from switchView() above), renders a "you" summary
         // card, a Chart.js bar chart and a ranked list, and drives the opt-in
         // toggle through PUT /api/leaderboard/opt. Every entry the server returns
-        // carries only rank/alias/seconds -- nothing here ever tries to resolve an
-        // alias back to a person, on purpose.
+        // carries only rank/name/seconds -- a real, user-chosen public name
+        // (server/leaderboard.py), shown to every other user on the board. A
+        // user with no public_name set yet is never listed or counted, so the
+        // "you" card prompts them to set one (see openLeaderboardNameEditor).
         const LEADERBOARD_POLL_MS = 20000;
         let leaderboardHasLoadedOnce = false;
         let leaderboardOptTogglePending = false;
+        let leaderboardYouState = {};
+        let leaderboardNameEditorAutoOpened = false;
 
         function startLeaderboardPolling() {
             stopLeaderboardPolling();
@@ -2768,7 +2882,6 @@
         }
 
         function renderLeaderboardData(data) {
-            const youCard = document.getElementById('leaderboard-you-card');
             const content = document.getElementById('leaderboard-content');
             const you = (data && typeof data.you === 'object' && data.you) || {};
             const entries = Array.isArray(data && data.entries) ? data.entries : [];
@@ -2777,45 +2890,146 @@
             const optToggle = document.getElementById('leaderboard-opt-toggle');
             if (optToggle && !leaderboardOptTogglePending) optToggle.checked = !!you.opted_in;
 
+            leaderboardYouState = you;
+            renderLeaderboardYouCard(you, participants, entries);
+
             if (participants === 0 && entries.length === 0) {
                 content.style.display = 'none';
-                youCard.style.display = 'none';
-                showLeaderboardState('empty', you.opted_in
-                    ? "No one has logged study time this week yet -- be the first! Your total will show up here once you've studied a bit."
-                    : "No one has logged study time this week yet. Flip \"Show me on the board\" above to join in once you start studying.");
+                showLeaderboardState('empty', !you.public_name
+                    ? "No one has logged study time this week yet. Set a public name above to be ready to join once you start studying."
+                    : (you.opted_in
+                        ? "No one has logged study time this week yet -- be the first! Your total will show up here once you've studied a bit."
+                        : "No one has logged study time this week yet. Flip \"Show me on the board\" above to join in once you start studying."));
                 return;
             }
 
             hideLeaderboardState();
             content.style.display = 'block';
 
-            if (you.rank) {
-                youCard.style.display = 'flex';
-                document.getElementById('lb-you-rank').textContent = '#' + you.rank;
-                document.getElementById('lb-you-alias').textContent = you.alias || 'You';
-                document.getElementById('lb-you-sub').textContent = you.rank <= entries.length
-                    ? "Your alias this week -- it changes again next Monday"
-                    : ('Out of ' + participants + (participants === 1 ? ' participant' : ' participants') + ' -- your alias changes every Monday');
-                document.getElementById('lb-you-hours').textContent = formatLeaderboardHours(you.seconds);
-            } else if (you.opted_in) {
-                youCard.style.display = 'flex';
-                document.getElementById('lb-you-rank').textContent = '--';
-                document.getElementById('lb-you-alias').textContent = you.alias || 'You';
-                document.getElementById('lb-you-sub').textContent = "You're on the board -- log a study session to appear in the rankings.";
-                document.getElementById('lb-you-hours').textContent = formatLeaderboardHours(you.seconds || 0);
-            } else {
-                youCard.style.display = 'flex';
-                document.getElementById('lb-you-rank').textContent = '--';
-                document.getElementById('lb-you-alias').textContent = "You're opted out";
-                document.getElementById('lb-you-sub').textContent = "Only you can see this total -- flip the toggle above to join this week's board.";
-                document.getElementById('lb-you-hours').textContent = formatLeaderboardHours(you.seconds || 0);
-            }
-
             const participantsLabel = document.getElementById('lb-participants-label');
             if (participantsLabel) participantsLabel.textContent = participants + (participants === 1 ? ' participant' : ' participants');
 
             renderLeaderboardList(entries, you);
             renderLeaderboardChart(entries, you);
+        }
+
+        // Renders the "you" summary card, including the public-name prompt/
+        // editor. A user with no public_name set yet still gets a rank/seconds
+        // report from the server (see server/leaderboard.py's docstring) so this
+        // can prompt them to set one instead of just hiding the card.
+        function renderLeaderboardYouCard(you, participants, entries) {
+            const youCard = document.getElementById('leaderboard-you-card');
+            const rankEl = document.getElementById('lb-you-rank');
+            const nameEl = document.getElementById('lb-you-alias');
+            const subEl = document.getElementById('lb-you-sub');
+            const hoursEl = document.getElementById('lb-you-hours');
+            const editBtn = document.getElementById('lb-name-edit-btn');
+            youCard.style.display = 'flex';
+            hoursEl.textContent = formatLeaderboardHours(you.seconds || 0);
+
+            if (!you.public_name) {
+                rankEl.textContent = '--';
+                nameEl.textContent = "You're not on the board yet";
+                subEl.textContent = "Set a public name to join -- it's shown to every other AuraStudy user on the board.";
+                if (editBtn) { editBtn.textContent = 'Set a public name'; editBtn.hidden = true; }
+                // Auto-open the editor the first time we learn there's no name
+                // set, so a brand-new user sees the prompt immediately without
+                // hunting for a "set name" control -- but only once per view
+                // visit, so it doesn't keep popping back open under someone
+                // who's deliberately closed it while typing is interrupted by
+                // the 20s poll re-render.
+                if (!leaderboardNameEditorAutoOpened) {
+                    leaderboardNameEditorAutoOpened = true;
+                    openLeaderboardNameEditor();
+                }
+                return;
+            }
+
+            if (editBtn) {
+                editBtn.textContent = 'Change name';
+                const form = document.getElementById('lb-name-form');
+                editBtn.hidden = !!(form && !form.hidden); // keep it hidden while the editor is already open
+            }
+
+            if (you.rank) {
+                rankEl.textContent = '#' + you.rank;
+                nameEl.textContent = you.public_name;
+                subEl.textContent = you.rank <= entries.length
+                    ? "That's your public name -- visible to everyone on the board."
+                    : ('Out of ' + participants + (participants === 1 ? ' participant' : ' participants') + ' -- your public name is visible to everyone on the board.');
+            } else if (you.opted_in) {
+                rankEl.textContent = '--';
+                nameEl.textContent = you.public_name;
+                subEl.textContent = "You're on the board as \"" + you.public_name + "\" -- log a study session to appear in the rankings.";
+            } else {
+                rankEl.textContent = '--';
+                nameEl.textContent = you.public_name;
+                subEl.textContent = "You're opted out -- only you can see this total. Flip the toggle above to rejoin.";
+            }
+        }
+
+        function openLeaderboardNameEditor() {
+            const form = document.getElementById('lb-name-form');
+            const input = document.getElementById('lb-name-input');
+            const editBtn = document.getElementById('lb-name-edit-btn');
+            const err = document.getElementById('lb-name-error');
+            if (!form) return;
+            form.hidden = false;
+            if (editBtn) editBtn.hidden = true;
+            if (err) { err.hidden = true; err.textContent = ''; }
+            if (input) {
+                input.value = (leaderboardYouState && leaderboardYouState.public_name) || '';
+                input.focus();
+            }
+        }
+
+        function closeLeaderboardNameEditor() {
+            const form = document.getElementById('lb-name-form');
+            const editBtn = document.getElementById('lb-name-edit-btn');
+            if (form) form.hidden = true;
+            // Only re-reveal the trigger button once a name actually exists --
+            // with none set yet there's nothing for it to say ("Change name"
+            // makes no sense with nothing to change), so leave it hidden; the
+            // next poll's render re-opens the form automatically instead.
+            if (editBtn && leaderboardYouState && leaderboardYouState.public_name) editBtn.hidden = false;
+        }
+
+        function submitLeaderboardName() {
+            const input = document.getElementById('lb-name-input');
+            const err = document.getElementById('lb-name-error');
+            const saveBtn = document.getElementById('lb-name-save-btn');
+            if (!input) return;
+            const raw = input.value.trim();
+            if (err) { err.hidden = true; err.textContent = ''; }
+            if (raw.length < 2 || raw.length > 24) {
+                if (err) { err.hidden = false; err.textContent = 'Name must be between 2 and 24 characters.'; }
+                return;
+            }
+            if (saveBtn) saveBtn.disabled = true;
+            fetch('/api/leaderboard/name', {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ public_name: raw })
+            })
+                .then(res => res.json().catch(() => ({})).then(data => ({ res: res, data: data })))
+                .then(({ res, data }) => {
+                    if (res.status === 401) { window.location.replace('/login'); return; }
+                    if (res.ok) {
+                        closeLeaderboardNameEditor();
+                        triggerAlertToast("Name Saved", "Your public leaderboard name is now \"" + (data.public_name || raw) + "\".", true);
+                        loadLeaderboardData();
+                    } else if (err) {
+                        err.hidden = false;
+                        err.textContent = (data && data.message) || 'Could not save that name. Please try again.';
+                    }
+                })
+                .catch(() => {
+                    if (err) { err.hidden = false; err.textContent = 'Network error -- please try again.'; }
+                })
+                .finally(() => {
+                    if (saveBtn) saveBtn.disabled = false;
+                });
         }
 
         function renderLeaderboardList(entries, you) {
@@ -2835,14 +3049,14 @@
                 rankEl.className = 'lb-row-rank' + (e.rank <= 3 ? ' is-top3' : '');
                 rankEl.textContent = '#' + e.rank;
 
-                const aliasEl = document.createElement('div');
-                aliasEl.className = 'lb-row-alias';
-                aliasEl.textContent = e.alias;
+                const nameEl = document.createElement('div');
+                nameEl.className = 'lb-row-alias';
+                nameEl.textContent = e.name;
                 if (isYou) {
                     const pill = document.createElement('span');
                     pill.className = 'lb-you-pill';
                     pill.textContent = 'You';
-                    aliasEl.appendChild(pill);
+                    nameEl.appendChild(pill);
                 }
 
                 const hoursEl = document.createElement('div');
@@ -2850,7 +3064,7 @@
                 hoursEl.textContent = formatLeaderboardHours(e.seconds);
 
                 row.appendChild(rankEl);
-                row.appendChild(aliasEl);
+                row.appendChild(nameEl);
                 row.appendChild(hoursEl);
                 list.appendChild(row);
             });
@@ -2870,7 +3084,7 @@
             const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
             const yourRank = you && you.rank;
 
-            const labels = entries.map(e => e.alias);
+            const labels = entries.map(e => e.name);
             const dataPoints = entries.map(e => Math.round((e.seconds / 3600) * 10) / 10);
             const barColors = entries.map(e => e.rank === yourRank ? accentSolid : `rgba(${accentSecondaryRgb}, 0.4)`);
 
@@ -3035,7 +3249,16 @@
                         document.getElementById('settings-new-password').value = '';
                         document.getElementById('settings-confirm-password').value = '';
                         triggerAlertToast("Password Updated", "Your account password was changed successfully.", true);
-                    } else if (res.status === 401) {
+                    } else if (res.status === 401 && data && data.error === 'unauthenticated') {
+                        // Only a genuinely expired session should bounce the user to
+                        // /login. `/api/auth/change-password` also returns 401 for a
+                        // simply wrong *current* password (`invalid_credentials`) --
+                        // that's a normal form validation failure, not a session
+                        // expiry, and the user is still logged in. Redirecting on any
+                        // 401 used to send them to the login screen and discard the
+                        // new password they'd just typed -- the same "kicked off the
+                        // form" bug reported for the breached-password error on
+                        // signup, just triggered by a different error code here.
                         window.location.replace('/login');
                     } else {
                         feedback.style.color = '#FF4D6D';

@@ -1,7 +1,13 @@
 """Tests for server/leaderboard.py -- GET /api/leaderboard, PUT
-/api/leaderboard/opt, and the weekly-total recompute wired into
-PUT /api/state. See SPEC-PHASE4.md "Leaderboard API" / "Anonymity rules" /
-"Leaderboard data".
+/api/leaderboard/opt, PUT /api/leaderboard/name, and the weekly-total
+recompute wired into PUT /api/state.
+
+Leaderboard entries used to show a per-week HMAC-derived alias; the owner
+asked for real, user-chosen public names instead ("Proper names should be
+seen on leaderboard -- not fake names"). See server/leaderboard.py's module
+docstring for the full design: `users.public_name` is a separate, never
+auto-populated column, and a user only appears on the leaderboard once they
+explicitly set one via PUT /api/leaderboard/name.
 """
 import datetime
 import json
@@ -13,7 +19,7 @@ from server.leaderboard import (
     MAX_WEEK_SECONDS,
     compute_week_seconds,
     current_week_start,
-    generate_alias,
+    validate_public_name,
     week_start_for,
 )
 
@@ -45,6 +51,15 @@ def put_state(client, sessions, version=0):
     )
 
 
+def set_name(client, name):
+    return client.put(
+        "/api/leaderboard/name",
+        data=json.dumps({"public_name": name}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+
+
 def session_today(seconds, hour=10):
     today = current_week_start() + datetime.timedelta(days=1)  # a Tuesday, safely mid-week
     return {
@@ -66,6 +81,14 @@ def test_leaderboard_requires_login(client):
     resp = client.put(
         "/api/leaderboard/opt",
         data=json.dumps({"opted_in": False}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert resp.status_code == 401
+
+    resp = client.put(
+        "/api/leaderboard/name",
+        data=json.dumps({"public_name": "Bob"}),
         content_type="application/json",
         headers=JSON_HEADERS,
     )
@@ -94,9 +117,31 @@ def test_opt_validates_body(client, outbox):
     assert resp.get_json()["error"] == "validation_error"
 
 
+def test_name_requires_csrf_header(client, outbox):
+    register_verify(client, outbox, "namecsrf@example.com")
+    resp = client.put(
+        "/api/leaderboard/name",
+        data=json.dumps({"public_name": "Bob"}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 403
+
+
+def test_name_requires_json_object_body(client, outbox):
+    register_verify(client, outbox, "namebody@example.com")
+    resp = client.put(
+        "/api/leaderboard/name",
+        data="not json",
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["error"] == "validation_error"
+
+
 # ------------------------------------------------------------------ flow
 
-def test_new_user_defaults_opted_in_with_zero_seconds(client, outbox):
+def test_new_user_defaults_opted_in_zero_seconds_no_name(client, outbox):
     register_verify(client, outbox, "fresh@example.com")
     resp = client.get("/api/leaderboard", headers=JSON_HEADERS)
     assert resp.status_code == 200
@@ -104,12 +149,42 @@ def test_new_user_defaults_opted_in_with_zero_seconds(client, outbox):
     assert data["you"]["opted_in"] is True
     assert data["you"]["seconds"] == 0
     assert data["you"]["rank"] is None  # nothing logged yet -> unranked
+    assert data["you"]["public_name"] is None
     assert data["entries"] == []
-    assert isinstance(data["you"]["alias"], str) and data["you"]["alias"]
+
+
+def test_user_without_public_name_is_not_listed_even_with_seconds(client, outbox):
+    """The core of this change: seconds logged is not enough to appear on
+    the board -- a public name must be explicitly set."""
+    register_verify(client, outbox, "noname@example.com")
+    put_state(client, [session_today(3600)])
+
+    lb = client.get("/api/leaderboard", headers=JSON_HEADERS).get_json()
+    assert lb["you"]["seconds"] == 3600  # their own total is still visible to them
+    assert lb["you"]["public_name"] is None
+    assert lb["you"]["rank"] is None  # not listed -> unranked
+    assert lb["entries"] == []
+    assert lb["participants"] == 0
+
+
+def test_setting_a_name_makes_the_user_appear(client, outbox):
+    register_verify(client, outbox, "named@example.com")
+    put_state(client, [session_today(3600)])
+
+    name_resp = set_name(client, "River Blue")
+    assert name_resp.status_code == 200
+    assert name_resp.get_json() == {"ok": True, "public_name": "River Blue"}
+
+    lb = client.get("/api/leaderboard", headers=JSON_HEADERS).get_json()
+    assert lb["you"]["public_name"] == "River Blue"
+    assert lb["you"]["rank"] == 1
+    assert lb["participants"] == 1
+    assert lb["entries"] == [{"rank": 1, "name": "River Blue", "seconds": 3600}]
 
 
 def test_state_put_recomputes_weekly_total(client, outbox):
     register_verify(client, outbox, "studier@example.com")
+    set_name(client, "Studier")
     resp = put_state(client, [session_today(1800), session_today(900)])
     assert resp.status_code == 200
 
@@ -118,11 +193,7 @@ def test_state_put_recomputes_weekly_total(client, outbox):
     assert lb["you"]["rank"] == 1
     assert lb["participants"] == 1
     assert len(lb["entries"]) == 1
-    assert lb["entries"][0] == {
-        "rank": 1,
-        "alias": lb["you"]["alias"],
-        "seconds": 2700,
-    }
+    assert lb["entries"][0] == {"rank": 1, "name": "Studier", "seconds": 2700}
 
 
 def test_weekly_total_is_recomputed_wholesale_not_accumulated(client, outbox):
@@ -158,6 +229,7 @@ def test_sessions_outside_current_week_are_excluded(client, outbox):
 
 def test_opt_out_removes_from_entries_and_participants(client, outbox):
     register_verify(client, outbox, "optout@example.com")
+    set_name(client, "OptOuter")
     put_state(client, [session_today(600)])
     before = client.get("/api/leaderboard", headers=JSON_HEADERS).get_json()
     assert before["participants"] == 1
@@ -176,12 +248,14 @@ def test_opt_out_removes_from_entries_and_participants(client, outbox):
     assert after["you"]["rank"] is None
     assert after["participants"] == 0
     assert after["entries"] == []
-    # Their own seconds total is still visible to them even while opted out.
+    # Their own seconds total (and name) are still visible to them while opted out.
     assert after["you"]["seconds"] == 600
+    assert after["you"]["public_name"] == "OptOuter"
 
 
 def test_opt_back_in_restores_entry_without_resetting_seconds(client, outbox):
     register_verify(client, outbox, "optback@example.com")
+    set_name(client, "OptBacker")
     put_state(client, [session_today(1200)])
     client.put(
         "/api/leaderboard/opt",
@@ -203,11 +277,34 @@ def test_opt_back_in_restores_entry_without_resetting_seconds(client, outbox):
     assert len(lb["entries"]) == 1
 
 
+def test_name_can_have_opted_in_stay_independent(client, outbox):
+    """The existing opted_in flag keeps working independently of a name: a
+    user can have a name set and still opt out (covered above), and a user
+    can opt out before ever setting a name at all."""
+    register_verify(client, outbox, "independent@example.com")
+    put_state(client, [session_today(100)])
+    client.put(
+        "/api/leaderboard/opt",
+        data=json.dumps({"opted_in": False}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    set_name(client, "LateNamer")
+
+    lb = client.get("/api/leaderboard", headers=JSON_HEADERS).get_json()
+    assert lb["you"]["public_name"] == "LateNamer"
+    assert lb["you"]["opted_in"] is False
+    assert lb["you"]["rank"] is None  # opted out -> still not listed
+    assert lb["entries"] == []
+
+
 def test_ranking_and_top_20_ordering_across_users(client, outbox):
     totals = [5000, 3000, 4000]
+    names = ["Rank Alpha", "Rank Beta", "Rank Gamma"]
     emails = ["rank-a@example.com", "rank-b@example.com", "rank-c@example.com"]
-    for email, secs in zip(emails, totals):
+    for email, name, secs in zip(emails, names, totals):
         register_verify(client, outbox, email)
+        set_name(client, name)
         put_state(client, [session_today(secs)])
         client.post("/api/auth/logout", headers=JSON_HEADERS)
 
@@ -223,37 +320,178 @@ def test_ranking_and_top_20_ordering_across_users(client, outbox):
 
     lb = client.get("/api/leaderboard", headers=JSON_HEADERS).get_json()
     assert [e["seconds"] for e in lb["entries"]] == [5000, 4000, 3000]
+    assert [e["name"] for e in lb["entries"]] == ["Rank Alpha", "Rank Gamma", "Rank Beta"]
     assert [e["rank"] for e in lb["entries"]] == [1, 2, 3]
     assert lb["participants"] == 3
     assert lb["you"]["rank"] == 1
     assert lb["you"]["seconds"] == 5000
 
 
-# ------------------------------------------------------------- anonymity
+def test_unnamed_user_does_not_dilute_ranking_of_named_users(client, outbox):
+    register_verify(client, outbox, "unnamed-a@example.com")
+    put_state(client, [session_today(9999)])  # highest total, but never names themself
+    client.post("/api/auth/logout", headers=JSON_HEADERS)
 
-def test_response_exposes_only_rank_alias_seconds_in_entries(client, outbox):
+    register_verify(client, outbox, "named-b@example.com")
+    set_name(client, "Second Place")
+    put_state(client, [session_today(50)])
+
+    lb = client.get("/api/leaderboard", headers=JSON_HEADERS).get_json()
+    assert lb["participants"] == 1
+    assert lb["entries"] == [{"rank": 1, "name": "Second Place", "seconds": 50}]
+
+
+# ---------------------------------------------------------- name validation
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("Bob", "Bob"),
+        ("Ok", "Ok"),
+        ("J.R.", "J.R."),
+        ("  River   Blue  ", "River Blue"),  # whitespace collapsed + trimmed
+        ("A" * 24, "A" * 24),  # exactly at the max
+    ],
+)
+def test_name_validation_accepts_valid_names(client, outbox, raw, expected):
+    register_verify(client, outbox, "valid-{}@example.com".format(abs(hash(raw))))
+    resp = set_name(client, raw)
+    assert resp.status_code == 200
+    assert resp.get_json()["public_name"] == expected
+
+
+@pytest.mark.parametrize(
+    "raw,reason",
+    [
+        ("A", "too short"),
+        ("A" * 25, "too long"),
+        ("", "empty"),
+        ("   ", "whitespace only"),
+        ("!!!---***", "punctuation only"),
+        (123, "not a string"),
+        (None, "not a string"),
+        (True, "not a string"),
+        (["Bob"], "not a string"),
+    ],
+)
+def test_name_validation_rejects_shape_violations(client, outbox, raw, reason):
+    register_verify(client, outbox, "invalid-{}@example.com".format(abs(hash(reason) + hash(str(raw)))))
+    resp = set_name(client, raw)
+    assert resp.status_code == 400, reason
+    assert resp.get_json()["error"] == "validation_error"
+
+
+def test_name_validation_rejects_email_looking_names(client, outbox):
+    register_verify(client, outbox, "emailname@example.com")
+    resp = set_name(client, "bob@example.com")
+    assert resp.status_code == 400
+    assert resp.get_json()["error"] == "validation_error"
+
+
+@pytest.mark.parametrize("raw", ["www.foo.com", "http://x.io", "https://evil.test/path"])
+def test_name_validation_rejects_url_looking_names(client, outbox, raw):
+    register_verify(client, outbox, "urlname-{}@example.com".format(abs(hash(raw))))
+    resp = set_name(client, raw)
+    assert resp.status_code == 400
+    assert resp.get_json()["error"] == "validation_error"
+
+
+def test_name_validation_rejects_script_payload(client, outbox):
+    """The value is rendered into other users' browsers -- it must be safe
+    by construction here (in addition to being escaped at render time on the
+    frontend). `<` / `>` are rejected outright so a name can never become an
+    HTML tag no matter what a future rendering bug does with it."""
+    register_verify(client, outbox, "xssname@example.com")
+    resp = set_name(client, "<script>")
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert body["error"] == "validation_error"
+
+    # Even a payload that would fit the length window is rejected, and never
+    # silently stored or echoed back unescaped.
+    resp2 = set_name(client, "<b>hi</b>")
+    assert resp2.status_code == 400
+    assert "<script>" not in resp2.get_data(as_text=True)
+    assert "<b>" not in resp2.get_data(as_text=True)
+
+
+def test_name_validation_strips_control_and_zero_width_characters(client, outbox):
+    register_verify(client, outbox, "ctrlname@example.com")
+    # A newline plus a zero-width space (U+200B) hidden inside an otherwise
+    # normal name -- both must be stripped, not merely rejected, and the
+    # cleaned result must still pass the length check.
+    raw = "Bo\u200bb\nSmith"
+    resp = set_name(client, raw)
+    assert resp.status_code == 200
+    assert resp.get_json()["public_name"] == "BobSmith"
+
+
+def test_name_validation_normalizes_unicode_nfkc(client, outbox):
+    register_verify(client, outbox, "nfkcname@example.com")
+    # U+FF22 U+FF4F U+FF42 = fullwidth "Bob" -- NFKC folds these to ASCII "Bob".
+    raw = "Ｂｏｂ"
+    resp = set_name(client, raw)
+    assert resp.status_code == 200
+    assert resp.get_json()["public_name"] == "Bob"
+
+
+def test_name_uniqueness_is_case_insensitive(client, outbox):
+    register_verify(client, outbox, "taken-a@example.com")
+    resp1 = set_name(client, "Alice")
+    assert resp1.status_code == 200
+    client.post("/api/auth/logout", headers=JSON_HEADERS)
+
+    register_verify(client, outbox, "taken-b@example.com")
+    resp2 = set_name(client, "alice")
+    assert resp2.status_code == 409
+    assert resp2.get_json()["error"] == "name_taken"
+
+    resp3 = set_name(client, "  ALICE  ")
+    assert resp3.status_code == 409
+    assert resp3.get_json()["error"] == "name_taken"
+
+
+def test_user_can_change_their_own_name_freely(client, outbox):
+    register_verify(client, outbox, "rename@example.com")
+    set_name(client, "First Name")
+    resp = set_name(client, "Second Name")
+    assert resp.status_code == 200
+    assert resp.get_json()["public_name"] == "Second Name"
+
+    resp2 = set_name(client, "second name")  # re-claiming their own name, different case
+    assert resp2.status_code == 200
+    assert resp2.get_json()["public_name"] == "second name"
+
+
+# -------------------------------------------------------------- anonymity
+
+def test_response_exposes_only_rank_name_seconds_in_entries(client, outbox):
     for i in range(3):
         register_verify(client, outbox, "anon{}@example.com".format(i))
+        set_name(client, "Anon Runner {}".format(i))
         put_state(client, [session_today(1000 + i)])
         client.post("/api/auth/logout", headers=JSON_HEADERS)
 
     register_verify(client, outbox, "anon-reader@example.com")
+    set_name(client, "Anon Reader")
     put_state(client, [session_today(1)])
     lb = client.get("/api/leaderboard", headers=JSON_HEADERS).get_json()
 
     assert set(lb.keys()) == {"week_start", "you", "entries", "participants"}
-    assert set(lb["you"].keys()) == {"rank", "seconds", "alias", "opted_in"}
+    assert set(lb["you"].keys()) == {"rank", "seconds", "public_name", "opted_in"}
     for entry in lb["entries"]:
-        assert set(entry.keys()) == {"rank", "alias", "seconds"}
+        assert set(entry.keys()) == {"rank", "name", "seconds"}
 
 
-def test_no_pii_anywhere_in_the_leaderboard_response(client, outbox):
-    """The core anonymity guarantee: nothing that could identify or
-    correlate a user -- email, numeric id, display name, or a timestamp --
-    ever appears in the response body, serialized or not."""
+def test_no_pii_beyond_the_chosen_public_name(client, outbox):
+    """The core guarantee, adapted for named entries: email, numeric id,
+    display_name and timestamps must never appear in the response body --
+    the *public_name* itself legitimately appears now (that's the whole
+    point of this change), but nothing else identifying does."""
     email = "super-secret-leaktest@example.com"
     display_name = "TotallyIdentifiableRealName"
     register_verify(client, outbox, email, display_name=display_name)
+    set_name(client, "Leak Tester")
     put_state(client, [session_today(4242)])
 
     resp = client.get("/api/leaderboard", headers=JSON_HEADERS)
@@ -280,34 +518,11 @@ def test_no_pii_anywhere_in_the_leaderboard_response(client, outbox):
     walk(data)
 
 
-def test_alias_rotates_weekly_and_is_not_reversible_looking(app):
-    """alias = HMAC-SHA256(SECRET_KEY, "leaderboard:<user_id>:<week>") --
-    different weeks for the same user must produce different aliases (no
-    cross-week correlation), and the alias must not literally contain the
-    user id."""
-    with app.app_context():
-        alias_week1 = generate_alias(42, "2026-01-05")
-        alias_week2 = generate_alias(42, "2026-01-12")
-        assert alias_week1 != alias_week2
-        assert "42" not in alias_week1
-        assert "42" not in alias_week2
-
-        # Deterministic within the same user+week (so "you" can find
-        # themselves in `entries` by comparing aliases across two calls).
-        assert generate_alias(42, "2026-01-05") == alias_week1
-
-
-def test_different_users_get_different_aliases_same_week(app):
-    with app.app_context():
-        a = generate_alias(1, "2026-01-05")
-        b = generate_alias(2, "2026-01-05")
-        assert a != b
-
-
 # -------------------------------------------------------- hostile payloads
 
 def test_hostile_payload_cannot_crash_or_inflate_the_leaderboard(client, outbox):
     register_verify(client, outbox, "hostile@example.com")
+    set_name(client, "Hostile Tester")
     today = (current_week_start() + datetime.timedelta(days=1)).isoformat()
 
     hostile_sessions = [
@@ -382,3 +597,18 @@ def test_week_start_for_is_the_monday():
     for offset in range(7):
         d = monday + datetime.timedelta(days=offset)
         assert week_start_for(d) == monday
+
+
+# ------------------------------------------------------------ unit-level
+
+def test_validate_public_name_unit():
+    assert validate_public_name("Bob") == ("Bob", None)
+    assert validate_public_name("  Bob   Smith  ") == ("Bob Smith", None)
+    cleaned, err = validate_public_name("A")
+    assert cleaned is None and err
+    cleaned, err = validate_public_name("bob@example.com")
+    assert cleaned is None and err
+    cleaned, err = validate_public_name("<script>")
+    assert cleaned is None and err
+    cleaned, err = validate_public_name(None)
+    assert cleaned is None and err

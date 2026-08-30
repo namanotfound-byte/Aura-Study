@@ -69,16 +69,19 @@
  *      appState.profile.focusMode and the Settings toggles get their initial
  *      checked state — it cannot happen at load time because `appState`
  *      isn't hydrated from localStorage/server yet when this script parses.
- *   3. A static "Focus mode" card in #view-settings with three checkboxes
- *      (ids: focus-toggle-float / focus-toggle-notify / focus-toggle-wakelock,
- *      each `data-pref="floatTimer|notify|keepAwake"`,
+ *   3. A static "Focus mode" card in #view-settings with four checkboxes
+ *      (ids: focus-toggle-float / focus-toggle-notify / focus-toggle-wakelock /
+ *      focus-toggle-sound, each `data-pref="floatTimer|notify|keepAwake|completionSound"`,
  *      onchange="AuraFocus.onPreferenceToggle(this)") and a
  *      `<p id="focus-mode-capability-note">` this file fills in with what the
  *      current browser actually supports.
- *   4. A "Pop out timer" button anywhere in #view-timer's controls:
- *          onclick="AuraFocus.popOutTimer()"
- *      This must be a bare, synchronous onclick (same activation rule as #1).
  *
+ *   There is no manual "Pop out timer" trigger anymore -- #view-timer's
+ *   top-actions row now has a "Music" playback popover in that slot instead
+ *   (static/spotify.js). The floating window still opens automatically per
+ *   the DEGRADE CHAIN below; only the on-demand button is gone.
+ *
+
  * DEGRADE CHAIN (see SPEC-PHASE2.md Part A, amended by SPEC-PHASE4.md §1):
  *   1. documentPictureInPicture.requestWindow() on the `switchView()` click
  *      that navigates AWAY from `view-timer` (Chromium only). Never on the
@@ -126,7 +129,7 @@
   var RING_RADIUS = 52;
   var RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
-  var DEFAULT_PREFS = { floatTimer: true, notify: true, keepAwake: true };
+  var DEFAULT_PREFS = { floatTimer: true, notify: true, keepAwake: true, completionSound: true };
 
   var STATE = {
     inited: false,
@@ -142,6 +145,14 @@
     activeNotification: null,
     permissionRequestInFlight: false,
     wakeLockSentinel: null,
+    // True only while control is synchronously inside the wrapped
+    // engineTickHandler's call to the ORIGINAL handler -- i.e. exactly the
+    // window during which a countdown reaching zero on its own would call
+    // saveEngineWorkspaceBlockData(). See the completion-notification wrap
+    // below: this is how it tells a genuine auto-completion apart from the
+    // manual "Log Session" button, which calls the same function directly.
+    insideAutoTick: false,
+    audioCtx: null,
   };
 
   // -- small helpers ---------------------------------------------------
@@ -266,6 +277,120 @@
         STATE.activeNotification.close();
       } catch (e) {}
       STATE.activeNotification = null;
+    }
+  }
+
+  // -- genuine completion notification + sound ----------------------------
+  //
+  // Fires once per genuine countdown completion -- see STATE.insideAutoTick,
+  // set only while the wrapped engineTickHandler is inside its call to the
+  // ORIGINAL handler (i.e. exactly the moment a countdown reaching zero on
+  // its own calls saveEngineWorkspaceBlockData()). Never for the manual "Log
+  // Session" button, a pause, or a reset -- those call the same function
+  // through a different path, with insideAutoTick false.
+
+  function buildCompletionNotificationBody(session) {
+    var mins = Math.max(1, Math.round(session.durationSeconds / 60));
+    var minsLabel = mins + (mins === 1 ? " minute" : " minutes") + " logged";
+    return session.course ? minsLabel + " for " + session.course + "." : minsLabel + ".";
+  }
+
+  // Reuses the SAME Notification permission state as the background-running
+  // fallback above -- never calls Notification.requestPermission() itself.
+  // A user who's never been asked (or said no) just gets the toast that
+  // saveEngineWorkspaceBlockData() already shows; no second permission prompt.
+  function notifyGenuineSessionCompletion(session) {
+    playCompletionChime();
+    if (!prefs().notify || !CAP.notifications) return;
+    if (Notification.permission !== "granted") return;
+    clearActiveNotification();
+    try {
+      var n = new Notification("AuraStudy", {
+        body: "Session complete — " + buildCompletionNotificationBody(session),
+        tag: "aurastudy-timer-complete",
+        silent: true,
+      });
+      n.onclick = function () {
+        try {
+          window.focus();
+        } catch (e) {}
+        if (typeof switchView === "function") {
+          try {
+            switchView("timer", document.getElementById("nav-item-timer-toggle"));
+          } catch (e) {}
+        }
+        try {
+          n.close();
+        } catch (e) {}
+      };
+      STATE.activeNotification = n;
+    } catch (e) {
+      // Same mobile-browser guard as maybeNotifyBackgroundRunning() above --
+      // fail silently, the toast already covers it.
+    }
+  }
+
+  // -- completion sound (Web Audio API only -- no audio file/external asset) --
+
+  function primeAudioContext() {
+    // Browsers gate audio playback behind a user gesture. Create (or resume)
+    // the AudioContext here, synchronously inside the Start/Resume click
+    // handler, so it's already running by the time a countdown naturally
+    // reaches zero -- possibly minutes later, with no fresh gesture available.
+    if (!prefs().completionSound) return;
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    if (!STATE.audioCtx) {
+      try {
+        STATE.audioCtx = new Ctx();
+      } catch (e) {
+        return;
+      }
+    }
+    if (STATE.audioCtx.state === "suspended") {
+      STATE.audioCtx.resume().catch(function () {});
+    }
+  }
+
+  function playCompletionChime() {
+    if (!prefs().completionSound) return; // must never play with the preference off
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!STATE.audioCtx && Ctx) {
+      try {
+        STATE.audioCtx = new Ctx();
+      } catch (e) {
+        return;
+      }
+    }
+    var ctx = STATE.audioCtx;
+    if (!ctx) return;
+    if (ctx.state === "suspended") ctx.resume().catch(function () {});
+
+    // Short, gentle two-note chime (a soft major sixth, C6 -> E6) -- sine
+    // tones with a fast fade-in and an exponential fade-out so neither note
+    // clicks or startles. No external asset; synthesised entirely here.
+    try {
+      var now = ctx.currentTime;
+      [
+        { freq: 1046.5, start: 0, dur: 0.32 },
+        { freq: 1318.5, start: 0.16, dur: 0.42 },
+      ].forEach(function (note) {
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = note.freq;
+        var startAt = now + note.start;
+        var endAt = startAt + note.dur;
+        gain.gain.setValueAtTime(0.0001, startAt);
+        gain.gain.linearRampToValueAtTime(0.16, startAt + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.0001, endAt);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startAt);
+        osc.stop(endAt + 0.02);
+      });
+    } catch (e) {
+      /* Web Audio can throw in odd embedded contexts -- never break the app over a chime. */
     }
   }
 
@@ -705,8 +830,16 @@
   }
 
   function afterEngineStateChange() {
-    if (isEngineActivelyRunning) requestWakeLock();
-    else releaseWakeLock();
+    if (isEngineActivelyRunning) {
+      requestWakeLock();
+      // Warm up (or resume) the AudioContext on this same Start/Resume
+      // gesture so the completion chime -- fired with no fresh gesture of
+      // its own, whenever the countdown naturally reaches zero later -- is
+      // allowed to actually make sound under browser autoplay policies.
+      primeAudioContext();
+    } else {
+      releaseWakeLock();
+    }
   }
 
   function endSessionCleanup() {
@@ -759,9 +892,11 @@
     var floatEl = document.getElementById("focus-toggle-float");
     var notifyEl = document.getElementById("focus-toggle-notify");
     var wakeEl = document.getElementById("focus-toggle-wakelock");
+    var soundEl = document.getElementById("focus-toggle-sound");
     if (floatEl) floatEl.checked = !!p.floatTimer;
     if (notifyEl) notifyEl.checked = !!p.notify;
     if (wakeEl) wakeEl.checked = !!p.keepAwake;
+    if (soundEl) soundEl.checked = !!p.completionSound;
     renderCapabilityNote();
   }
 
@@ -800,19 +935,13 @@
     renderCapabilityNote();
   }
 
-  // -- public: manual "Pop out timer" button -----------------------------
-
-  function popOutTimer() {
-    // Synchronous, gesture-driven -- no await before the request call.
-    var opened = attemptOpenFloatingWindow("manual");
-    if (!opened) {
-      toast(
-        "Can't Float the Timer Here",
-        "This browser doesn't support a floating window. Turn on notifications in Focus Mode settings to still get a heads-up.",
-        false
-      );
-    }
-  }
+  // NOTE: the manual "Pop out timer" button (and the popOutTimer() function
+  // that used to back it, triggered as attemptOpenFloatingWindow("manual"))
+  // was removed from #view-timer's top-actions row -- that slot is now a
+  // "Music" playback popover (see static/spotify.js). The automatic floating
+  // behaviour above (opening on switchView() away from the Timer view, and
+  // the best-effort tab-switch/notification/wake-lock paths) is untouched;
+  // only the on-demand manual trigger is gone.
 
   // -- lifecycle listeners ---------------------------------------------
 
@@ -885,13 +1014,35 @@
     return result;
   });
 
+  // The tick's only call to saveEngineWorkspaceBlockData() is the genuine
+  // "countdown reached zero on its own" branch (see engineTickHandler in
+  // index.html) -- marking STATE.insideAutoTick for exactly the duration of
+  // this call is how the wrap below tells that apart from the manual "Log
+  // Session" button, which calls saveEngineWorkspaceBlockData() directly.
+  wrapGlobalFn("engineTickHandler", function (original, thisArg, args) {
+    STATE.insideAutoTick = true;
+    try {
+      return original.apply(thisArg, args);
+    } finally {
+      STATE.insideAutoTick = false;
+    }
+  });
+
   wrapGlobalFn("saveEngineWorkspaceBlockData", function (original, thisArg, args) {
+    var wasGenuineCompletion = STATE.insideAutoTick;
     var beforeCount = appState.sessions ? appState.sessions.length : 0;
     STATE.completing = true;
     var result = original.apply(thisArg, args);
     STATE.completing = false;
     var logged = !!(appState.sessions && appState.sessions.length > beforeCount);
     finishSession(logged);
+    // Exactly-once, genuine-completion-only notification + chime: never for
+    // the manual "Log Session" button (wasGenuineCompletion is false there),
+    // never for a pause or reset (neither calls this function at all), and
+    // this function itself only ever runs once per completed session.
+    if (wasGenuineCompletion && logged) {
+      notifyGenuineSessionCompletion(appState.sessions[0]);
+    }
     return result;
   });
 
@@ -927,7 +1078,6 @@
 
   window.AuraFocus = {
     init: init,
-    popOutTimer: popOutTimer,
     onPreferenceToggle: onPreferenceToggle,
   };
 })();

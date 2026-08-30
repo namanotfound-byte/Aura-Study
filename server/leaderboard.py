@@ -1,25 +1,33 @@
-"""Anonymous weekly leaderboard -- blueprint 'leaderboard', prefix /api.
+"""Weekly leaderboard -- blueprint 'leaderboard', prefix /api.
 
-See SPEC-PHASE4.md "Leaderboard API" / "Anonymity rules" / "Leaderboard data".
+See the leaderboard spec: "Leaderboard API" / validation rules / "Leaderboard
+data". Leaderboard entries used to show a per-week HMAC-derived alias
+("Quiet Otter #A2B"); the owner asked for real, user-chosen names instead --
+"Proper names should be seen on leaderboard -- not fake names." So this
+module now exposes a separate, explicitly-public `users.public_name` (see
+server/db.py) rather than an alias:
 
-The whole point of this module is that a response can never be traced back
-to a person: an entry exposes only `rank`, `alias` and `seconds`, and the
-alias is an HMAC keyed on SECRET_KEY + user id + week (never stored, never
-reversible, and different every week so aliases can't be correlated across
-weeks). Everything here is written with that as the load-bearing property --
-read `generate_alias` and the response builders in `get_leaderboard` before
-changing either.
+- `public_name` is NEVER auto-populated from `display_name` or the email --
+  a user only appears on the leaderboard once they deliberately set one via
+  PUT /api/leaderboard/name. No name set -> not listed, not counted in
+  `participants`. Their own `you` block still reports their real rank-if-
+  listed and seconds even when unlisted, so the UI can prompt them to set a
+  name.
+- `opted_in` (unchanged from the alias era) stays independent of having a
+  name: a user can have a name set and still opt out.
+- Entries still expose only `rank`, `name` and `seconds` -- never an email,
+  id, display_name, join date, or anything else that could identify or
+  correlate a user beyond the name they explicitly chose to publish.
 """
 import datetime
-import hashlib
-import hmac
 import math
+import re
+import unicodedata
 
 import flask
 
-from .config import get_config
 from .db import get_db, utcnow, utcnow_iso
-from .security import json_error, login_required, require_csrf
+from .security import INTEGRITY_ERRORS, json_error, login_required, require_csrf
 
 bp = flask.Blueprint("leaderboard", __name__)
 
@@ -27,42 +35,73 @@ bp = flask.Blueprint("leaderboard", __name__)
 MAX_WEEK_SECONDS = 7 * 24 * 60 * 60
 TOP_N = 20
 
-# Two fixed word lists (64 entries each, so a single byte can index either
-# with a cheap `& 0x3F` and zero modulo bias) used to build a friendly,
-# two-part alias like "Quiet Otter". Never add/remove/reorder entries in a
-# way that would change which word an existing index maps to mid-week --
-# doing so wouldn't leak anything (the alias is still unlinkable), but it
-# would make an alias change mid-week, which is just confusing.
-ADJECTIVES = [
-    "Quiet", "Amber", "Brave", "Calm", "Cosmic", "Coral", "Cozy", "Crisp",
-    "Curious", "Daring", "Dusty", "Eager", "Electric", "Emerald", "Fleet",
-    "Fuzzy", "Gentle", "Giddy", "Golden", "Happy", "Hazy", "Humble", "Icy",
-    "Indigo", "Jade", "Jolly", "Keen", "Kind", "Lively", "Lucky", "Lunar",
-    "Merry", "Misty", "Mellow", "Nimble", "Noble", "Nutty", "Opal",
-    "Playful", "Plucky", "Polar", "Quick", "Quirky", "Radiant", "Rosy",
-    "Rustic", "Sandy", "Serene", "Shy", "Silent", "Silver", "Sly", "Snappy",
-    "Solar", "Sparkly", "Spry", "Steady", "Stellar", "Sunny", "Swift",
-    "Tidy", "Vivid", "Wild", "Zesty",
-]
-NOUNS = [
-    "Otter", "Kite", "Fox", "Wren", "Heron", "Falcon", "Sparrow", "Robin",
-    "Finch", "Lynx", "Panther", "Tiger", "Panda", "Koala", "Rabbit",
-    "Badger", "Beaver", "Squirrel", "Hedgehog", "Puffin", "Penguin",
-    "Dolphin", "Whale", "Seal", "Walrus", "Narwhal", "Turtle", "Gecko",
-    "Iguana", "Chameleon", "Comet", "Meteor", "Lantern", "Compass",
-    "Anchor", "Harbor", "Meadow", "Willow", "Maple", "Cedar", "Birch",
-    "Canyon", "Glacier", "Summit", "Ridge", "Valley", "Prairie", "Tundra",
-    "Lagoon", "Cove", "Reef", "Ember", "Spark", "Cinder", "Breeze", "Gale",
-    "Frost", "Dew", "Mist", "Cloud", "Storm", "Thunder", "Horizon",
-    "Zephyr",
-]
-assert len(ADJECTIVES) == 64 and len(NOUNS) == 64  # see the `& 0x3F` indexing below
+MIN_NAME_LENGTH = 2
+MAX_NAME_LENGTH = 24
 
-# 32 characters, deliberately excluding 0/O/1/I (easily confused when read
-# aloud or hand-copied) -- 256 % 32 == 0 so `byte % len(...)` below is
-# exactly uniform, not just approximately.
-SUFFIX_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-assert len(SUFFIX_ALPHABET) == 32
+
+# ------------------------------------------------------------ name validation
+#
+# This string is rendered into every other user's browser, so validation
+# here is defense-in-depth on top of (never a substitute for) the frontend
+# escaping it at render time -- see the module docstring and the
+# <script>-payload test in tests/test_leaderboard.py.
+
+_WHITESPACE_RUN_RE = re.compile(r"\s+")
+
+# Reject anything that looks like an email (checked separately for "@") or a
+# URL: an explicit scheme/host prefix, or a dot followed by a common TLD.
+# Deliberately conservative about the TLD list -- a name with an incidental
+# period (e.g. "J.R.") must not be caught by this.
+_URL_LIKE_RE = re.compile(
+    r"(https?://|www\.)|\.(com|net|org|io|co|edu|gov|info|biz|dev|app|xyz|"
+    r"me|ai|uk|ca|de|fr|in|jp|cn|ru|tv|cc|us|ly|gg|to|so|link)\b",
+    re.IGNORECASE,
+)
+
+# `<` / `>` are how HTML tags (e.g. a <script> payload) get constructed --
+# rejecting them outright means a malicious name can never become markup no
+# matter what the frontend later does with it. Backtick is included because
+# some templating/shell contexts treat it specially; neither character has a
+# legitimate use in a display name.
+_DISALLOWED_CHARS_RE = re.compile(r"[<>`]")
+
+
+def validate_public_name(raw):
+    """Returns (cleaned_name, error_message) -- error_message is None (and
+    cleaned_name is the string to store) on success."""
+    if not isinstance(raw, str):
+        return None, "Display name is required."
+
+    # NFKC folds compatibility/visually-confusable Unicode forms (fullwidth
+    # characters, ligatures, etc.) to a canonical form BEFORE length and
+    # content checks run, so those checks see what a reader would actually
+    # perceive rather than a form that could hide extra characters.
+    value = unicodedata.normalize("NFKC", raw)
+
+    # Strip control characters (category Cc -- includes \n, \r, \t and other
+    # non-printables) and format characters (category Cf -- this is the
+    # category zero-width spaces/joiners, bidi overrides, and the BOM all
+    # fall under, so it catches every zero-width trick in one pass rather
+    # than maintaining a hand-picked code point list) wherever they appear,
+    # not just at the ends.
+    value = "".join(ch for ch in value if unicodedata.category(ch) not in ("Cc", "Cf"))
+    value = _WHITESPACE_RUN_RE.sub(" ", value).strip()
+
+    if len(value) < MIN_NAME_LENGTH or len(value) > MAX_NAME_LENGTH:
+        return None, "Display name must be between {} and {} characters.".format(
+            MIN_NAME_LENGTH, MAX_NAME_LENGTH
+        )
+
+    if "@" in value or _URL_LIKE_RE.search(value):
+        return None, "Display name can't contain an email address or a URL."
+
+    if _DISALLOWED_CHARS_RE.search(value):
+        return None, "Display name contains characters that aren't allowed."
+
+    if not re.search(r"\w", value, re.UNICODE):
+        return None, "Display name can't be only punctuation or whitespace."
+
+    return value, None
 
 
 # --------------------------------------------------------------- week math
@@ -88,25 +127,6 @@ def _date_str(value) -> str:
     if isinstance(value, datetime.date):
         return value.isoformat()
     return value
-
-
-# ------------------------------------------------------------------ alias
-
-def generate_alias(user_id: int, week_start_str: str) -> str:
-    """HMAC-SHA256(SECRET_KEY, "leaderboard:<user_id>:<week_start>"),
-    rendered as "<Adjective> <Noun> #<3-char suffix>". Keyed on the week, so
-    the same user gets an unrelated-looking alias every week -- there is no
-    way to recover `user_id` from the alias, and no way to tell that two
-    aliases in different weeks belong to the same account. Never persisted
-    anywhere; recomputed fresh on every response.
-    """
-    cfg = get_config()
-    msg = "leaderboard:{}:{}".format(user_id, week_start_str).encode("utf-8")
-    digest = hmac.new(cfg.secret_key.encode("utf-8"), msg, hashlib.sha256).digest()
-    adjective = ADJECTIVES[digest[0] & 0x3F]
-    noun = NOUNS[digest[1] & 0x3F]
-    suffix = "".join(SUFFIX_ALPHABET[b % len(SUFFIX_ALPHABET)] for b in digest[2:5])
-    return "{} {} #{}".format(adjective, noun, suffix)
 
 
 # ------------------------------------------------------------ weekly total
@@ -194,7 +214,9 @@ def upsert_week_seconds(db, user_id: int, payload) -> None:
 @login_required
 def get_leaderboard():
     db = get_db()
-    user_id = flask.g.user["id"]
+    user = flask.g.user
+    user_id = user["id"]
+    my_public_name = user["public_name"]
     week_start = current_week_start()
     week_start_str = week_start.isoformat()
 
@@ -205,15 +227,18 @@ def get_leaderboard():
     my_seconds = my_row["seconds"] if my_row is not None else 0
     my_opted_in = bool(my_row["opted_in"]) if my_row is not None else True
 
-    # Only opted-in users with a nonzero total are ranked or countable as a
-    # participant -- an opted-out row (or a row that exists only because the
-    # user synced state with nothing logged this week) must not appear in
-    # `entries` or be reflected in `participants`.
+    # Only opted-in users who have set a public name AND have a nonzero
+    # total are ranked, listed in `entries`, or countable as a participant --
+    # no name set means "hasn't opted into being publicly identifiable yet",
+    # which must behave the same as not being in `entries` at all.
     top_rows = db.execute(
         """
-        SELECT user_id, seconds FROM leaderboard_weeks
-        WHERE week_start = %s AND opted_in = %s AND seconds > 0
-        ORDER BY seconds DESC, user_id ASC
+        SELECT lw.user_id, lw.seconds, u.public_name
+        FROM leaderboard_weeks lw
+        JOIN users u ON u.id = lw.user_id
+        WHERE lw.week_start = %s AND lw.opted_in = %s AND lw.seconds > 0
+              AND u.public_name IS NOT NULL
+        ORDER BY lw.seconds DESC, lw.user_id ASC
         LIMIT %s
         """,
         (week_start_str, True, TOP_N),
@@ -224,30 +249,37 @@ def get_leaderboard():
     for idx, row in enumerate(top_rows, start=1):
         entries.append({
             "rank": idx,
-            "alias": generate_alias(row["user_id"], week_start_str),
+            "name": row["public_name"],
             "seconds": row["seconds"],
         })
         if row["user_id"] == user_id:
             my_rank = idx
 
-    if my_opted_in and my_seconds > 0 and my_rank is None:
+    listed = my_opted_in and my_public_name is not None and my_seconds > 0
+    if listed and my_rank is None:
         # Not in the visible top N, but still has a real rank: 1 + how many
-        # opted-in participants strictly outrank them.
+        # listed participants strictly outrank them.
         better = db.execute(
             """
-            SELECT COUNT(*) AS c FROM leaderboard_weeks
-            WHERE week_start = %s AND opted_in = %s AND seconds > %s
+            SELECT COUNT(*) AS c
+            FROM leaderboard_weeks lw
+            JOIN users u ON u.id = lw.user_id
+            WHERE lw.week_start = %s AND lw.opted_in = %s AND lw.seconds > %s
+                  AND u.public_name IS NOT NULL
             """,
             (week_start_str, True, my_seconds),
         ).fetchone()
         my_rank = better["c"] + 1
-    elif not my_opted_in or my_seconds <= 0:
+    elif not listed:
         my_rank = None
 
     participants_row = db.execute(
         """
-        SELECT COUNT(*) AS c FROM leaderboard_weeks
-        WHERE week_start = %s AND opted_in = %s AND seconds > 0
+        SELECT COUNT(*) AS c
+        FROM leaderboard_weeks lw
+        JOIN users u ON u.id = lw.user_id
+        WHERE lw.week_start = %s AND lw.opted_in = %s AND lw.seconds > 0
+              AND u.public_name IS NOT NULL
         """,
         (week_start_str, True),
     ).fetchone()
@@ -257,7 +289,7 @@ def get_leaderboard():
         "you": {
             "rank": my_rank,
             "seconds": my_seconds,
-            "alias": generate_alias(user_id, week_start_str),
+            "public_name": my_public_name,
             "opted_in": my_opted_in,
         },
         "entries": entries,
@@ -295,3 +327,39 @@ def put_opt():
     )
     db.commit()
     return flask.jsonify({"ok": True})
+
+
+@bp.route("/leaderboard/name", methods=["PUT"])
+@login_required
+def put_name():
+    require_csrf()
+    body = flask.request.get_json(silent=True)
+    if not isinstance(body, dict):
+        return json_error("validation_error", "Request body must be a JSON object.", 400)
+
+    cleaned, err = validate_public_name(body.get("public_name"))
+    if err:
+        return json_error("validation_error", err, 400)
+
+    db = get_db()
+    user_id = flask.g.user["id"]
+
+    # Case-insensitive uniqueness check up front (fast, clear error message
+    # for the common case); the unique index on lower(public_name) in
+    # server/db.py is the actual backstop against a concurrent race between
+    # two users claiming the same name at once -- caught below.
+    existing = db.execute(
+        "SELECT id FROM users WHERE lower(public_name) = lower(%s) AND id != %s",
+        (cleaned, user_id),
+    ).fetchone()
+    if existing is not None:
+        return json_error("name_taken", "That name is already taken.", 409)
+
+    try:
+        db.execute("UPDATE users SET public_name = %s WHERE id = %s", (cleaned, user_id))
+        db.commit()
+    except INTEGRITY_ERRORS:
+        db.rollback()
+        return json_error("name_taken", "That name is already taken.", 409)
+
+    return flask.jsonify({"ok": True, "public_name": cleaned})

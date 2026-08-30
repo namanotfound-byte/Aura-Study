@@ -71,15 +71,34 @@ from .config import get_config
 # SPEC.md section 4) -- AUTOINCREMENT ids, TEXT timestamps, INTEGER booleans,
 # COLLATE NOCASE for case-insensitive email.
 SQLITE_SCHEMA = """
+-- public_name is deliberately a separate column from display_name:
+-- display_name is collected at registration with
+-- no indication it would ever be shown to strangers, so it is never
+-- auto-populated here. A user only appears on the leaderboard once they set
+-- this explicitly via PUT /api/leaderboard/name -- see server/leaderboard.py.
+-- NULL by default, including for every row that existed before this column
+-- was added (see the ALTER TABLE migration in init_db() below).
 CREATE TABLE IF NOT EXISTS users (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
   email             TEXT NOT NULL UNIQUE COLLATE NOCASE,
   password_hash     TEXT NOT NULL,
   display_name      TEXT,
+  public_name       TEXT,
   is_verified       INTEGER NOT NULL DEFAULT 0,
   created_at        TEXT NOT NULL,
   last_login_at     TEXT
 );
+-- Case-insensitive uniqueness so nobody can impersonate another user's
+-- public name; expression index on lower(public_name) so it matches exactly
+-- the comparison server/leaderboard.py's own uniqueness check uses (rather
+-- than SQLite's separate, ASCII-only COLLATE NOCASE mechanism, which could
+-- disagree with lower() on non-ASCII input). Partial (WHERE public_name IS
+-- NOT NULL) so the column can stay NULL for every user who hasn't opted into
+-- a public name -- a plain UNIQUE index already permits unlimited NULLs
+-- (NULL is never equal to NULL), so this is about not indexing rows that
+-- don't need it and mirroring the Postgres index below.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_public_name_lower
+  ON users (lower(public_name)) WHERE public_name IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS sessions (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -162,17 +181,29 @@ CREATE INDEX IF NOT EXISTS idx_leaderboard_week ON leaderboard_weeks(week_start,
 # real BOOLEAN, and a case-insensitive unique index on email (the app also
 # lowercases every email before it touches the database -- see auth.py -- so
 # this index is defence-in-depth, not the only thing enforcing it).
+# public_name is a separate, deliberately-opt-in column from display_name --
+# see the matching comment on SQLITE_SCHEMA's users table above for why it
+# is never auto-populated. NULL by default, including for every row that
+# existed before this column was added (see the ALTER TABLE migration in
+# init_db() below).
 PG_SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
   id                INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   email             TEXT NOT NULL,
   password_hash     TEXT NOT NULL,
   display_name      TEXT,
+  public_name       TEXT,
   is_verified       BOOLEAN NOT NULL DEFAULT FALSE,
   created_at        TIMESTAMPTZ NOT NULL,
   last_login_at     TIMESTAMPTZ
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users (lower(email));
+-- Case-insensitive uniqueness on the public leaderboard name -- see the
+-- matching index on SQLITE_SCHEMA above for the full rationale. Partial
+-- (WHERE public_name IS NOT NULL) so users who haven't set one don't
+-- collide on NULL.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_public_name_lower
+  ON users (lower(public_name)) WHERE public_name IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS sessions (
   id                INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -482,6 +513,49 @@ def close_db(exception=None):
         conn.close()
 
 
+# ---------------------------------------------------------------------------
+# Migration: users.public_name
+# ---------------------------------------------------------------------------
+#
+# `CREATE TABLE IF NOT EXISTS` (in PG_SCHEMA/SQLITE_SCHEMA above) is a no-op
+# on a `users` table that already exists -- which is exactly the case in
+# production, where a real row predates this column. Without an explicit
+# `ALTER TABLE`, that row (and the table itself) would simply never gain
+# `public_name`, and every later `SELECT * FROM users` / `flask.g.user`
+# lookup would KeyError on it. Both helpers below run BEFORE the schema
+# script and are no-ops in the two cases that don't need them: a brand-new
+# database (the table doesn't exist yet -- the schema script below creates it
+# with `public_name` already present) and a database that already has the
+# column (a previous boot already migrated it). An existing row's other
+# columns are untouched; `public_name` simply reads back as NULL, which is
+# exactly "hasn't set a public name yet" -- server/leaderboard.py treats that
+# as "not listed", not an error.
+
+def _pg_migrate_public_name(conn) -> None:
+    exists = conn.execute(
+        "SELECT 1 FROM information_schema.tables WHERE table_name = 'users'"
+    ).fetchone()
+    if exists is None:
+        return  # fresh database; PG_SCHEMA below creates the column directly
+    conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS public_name TEXT")
+    conn.commit()
+
+
+def _sqlite_migrate_public_name(conn: sqlite3.Connection) -> None:
+    # PRAGMA table_info + a plain ALTER TABLE, rather than relying on
+    # SQLite's own `ADD COLUMN IF NOT EXISTS` syntax (only available since
+    # 3.35.0 / 2021-03) -- this works on any SQLite version.
+    exists = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'users'"
+    ).fetchone()
+    if exists is None:
+        return  # fresh database; SQLITE_SCHEMA below creates the column directly
+    cols = [row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()]
+    if "public_name" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN public_name TEXT")
+        conn.commit()
+
+
 def init_db(app: flask.Flask) -> None:
     """Create the schema (idempotent) and register the per-request
     teardown. Safe to call on every boot."""
@@ -489,6 +563,7 @@ def init_db(app: flask.Flask) -> None:
     if _using_postgres(cfg):
         conn = _pg_connect(cfg.database_url)
         try:
+            _pg_migrate_public_name(conn)
             conn.execute(PG_SCHEMA)
             conn.commit()
         finally:
@@ -496,6 +571,7 @@ def init_db(app: flask.Flask) -> None:
     else:
         conn = sqlite3.connect(cfg.database_path)
         try:
+            _sqlite_migrate_public_name(conn)
             conn.executescript(SQLITE_SCHEMA)
             conn.commit()
         finally:

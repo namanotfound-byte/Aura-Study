@@ -40,6 +40,20 @@
  *      This strip auto-detects its own visibility with IntersectionObserver
  *      and polls on its own — no extra JS calls needed for it.
  *
+ *   3. #timer-music-trigger-btn + #timer-music-popover
+ *      A trigger button and an empty popover container, replacing the old
+ *      manual "Pop out timer" button in #view-timer's top-actions row:
+ *        <button id="timer-music-trigger-btn" aria-haspopup="true"
+ *                aria-expanded="false" aria-controls="timer-music-popover">…</button>
+ *        <div id="timer-music-popover" role="menu" hidden></div>
+ *      Playback-only popover (previous / play-pause / next) — no playlist
+ *      browsing, no library. Opens/closes/dismisses itself entirely from
+ *      this file (outside click, Escape, honest not-configured / not-
+ *      connected / Premium-required / no-active-device copy); index.html
+ *      only needs to call AuraSpotify.closeMusicPopover() when navigating
+ *      away from the Timer view (see switchView()) since the popover is
+ *      anchored inside that panel.
+ *
  * FUNCTION CALLS Agent C must add:
  *   - Once on boot (after the auth gate's `/api/auth/me` succeeds):
  *       AuraSpotify.init();
@@ -49,9 +63,14 @@
  *           AuraSpotify.onViewHidden();
  *       * after activating the new panel, if targetPanelKey === 'spotify':
  *           AuraSpotify.onViewShown();
+ *       * before switching panels, if the panel currently active is
+ *         'view-timer' and targetPanelKey !== 'timer':
+ *           AuraSpotify.closeMusicPopover();
  *
  * Nothing else in index.html needs to change. This file injects its own
- * <style> block, so no CSS file edits are required either.
+ * <style> block, so no CSS file edits are required either (the popover's
+ * anchor positioning lives in index.html next to the button markup, since
+ * that's where the trigger button's own layout is defined).
  * ---------------------------------------------------------------------------
  */
 (function () {
@@ -72,6 +91,12 @@
     selectedPlaylistId: null,
     isPlaying: false,
     accessRequest: null,
+    // Timer-view "Music" popover (transport controls only -- see initTimerMusicPopover).
+    musicPopoverEl: null,
+    musicPopoverTriggerEl: null,
+    musicPopoverOpen: false,
+    musicPopoverOutsideHandler: null,
+    musicPopoverKeyHandler: null,
   };
 
   // -- fetch helpers ---------------------------------------------------
@@ -135,7 +160,13 @@
       '.as-controls{display:flex;align-items:center;gap:12px;margin-top:16px}' +
       '.as-icon-btn{background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-main);border-radius:50%;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s ease}' +
       '.as-icon-btn:hover{border-color:var(--neon-pink);transform:translateY(-1px)}' +
+      '.as-icon-btn:focus-visible{outline:2px solid var(--neon-pink);outline-offset:2px}' +
       '.as-icon-btn.as-play{background:var(--neon-pink);border-color:var(--neon-pink);color:#fff;width:48px;height:48px}' +
+      /* -- Timer-view Music popover (transport controls only, no browsing) -- */
+      '.tmp-controls{display:flex;align-items:center;justify-content:center;gap:10px}' +
+      '.tmp-note{margin:0;font-size:12px;line-height:1.5;color:var(--text-muted);text-align:center;max-width:200px}' +
+      '.tmp-note+.tmp-note{margin-top:8px}' +
+      '#tmp-device-note{margin-top:10px}' +
       '.as-volume{display:flex;align-items:center;gap:10px;margin-top:14px}' +
       '.as-volume input{flex:1;accent-color:var(--neon-pink)}' +
       '.as-note{font-size:12px;color:var(--text-muted);margin-top:10px;line-height:1.5}' +
@@ -582,6 +613,9 @@
   }
 
   function applyNowPlaying(data) {
+    STATE.isPlaying = !!data.is_playing;
+    updateMusicPopoverFromNowPlaying(data);
+
     var nameEl = document.getElementById('as-track-name');
     if (!nameEl) return; // panel not currently rendered
     var art = document.getElementById('as-art');
@@ -606,7 +640,6 @@
       artistEl.textContent = '';
       if (fill) fill.style.width = '0%';
     }
-    STATE.isPlaying = !!data.is_playing;
     setPlayPauseIcon('as-playpause', STATE.isPlaying);
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
     updateStrip(data);
@@ -667,6 +700,137 @@
     }
     STATE.player = null;
     STATE.deviceId = null;
+  }
+
+  // -- Timer-view "Music" popover (transport controls only) ----------------
+  //
+  // Replaces the old manual "Pop out timer" button (removed in index.html --
+  // that automatic floating-timer behaviour lives entirely in static/pip.js
+  // and is untouched by this). Deliberately playback-only: previous /
+  // play-pause / next, no playlist browsing, no library, no "add" anything --
+  // that's what the full Music tab (#view-spotify) is for.
+
+  function closeMusicPopover() {
+    if (!STATE.musicPopoverOpen) return;
+    STATE.musicPopoverOpen = false;
+    if (STATE.musicPopoverEl) {
+      STATE.musicPopoverEl.hidden = true;
+      STATE.musicPopoverEl.classList.remove('is-opening');
+    }
+    if (STATE.musicPopoverTriggerEl) STATE.musicPopoverTriggerEl.setAttribute('aria-expanded', 'false');
+    if (STATE.musicPopoverOutsideHandler) {
+      document.removeEventListener('pointerdown', STATE.musicPopoverOutsideHandler, true);
+      STATE.musicPopoverOutsideHandler = null;
+    }
+    if (STATE.musicPopoverKeyHandler) {
+      document.removeEventListener('keydown', STATE.musicPopoverKeyHandler, true);
+      STATE.musicPopoverKeyHandler = null;
+    }
+  }
+
+  function renderMusicPopoverContent() {
+    var el = STATE.musicPopoverEl;
+    if (!el) return;
+    var s = STATE.status;
+    if (!s || !s.configured) {
+      el.innerHTML = '<p class="tmp-note">Spotify isn’t set up by the app owner yet.</p>';
+      return;
+    }
+    if (!s.connected) {
+      el.innerHTML = '<p class="tmp-note">Not connected. Open the <strong>Music</strong> tab to connect Spotify.</p>';
+      return;
+    }
+    if (!s.premium) {
+      el.innerHTML = '<p class="tmp-note">Playback control needs Spotify Premium.</p>';
+      return;
+    }
+    el.innerHTML =
+      '<div class="tmp-controls">' +
+      '<button class="as-icon-btn" type="button" role="menuitem" data-action="prev" title="Previous track" aria-label="Previous track"><i data-lucide="skip-back"></i></button>' +
+      '<button class="as-icon-btn as-play" type="button" role="menuitem" id="tmp-playpause" data-action="playpause" title="Play or pause" aria-label="Play or pause"><i data-lucide="play"></i></button>' +
+      '<button class="as-icon-btn" type="button" role="menuitem" data-action="next" title="Next track" aria-label="Next track"><i data-lucide="skip-forward"></i></button>' +
+      '</div>' +
+      '<p class="tmp-note" id="tmp-device-note" hidden>No active device — open Spotify on a device to control playback.</p>';
+    setPlayPauseIcon('tmp-playpause', STATE.isPlaying);
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+  }
+
+  // Keeps the popover's play/pause icon and "no active device" note honest,
+  // fed by the same /now-playing responses that already drive the main panel
+  // and the Timer-view strip -- see applyNowPlaying(). No separate poll.
+  function updateMusicPopoverFromNowPlaying(data) {
+    if (!STATE.musicPopoverOpen) return;
+    var playBtn = document.getElementById('tmp-playpause');
+    if (!playBtn) return; // popover open but not showing the controls state (e.g. a status note)
+    setPlayPauseIcon('tmp-playpause', STATE.isPlaying);
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+    var note = document.getElementById('tmp-device-note');
+    if (note) note.hidden = !!(data.device && data.device.is_active);
+  }
+
+  function openMusicPopover() {
+    if (STATE.musicPopoverOpen) {
+      closeMusicPopover();
+      return;
+    }
+    var el = STATE.musicPopoverEl;
+    if (!el) return;
+    STATE.musicPopoverOpen = true;
+    el.hidden = false;
+    el.innerHTML = '<p class="tmp-note">Loading…</p>';
+    // Transition-in: add then drop the class on the next frame so the
+    // opacity/transform change actually animates instead of collapsing into
+    // a same-tick no-op. Respects prefers-reduced-motion via index.html's
+    // global transition-duration override.
+    el.classList.add('is-opening');
+    window.requestAnimationFrame(function () {
+      el.classList.remove('is-opening');
+    });
+    if (STATE.musicPopoverTriggerEl) STATE.musicPopoverTriggerEl.setAttribute('aria-expanded', 'true');
+
+    ensureStatusLoaded().then(function () {
+      if (!STATE.musicPopoverOpen) return; // closed again before the fetch resolved
+      renderMusicPopoverContent();
+      if (STATE.status && STATE.status.connected) pollNowPlaying();
+    });
+
+    STATE.musicPopoverOutsideHandler = function (e) {
+      if (el.contains(e.target) || (STATE.musicPopoverTriggerEl && STATE.musicPopoverTriggerEl.contains(e.target))) return;
+      closeMusicPopover();
+    };
+    document.addEventListener('pointerdown', STATE.musicPopoverOutsideHandler, true);
+
+    STATE.musicPopoverKeyHandler = function (e) {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        e.stopPropagation();
+        closeMusicPopover();
+        if (STATE.musicPopoverTriggerEl) STATE.musicPopoverTriggerEl.focus();
+      }
+    };
+    document.addEventListener('keydown', STATE.musicPopoverKeyHandler, true);
+  }
+
+  function onMusicPopoverClick(e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    e.preventDefault();
+    var action = btn.getAttribute('data-action');
+    if (action === 'playpause') togglePlayPause();
+    else if (action === 'next') nextTrack();
+    else if (action === 'prev') previousTrack();
+  }
+
+  function initTimerMusicPopover() {
+    var trigger = document.getElementById('timer-music-trigger-btn');
+    var popover = document.getElementById('timer-music-popover');
+    if (!trigger || !popover) return;
+    STATE.musicPopoverTriggerEl = trigger;
+    STATE.musicPopoverEl = popover;
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openMusicPopover();
+    });
+    popover.addEventListener('click', onMusicPopoverClick);
   }
 
   // -- Timer-view now-playing strip -----------------------------------------
@@ -790,6 +954,8 @@
         setupStripObserver(strip);
       });
     }
+
+    initTimerMusicPopover();
   }
 
   window.AuraSpotify = {
@@ -797,5 +963,6 @@
     onViewShown: onViewShown,
     onViewHidden: onViewHidden,
     renderInto: renderInto,
+    closeMusicPopover: closeMusicPopover,
   };
 })();
