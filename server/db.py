@@ -302,6 +302,36 @@ def _get_pg_pool(database_url: str):
                     # it's the same instant. Keeps the "timezone-aware UTC
                     # throughout" rule visibly true, not just technically true.
                     "options": "-c TimeZone=UTC",
+                    # Disable psycopg3's automatic server-side prepared
+                    # statements (default: PREPARE after the same query text
+                    # has run 5 times on a connection -- `prepare_threshold`).
+                    # This app has no control over which Neon endpoint ends
+                    # up in DATABASE_URL: the operator may reasonably set it
+                    # to Neon's pooled (`-pooler`, PgBouncer-style
+                    # transaction-mode) endpoint, which is in fact the
+                    # deployed configuration. Transaction-mode poolers are
+                    # free to serve a client's next transaction from a
+                    # *different* backend server process than the one that
+                    # served its last -- a server-side PREPARE issued on
+                    # backend A is simply not there when psycopg later sends
+                    # EXECUTE for it against backend B, raising
+                    # "prepared statement ... does not exist". A pool of
+                    # sequential/lightly-concurrent connections opened during
+                    # testing may never observe this (Neon's pooler can stay
+                    # sticky to one backend when there's no contention for
+                    # it -- confirmed empirically: pg_backend_pid() stayed
+                    # constant across dozens of getconn/putconn cycles, both
+                    # sequential and with 8 concurrent threads against this
+                    # 5-connection pool), which is exactly what makes this
+                    # bug so dangerous: it can pass every test and then
+                    # surface only under real, higher-concurrency production
+                    # traffic. Setting prepare_threshold=None makes every
+                    # query a plain (unprepared) parameterised EXECUTE --
+                    # still fully parameterised/SQL-injection-safe, just
+                    # without the server-side-PREPARE optimisation -- which
+                    # is safe on both the pooled and direct Neon endpoints,
+                    # so there's no need to branch on which one is in use.
+                    "prepare_threshold": None,
                 },
                 open=True,
             )
