@@ -64,6 +64,18 @@ def create_app() -> flask.Flask:
     elif not app.logger.handlers:
         logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
+    # psycopg_pool retries failed connections in a background thread and
+    # logs the real reason (DNS failure, auth rejection, TLS problem,
+    # refused connection) to its own logger. Without a handler on it, a
+    # caller only ever sees the generic "couldn't get a connection after
+    # N sec" PoolTimeout, which says the pool is empty but never why --
+    # exactly the wall hit while debugging this in production.
+    for _name in ("psycopg.pool", "psycopg_pool", "psycopg"):
+        _lg = logging.getLogger(_name)
+        if gunicorn_logger.handlers:
+            _lg.handlers = gunicorn_logger.handlers
+        _lg.setLevel(logging.INFO)
+
     @app.errorhandler(ApiError)
     def _handle_api_error(err: ApiError):
         return json_error(err.code, err.message, err.status)
