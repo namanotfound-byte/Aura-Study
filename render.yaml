@@ -70,8 +70,21 @@ services:
       - key: ENVIRONMENT
         value: production
 
-      # --- Email (Brevo SMTP) --------------------------------------------
-      # From your Brevo account's SMTP & API page. In production, an unset
+      # --- Email (Brevo) ---------------------------------------------------
+      # Render's free web tier blocks outbound traffic to SMTP ports
+      # 25/465/587 (since 2025-09-26), so plain SMTP cannot reach Brevo from
+      # this host -- server/mailer.py sends over Brevo's HTTPS REST API
+      # (port 443) instead whenever BREVO_API_KEY is set, which takes
+      # priority over the SMTP_* vars below. Get it from the Brevo
+      # dashboard -> SMTP & API -> the **API Keys** tab (NOT the SMTP tab --
+      # that generates a different credential, an SMTP key, which won't
+      # work here) -- see README step 3.
+      - key: BREVO_API_KEY
+        sync: false
+
+      # The SMTP_* vars below remain valid config: they're still used for
+      # local dev and for any non-Render host where outbound SMTP isn't
+      # blocked. In production, an unset BREVO_API_KEY *and* unset
       # SMTP_HOST makes the app refuse to boot rather than silently writing
       # verification emails to a file nobody reads -- see README step 3.
       - key: SMTP_HOST
@@ -83,7 +96,8 @@ services:
       - key: SMTP_PASSWORD
         sync: false
       # MUST match an address verified as a sender in Brevo, otherwise
-      # Brevo rejects every send. Start with the Gmail you verified, e.g.
+      # Brevo rejects every send (both the API and SMTP paths). Start with
+      # the Gmail you verified, e.g.
       #   AuraStudy <aurastudy.app@gmail.com>
       # Once aurastudy.is-a.dev is live you can verify the domain in Brevo
       # and switch this to AuraStudy <no-reply@aurastudy.is-a.dev>.

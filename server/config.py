@@ -168,13 +168,22 @@ class Config(object):
         self.smtp_password = os.environ.get("SMTP_PASSWORD") or ""
         self.smtp_from = os.environ.get("SMTP_FROM") or "AuraStudy <no-reply@aurastudy.local>"
         self.smtp_use_tls = _as_bool(os.environ.get("SMTP_USE_TLS", "true"))
-        if self.is_production and not self.smtp_host:
+
+        # HTTP API alternative to SMTP (server/mailer.py prefers this when
+        # set). Exists because Render's free web tier blocks outbound SMTP
+        # ports 25/465/587 -- Brevo's REST API runs over port 443 instead.
+        self.brevo_api_key = os.environ.get("BREVO_API_KEY") or ""
+
+        if self.is_production and not self.brevo_api_key and not self.smtp_host:
             raise ProductionConfigError(
-                "Refusing to boot in production: SMTP_HOST is not set. Without it, "
-                "verification/reset emails would silently fall back to dev-outbox mode "
-                "(written to server/dev_outbox/ instead of sent) -- a signup whose "
-                "confirmation email lands in a file nobody reads is a broken product. "
-                "Set SMTP_HOST/SMTP_USER/SMTP_PASSWORD for a real provider (e.g. Brevo)."
+                "Refusing to boot in production: neither BREVO_API_KEY nor SMTP_HOST is "
+                "set. Without one of them, verification/reset emails would silently fall "
+                "back to dev-outbox mode (written to server/dev_outbox/ instead of sent) "
+                "-- a signup whose confirmation email lands in a file nobody reads is a "
+                "broken product. Set BREVO_API_KEY (Brevo dashboard -> SMTP & API -> API "
+                "Keys tab -- required on hosts like Render's free tier that block "
+                "outbound SMTP ports) or SMTP_HOST/SMTP_USER/SMTP_PASSWORD for a real "
+                "provider (e.g. Brevo)."
             )
 
         self.spotify_client_id = os.environ.get("SPOTIFY_CLIENT_ID") or ""

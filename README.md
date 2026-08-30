@@ -91,15 +91,16 @@ All settings are read from a `.env` file in the project root (via `python-dotenv
 | `APP_BASE_URL` | `http://127.0.0.1:5055` | Base URL the app is served from. Used to build the links in verification/reset emails and to build the Spotify OAuth redirect URI. Use the literal loopback IP for local dev, not `localhost`. |
 | `PORT` | `5055` | Port the dev server listens on. (Port 5000 is reserved by macOS AirPlay Receiver — don't use it.) |
 | `DATABASE_PATH` | `<project root>/aurastudy.db` | Path to the SQLite database file. Only used when `DATABASE_URL` is empty. |
-| `DATABASE_URL` | *(empty)* | Postgres connection string (e.g. from Neon). Leave empty for local dev — the app falls back to SQLite with zero configuration. Setting this switches the app into **production mode**: `SECRET_KEY`, `TOKEN_ENC_KEY` and `SMTP_HOST` all become mandatory and the app refuses to boot without them; the dev-outbox email fallback is disabled. `sslmode=require` is appended automatically if missing — Neon requires TLS. See [Deployment](#deployment). |
+| `DATABASE_URL` | *(empty)* | Postgres connection string (e.g. from Neon). Leave empty for local dev — the app falls back to SQLite with zero configuration. Setting this switches the app into **production mode**: `SECRET_KEY` and `TOKEN_ENC_KEY` become mandatory, and either `BREVO_API_KEY` or `SMTP_HOST` becomes mandatory, or the app refuses to boot; the dev-outbox email fallback is disabled. `sslmode=require` is appended automatically if missing — Neon requires TLS. See [Deployment](#deployment). |
 | `ENVIRONMENT` | *(empty)* | Set to `production` to force production-mode checks explicitly (normally implied automatically by `DATABASE_URL` being set — this exists so it's never ambiguous from a dashboard alone). Leave empty locally. |
 | `TOKEN_ENC_KEY` | auto-generated into `.env` on first run (local dev only) | Fernet key used to encrypt Spotify access/refresh tokens at rest. Locally, the app generates and persists one for you. **In production this must be set explicitly** — see [Deployment](#deployment) step 4 for the exact command; the app validates it's a real Fernet key and refuses to boot otherwise. |
-| `SMTP_HOST` | *(empty)* | SMTP server hostname. Leave empty to use dev outbox mode (see [Setting up email](#setting-up-email)). |
+| `BREVO_API_KEY` | *(empty)* | Brevo HTTP API key. When set, takes priority over the `SMTP_*` vars below and sends over HTTPS instead of SMTP — required on hosts (like Render's free tier) that block outbound SMTP ports. See [Setting up email](#setting-up-email). |
+| `SMTP_HOST` | *(empty)* | SMTP server hostname. Only used when `BREVO_API_KEY` is empty. Leave both empty to use dev outbox mode (see [Setting up email](#setting-up-email)). |
 | `SMTP_PORT` | `587` | SMTP port. |
 | `SMTP_USER` | *(empty)* | SMTP username. |
 | `SMTP_PASSWORD` | *(empty)* | SMTP password (or app password — see the Gmail walkthrough below). |
-| `SMTP_FROM` | `AuraStudy <no-reply@aurastudy.local>` | The `From:` header on outgoing mail. |
-| `SMTP_USE_TLS` | `true` | Whether to issue `STARTTLS` after connecting. |
+| `SMTP_FROM` | `AuraStudy <no-reply@aurastudy.local>` | The `From:` header on outgoing mail. Used for both the Brevo API path (parsed into `sender.email`/`sender.name`) and the SMTP path. |
+| `SMTP_USE_TLS` | `true` | Whether to issue `STARTTLS` after connecting. Only relevant to the SMTP path. |
 | `SPOTIFY_CLIENT_ID` | *(empty)* | Your Spotify app's Client ID. Leave empty to keep the Spotify feature disabled (the UI shows a "not configured" state instead of erroring). |
 | `SPOTIFY_CLIENT_SECRET` | *(empty)* | Your Spotify app's Client Secret. |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` | If true, unverified accounts get `403 email_unverified` on login until they click the verification link. |
@@ -155,9 +156,30 @@ Spotify's Web Playback SDK and the playback-control endpoints (`play`, `pause`, 
 
 ## Setting up email
 
-By default (`SMTP_HOST` empty) AuraStudy runs in **dev outbox mode**: verification and password-reset emails are never actually sent. Instead, each one is written as an HTML file to `server/dev_outbox/` and the link is printed to the server's stdout, so you can develop and test the full auth flow without ever touching a mail server. This is the recommended setting for local use.
+By default (`BREVO_API_KEY` and `SMTP_HOST` both empty) AuraStudy runs in **dev outbox mode**: verification and password-reset emails are never actually sent. Instead, each one is written as an HTML file to `server/dev_outbox/` and the link is printed to the server's stdout, so you can develop and test the full auth flow without ever touching a mail server. This is the recommended setting for local use.
 
-To send real email, fill in the SMTP block in `.env`:
+There are two ways to send real email — pick the one that matches where you're running:
+
+### Option A: Brevo HTTP API (required on Render's free tier)
+
+**Render's free web tier blocks all outbound traffic to SMTP ports 25, 465, and 587** (since 2025-09-26), so plain SMTP can never reach a mail provider from that host, no matter how correct the credentials are — production logs show it as `TimeoutError: timed out`. Brevo's HTTPS REST API runs over port 443 instead, which isn't blocked, so this is the transport this app's Render deployment uses.
+
+1. In the Brevo dashboard, go to **SMTP & API**, then open the **API Keys** tab (not the **SMTP** tab — see the warning below) and generate a new key.
+2. Set just one variable in `.env` (or the Render dashboard):
+
+   ```
+   BREVO_API_KEY=xkeysib-...
+   ```
+
+3. `SMTP_FROM` is still used for the sender identity (it's parsed into the API's `sender.email`/`sender.name`), so leave it set to a Brevo-verified sender address — see step 3 of [Deployment](#deployment) for verifying a sender.
+
+`server/mailer.py` prefers `BREVO_API_KEY` over the `SMTP_*` settings whenever it's set: it `POST`s to `https://api.brevo.com/v3/smtp/email` with the api key in an `api-key` header, and treats HTTP `201` as success.
+
+> **These are two different credentials.** The **SMTP** tab generates an *SMTP key* (used as `SMTP_PASSWORD` for Option B below); the **API Keys** tab generates a separate *API key* (used as `BREVO_API_KEY`). Pasting an SMTP key into `BREVO_API_KEY`, or vice versa, will fail authentication — if the Brevo API starts rejecting requests, this mismatch is the first thing to check.
+
+### Option B: SMTP (local dev, or any host that doesn't block SMTP ports)
+
+Only used when `BREVO_API_KEY` is empty. Fill in the SMTP block in `.env`:
 
 ```
 SMTP_HOST=smtp.example.com
@@ -168,7 +190,9 @@ SMTP_FROM=AuraStudy <no-reply@example.com>
 SMTP_USE_TLS=true
 ```
 
-AuraStudy connects with `smtplib.SMTP`, issues `STARTTLS` when `SMTP_USE_TLS` is true, logs in if `SMTP_USER` is set, and sends a message with both plain-text and HTML parts. If sending fails for any reason, the request still succeeds (registration/reset always return their normal response) — the failure is only logged as a warning, never surfaced to the user as a 500.
+AuraStudy connects with `smtplib.SMTP`, issues `STARTTLS` when `SMTP_USE_TLS` is true, logs in if `SMTP_USER` is set, and sends a message with both plain-text and HTML parts.
+
+Either way, if sending fails for any reason, the request still succeeds (registration/reset always return their normal response) — the failure is only logged as an error, never surfaced to the user as a 500.
 
 ### Gmail app-password walkthrough
 
@@ -318,10 +342,10 @@ Study Timer/
 │   ├── hardening.py             # proxy trust (ProxyFix), security headers, CSP, MAX_CONTENT_LENGTH
 │   ├── security.py              # password hashing, tokens, sessions, login_required, CSRF, rate limiting, Fernet
 │   ├── auth.py                  # blueprint 'auth'    -> /api/auth/*
-│   ├── mailer.py                # SMTP send + dev-outbox fallback
+│   ├── mailer.py                # Brevo API send / SMTP send / dev-outbox fallback
 │   ├── state.py                 # blueprint 'state'   -> /api/state
 │   ├── spotify.py               # blueprint 'spotify' -> /api/spotify/*
-│   ├── dev_outbox/               # emails written here when SMTP_HOST is empty (git-ignored)
+│   ├── dev_outbox/               # emails written here when neither BREVO_API_KEY nor SMTP_HOST is set (git-ignored)
 │   └── templates/
 │       ├── base.html
 │       ├── login.html
@@ -382,28 +406,26 @@ Neon's free tier doesn't expire (unlike Render's own free Postgres, which is del
 
 4. Keep that string somewhere safe for a minute — it becomes `DATABASE_URL` in step 5. (If the string Neon gives you is missing `sslmode=require`, don't worry — `server/config.py` adds it automatically; Neon requires TLS either way.) Neon offers both a *direct* and a *pooled* connection string — prefer the **direct** one, since the app already manages its own small connection pool (`server/db.py`); either works, but stacking two pools is redundant.
 
-### 3. Create the Brevo account and find your SMTP credentials
+### 3. Create the Brevo account and find your API key
+
+**Render's free web tier blocks outbound SMTP (ports 25/465/587)**, so this deployment must use Brevo's HTTP API, not SMTP — get an **API key**, not an SMTP key (they're different credentials; see the warning below).
 
 1. Go to [brevo.com](https://www.brevo.com) and sign up for a free account (verify your email).
 2. In the dashboard, open **SMTP & API** (under your account menu → *Senders, Domains & Dedicated IPs*, or search for it directly).
-3. Open the **SMTP** tab. Brevo shows you:
-   - **SMTP server**: `smtp-relay.brevo.com`
-   - **Port**: `587`
-   - **Login**: your Brevo account email
-   - **Password**: click **Generate a new SMTP key** if none exists yet, then copy it immediately — this is a generated key, not your Brevo account password.
+3. Open the **API Keys** tab (not the **SMTP** tab) and click **Generate a new API key**. Copy it immediately — Brevo only shows it once.
 4. The free plan sends **300 emails/day**. That's ample for a personal deployment (each signup/reset is one email) but worth knowing if you ever invite a lot of people at once.
-5. Map these to env vars for step 5:
+5. Map it to an env var for step 5:
 
    ```
-   SMTP_HOST=smtp-relay.brevo.com
-   SMTP_PORT=587
-   SMTP_USER=<your Brevo login email>
-   SMTP_PASSWORD=<the SMTP key you generated, not your account password>
+   BREVO_API_KEY=xkeysib-...
    SMTP_FROM=AuraStudy <no-reply@aurastudy.is-a.dev>
-   SMTP_USE_TLS=true
    ```
+
+   `SMTP_FROM` is still used — it's parsed into the API's sender name/email — so leave the `SMTP_*` block out of Render's env vars entirely; only `BREVO_API_KEY` and `SMTP_FROM` are needed there.
 
    Brevo may ask you to verify the sending domain/address behind `SMTP_FROM` (under **Senders**) before it will relay mail from it — if so, either verify `aurastudy.is-a.dev` there (you won't have it yet until step 7 — use your own email as `SMTP_FROM` initially and switch later) or verify your own email address as a sender and use that instead.
+
+   > **Don't confuse this with the SMTP tab.** The **SMTP** tab (under the same **SMTP & API** page) generates a different credential — an SMTP key, for `SMTP_PASSWORD` — which won't authenticate against the HTTP API. If you only need email for local dev on a machine that isn't SMTP-blocked, see [Setting up email](#setting-up-email) Option B instead, which uses that SMTP tab.
 
 ### 4. Generate `SECRET_KEY` and `TOKEN_ENC_KEY`
 
@@ -434,7 +456,8 @@ Run each command once, copy its output, and paste the two values into Render in 
    | `SECRET_KEY` | from step 4 |
    | `TOKEN_ENC_KEY` | from step 4 |
    | `APP_BASE_URL` | for now, the `https://aurastudy.onrender.com`-style URL Render assigns (visible on the service page) — you'll change this to the custom domain in step 7 |
-   | `SMTP_HOST` / `SMTP_USER` / `SMTP_PASSWORD` | from step 3 |
+   | `BREVO_API_KEY` | from step 3 |
+   | `SMTP_FROM` | from step 3 (still needed even though you're using the API key, not SMTP — it's the sender identity) |
    | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | from your Spotify app (see [Setting up Spotify](#setting-up-spotify)) — or leave blank for now and fill in later; the Music tab just shows "not configured" until you do |
 
 4. Deploy. Watch the build logs — `pip install -r requirements.txt` runs, then gunicorn starts. The dashboard's **Logs** tab is where you'll see the app's own boot messages (or a `ProductionConfigError` if any of the above was missed — the error message says exactly which var and how to fix it).
@@ -490,7 +513,7 @@ This is a community-run free-subdomain service ([is-a.dev](https://is-a.dev)); y
 Once everything above is wired up:
 
 1. Open the live URL and **register your own account**.
-2. Check your actual inbox for the verification email (check spam the first time — a brand-new Brevo sending domain sometimes lands there initially). This is the single most important check: production has no dev-outbox fallback (`server/config.py` refuses to boot if `SMTP_HOST` is unset), so a real email arriving confirms Brevo is actually wired up correctly end to end, not just configured.
+2. Check your actual inbox for the verification email (check spam the first time — a brand-new Brevo sending domain sometimes lands there initially). This is the single most important check: production has no dev-outbox fallback (`server/config.py` refuses to boot if neither `BREVO_API_KEY` nor `SMTP_HOST` is set), so a real email arriving confirms Brevo is actually wired up correctly end to end, not just configured.
 3. Click the verification link, then **log in**.
 4. Confirm the browser shows **HTTPS** (padlock icon) — this matters beyond "looks secure": the floating always-on-top timer window, browser notifications, and the screen wake lock (all part of Focus Mode) are browser APIs that most browsers only grant to secure (HTTPS) origins. On plain HTTP they'll silently fail to work.
 

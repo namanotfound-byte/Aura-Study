@@ -47,8 +47,8 @@ def isolated_env(monkeypatch, tmp_path):
     monkeypatch.setattr(config_module, "ENV_PATH", str(tmp_path / "does-not-exist.env"))
     for var in (
         "SECRET_KEY", "APP_BASE_URL", "PORT", "DATABASE_PATH", "DATABASE_URL",
-        "ENVIRONMENT", "TOKEN_ENC_KEY", "SMTP_HOST", "SMTP_PORT", "SMTP_USER",
-        "SMTP_PASSWORD", "SMTP_FROM", "SMTP_USE_TLS", "SPOTIFY_CLIENT_ID",
+        "ENVIRONMENT", "TOKEN_ENC_KEY", "BREVO_API_KEY", "SMTP_HOST", "SMTP_PORT",
+        "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM", "SMTP_USE_TLS", "SPOTIFY_CLIENT_ID",
         "SPOTIFY_CLIENT_SECRET", "REQUIRE_EMAIL_VERIFICATION", "MAX_CONTENT_LENGTH",
     ):
         monkeypatch.delenv(var, raising=False)
@@ -85,11 +85,28 @@ def test_production_refuses_to_boot_without_token_enc_key(isolated_env, monkeypa
 
 
 def test_production_refuses_to_boot_without_smtp_host(isolated_env, monkeypatch):
+    # Neither BREVO_API_KEY nor SMTP_HOST is set (isolated_env clears both) --
+    # the boot check must name both options in its error message.
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost/db")
     monkeypatch.setenv("SECRET_KEY", "a-real-64-char-hex-secret-0123456789abcdef0123456789abcdef01")
     monkeypatch.setenv("TOKEN_ENC_KEY", _VALID_FERNET_KEY)
+    with pytest.raises(config_module.ProductionConfigError, match="BREVO_API_KEY"):
+        config_module.Config()
     with pytest.raises(config_module.ProductionConfigError, match="SMTP_HOST"):
         config_module.Config()
+
+
+def test_production_boots_with_only_brevo_api_key_set(isolated_env, monkeypatch):
+    """The mail-transport boot check must be satisfied by BREVO_API_KEY
+    alone -- Render's free tier can never set SMTP_HOST (SMTP is blocked
+    outbound), so requiring it too would make the app unbootable there."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost/db")
+    monkeypatch.setenv("SECRET_KEY", "a-real-64-char-hex-secret-0123456789abcdef0123456789abcdef01")
+    monkeypatch.setenv("TOKEN_ENC_KEY", _VALID_FERNET_KEY)
+    monkeypatch.setenv("BREVO_API_KEY", "xkeysib-test-key")
+    cfg = config_module.Config()
+    assert cfg.brevo_api_key == "xkeysib-test-key"
+    assert cfg.smtp_host == ""
 
 
 def test_production_forces_email_verification_on(isolated_env, monkeypatch):
