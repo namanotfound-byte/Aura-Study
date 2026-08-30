@@ -88,17 +88,25 @@ CSP_DIRECTIVES = {
         "https://sdk.scdn.co",
     ],
     "style-src": ["'self'", "'unsafe-inline'"],
-    "img-src": ["'self'", "data:", "https://i.scdn.co", "https://*.scdn.co"],
+    "img-src": ["'self'", "data:", "https://i.scdn.co", "https://*.scdn.co",
+               "https://*.spotifycdn.com"],
     "font-src": ["'self'", "data:"],
     "connect-src": [
+        "https://*.spotifycdn.com",
         "'self'",
         "https://api.spotify.com",
         "https://sdk.scdn.co",
         "https://*.spotify.com",
         "wss://*.spotify.com",
     ],
-    "media-src": ["'self'", "blob:", "https://*.scdn.co"],
-    "frame-src": ["https://open.spotify.com"],
+    "media-src": ["'self'", "blob:", "https://*.scdn.co",
+                 "https://*.spotifycdn.com"],
+    # The Web Playback SDK mounts its own iframe on sdk.scdn.co to run
+    # playback/EME. Allowing only open.spotify.com blocked it, so the SDK
+    # never registered the browser as a device and Spotify reported
+    # "No Active Device" with nothing to play on.
+    "frame-src": ["https://open.spotify.com", "https://sdk.scdn.co",
+                  "https://*.spotify.com"],
     "worker-src": ["'self'", "blob:"],
 }
 
