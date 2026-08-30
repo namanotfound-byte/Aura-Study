@@ -121,6 +121,20 @@ CREATE TABLE IF NOT EXISTS spotify_accounts (
   connected_at      TEXT NOT NULL
 );
 
+-- One row per user: the Spotify account email they've submitted so the app
+-- owner can add it by hand to the Spotify app's Development Mode User
+-- Management allowlist (server/spotify_requests.py). UNIQUE user_id backs
+-- the ON CONFLICT(user_id) upsert a re-submission does -- "one request per
+-- user" is enforced here, not just in application logic.
+CREATE TABLE IF NOT EXISTS spotify_access_requests (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id           INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  spotify_email     TEXT NOT NULL,
+  status            TEXT NOT NULL DEFAULT 'pending',
+  created_at        TEXT NOT NULL,
+  updated_at        TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS auth_attempts (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
   key               TEXT NOT NULL,
@@ -201,6 +215,20 @@ CREATE TABLE IF NOT EXISTS spotify_accounts (
   expires_at        TIMESTAMPTZ,
   scopes            TEXT,
   connected_at      TIMESTAMPTZ NOT NULL
+);
+
+-- One row per user: the Spotify account email they've submitted so the app
+-- owner can add it by hand to the Spotify app's Development Mode User
+-- Management allowlist (server/spotify_requests.py). UNIQUE user_id backs
+-- the ON CONFLICT(user_id) upsert a re-submission does -- "one request per
+-- user" is enforced here, not just in application logic.
+CREATE TABLE IF NOT EXISTS spotify_access_requests (
+  id                INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id           INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  spotify_email     TEXT NOT NULL,
+  status            TEXT NOT NULL DEFAULT 'pending',
+  created_at        TIMESTAMPTZ NOT NULL,
+  updated_at        TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS auth_attempts (

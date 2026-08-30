@@ -116,6 +116,16 @@ services:
       - key: SPOTIFY_CLIENT_SECRET
         sync: false
 
+      # --- Owner-only admin page -------------------------------------------
+      # Gates GET /admin/spotify-requests: a list of users' submitted
+      # Spotify account emails, for you to add by hand to the Spotify app's
+      # Development Mode User Management allowlist (max 25 accounts). Must
+      # match your own AuraStudy account email exactly (case-insensitive).
+      # Leave unset and the page is unreachable for everyone, including you
+      # -- it never falls open just because this is unset.
+      - key: OWNER_EMAIL
+        sync: false
+
       # --- Everything else has a safe default in server/config.py --------
       # (REQUIRE_EMAIL_VERIFICATION is forced to "true" in production
       # regardless of this value; set explicitly here just to be visible

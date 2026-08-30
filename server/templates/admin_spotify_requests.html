@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spotify access requests - AuraStudy</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f1115;
+      color: #e6e6e6;
+      margin: 0;
+      padding: 2rem;
+    }
+    .wrap { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.35rem; margin: 0 0 0.25rem; }
+    p.sub { color: #9aa0a6; margin: 0 0 1.5rem; font-size: 0.9rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 0.65rem 0.8rem; border-bottom: 1px solid #262a31; font-size: 0.9rem; vertical-align: middle; }
+    th { color: #9aa0a6; font-weight: 600; text-transform: uppercase; font-size: 0.68rem; letter-spacing: 0.05em; }
+    td.email { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .status { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+    .status-pending { background: rgba(224, 167, 46, 0.15); color: #e0a72e; }
+    .status-added { background: rgba(76, 175, 125, 0.15); color: #4caf7d; }
+    button.mark-added {
+      background: #1db954; border: none; color: #04140c; font-weight: 600;
+      padding: 0.4rem 0.85rem; border-radius: 6px; cursor: pointer; font-size: 0.82rem;
+    }
+    button.mark-added:disabled { opacity: 0.55; cursor: default; }
+    .empty { color: #9aa0a6; padding: 3rem 0; text-align: center; }
+    .page-error { color: #e05252; margin-top: 1rem; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Spotify access requests</h1>
+    <p class="sub">Add each pending Spotify email to the app's Development Mode User Management allowlist in the Spotify developer dashboard, then mark it added here.</p>
+
+    {% if rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Spotify email</th>
+          <th>AuraStudy account</th>
+          <th>Submitted</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr data-request-id="{{ row.id }}">
+          <td class="email">{{ row.spotify_email }}</td>
+          <td>{{ row.user_display_name or row.user_email }}</td>
+          <td>{{ row.created_at }}</td>
+          <td><span class="status status-{{ row.status }}">{{ row.status }}</span></td>
+          <td>
+            {% if row.status == 'pending' %}
+            <button type="button" class="mark-added" data-request-id="{{ row.id }}">Mark added</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No requests yet.</p>
+    {% endif %}
+
+    <p class="page-error" id="page-error" hidden></p>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+      document.addEventListener("click", function (evt) {
+        var btn = evt.target.closest(".mark-added");
+        if (!btn) return;
+        var id = btn.getAttribute("data-request-id");
+        var errBox = document.getElementById("page-error");
+        errBox.hidden = true;
+        btn.disabled = true;
+        fetch("/admin/spotify-requests/" + encodeURIComponent(id) + "/mark-added", {
+          method: "POST",
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+          credentials: "same-origin"
+        }).then(function (resp) {
+          if (!resp.ok) throw new Error("request failed");
+          var row = document.querySelector('tr[data-request-id="' + id + '"]');
+          if (row) {
+            var statusEl = row.querySelector(".status");
+            if (statusEl) {
+              statusEl.textContent = "added";
+              statusEl.className = "status status-added";
+            }
+          }
+          btn.remove();
+        }).catch(function () {
+          errBox.textContent = "Could not mark that request as added. Please try again.";
+          errBox.hidden = false;
+          btn.disabled = false;
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

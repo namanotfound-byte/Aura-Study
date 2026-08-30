@@ -156,7 +156,20 @@ def backend(request, pg_cluster):
 
 
 @pytest.fixture
-def app(request, tmp_path, monkeypatch, outbox, backend):
+def owner_email():
+    """Empty by default -- OWNER_EMAIL unset, so /admin/spotify-requests must
+    be unreachable for everyone (see server/app.py). Overridden locally (as
+    a same-named fixture) by tests/test_spotify_requests.py's owner-gated
+    admin-page tests, which need a real value here before the `app` fixture
+    below builds the app -- that's why `app` takes this as a dependency
+    instead of a test setting the env var itself: by the time a test's own
+    body runs, `app` (and the Config it read once inside create_app()) has
+    already been built."""
+    return ""
+
+
+@pytest.fixture
+def app(request, tmp_path, monkeypatch, outbox, backend, owner_email):
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-not-for-prod")
     monkeypatch.setenv("TOKEN_ENC_KEY", Fernet.generate_key().decode())
     monkeypatch.setenv("APP_BASE_URL", "http://127.0.0.1:5055")
@@ -170,6 +183,10 @@ def app(request, tmp_path, monkeypatch, outbox, backend):
     monkeypatch.setenv("SMTP_HOST", "smtp.test.invalid")
     monkeypatch.setenv("SPOTIFY_CLIENT_ID", "")
     monkeypatch.setenv("SPOTIFY_CLIENT_SECRET", "")
+    if owner_email:
+        monkeypatch.setenv("OWNER_EMAIL", owner_email)
+    else:
+        monkeypatch.delenv("OWNER_EMAIL", raising=False)
 
     if backend == "postgres":
         db_url = request.getfixturevalue("_pg_test_database")

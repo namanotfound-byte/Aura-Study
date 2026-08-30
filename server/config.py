@@ -189,6 +189,17 @@ class Config(object):
         self.spotify_client_id = os.environ.get("SPOTIFY_CLIENT_ID") or ""
         self.spotify_client_secret = os.environ.get("SPOTIFY_CLIENT_SECRET") or ""
 
+        # Gates GET /admin/spotify-requests (server/app.py) -- the owner-only
+        # page listing every user's submitted Spotify account email, for the
+        # owner to add by hand to the Spotify app's Development Mode User
+        # Management allowlist (max 25 accounts). Compared case-insensitively
+        # against the logged-in user's email, so lowercase it once here
+        # rather than at every comparison site. Left empty on purpose is a
+        # valid, supported state -- it must make the page unreachable for
+        # everyone (see server/app.py's owner check), never fall open to
+        # "no owner configured means anyone can view it".
+        self.owner_email = (os.environ.get("OWNER_EMAIL") or "").strip().lower()
+
         self.require_email_verification = _as_bool(os.environ.get("REQUIRE_EMAIL_VERIFICATION", "true"))
         if self.is_production and not self.require_email_verification:
             print("[config] WARNING: REQUIRE_EMAIL_VERIFICATION was disabled but this is "

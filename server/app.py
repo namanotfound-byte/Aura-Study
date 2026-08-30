@@ -12,6 +12,7 @@ from werkzeug.exceptions import HTTPException
 from .auth import bp as auth_bp
 from .state import bp as state_bp
 from .spotify import bp as spotify_bp
+from .spotify_requests import bp as spotify_requests_bp, list_all_requests, mark_request_added
 from .leaderboard import bp as leaderboard_bp
 from .config import get_config
 from .db import init_db, get_db
@@ -24,9 +25,10 @@ from .security import (
     json_error,
     login_required,
     parse_iso,
+    require_csrf,
     set_session_cookie,
 )
-from .db import utcnow, utcnow_iso
+from .db import iso_or_none, utcnow, utcnow_iso
 
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
@@ -54,6 +56,7 @@ def create_app() -> flask.Flask:
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(state_bp, url_prefix="/api")
     app.register_blueprint(spotify_bp, url_prefix="/api/spotify")
+    app.register_blueprint(spotify_requests_bp, url_prefix="/api/spotify")
     app.register_blueprint(leaderboard_bp, url_prefix="/api")
 
     # Under gunicorn, Flask's app.logger has no handler attached to
@@ -220,6 +223,58 @@ def _register_page_routes(app: flask.Flask) -> None:
         return flask.render_template(
             "message.html", success=success, heading=heading, detail=detail
         )
+
+    def _is_owner(user, cfg) -> bool:
+        # If OWNER_EMAIL is unset, this must be unreachable for EVERYONE --
+        # never fall open to "no owner configured means anyone can view
+        # it". That's why the check is `not cfg.owner_email` first, not
+        # just an empty-string comparison that a user with no email could
+        # coincidentally satisfy.
+        if not cfg.owner_email or user is None:
+            return False
+        return (user["email"] or "").strip().lower() == cfg.owner_email
+
+    @app.route("/admin/spotify-requests")
+    @login_required
+    def admin_spotify_requests():
+        # This page lists every user's submitted Spotify email -- personal
+        # data handed to the owner, and to no one else. A non-owner (or
+        # anyone at all when OWNER_EMAIL isn't set) gets a plain 404, not a
+        # 403 or a "not authorized" page -- neither of those tells an
+        # attacker anything, but a 403 at least confirms the route exists.
+        cfg = get_config()
+        if not _is_owner(current_user(), cfg):
+            flask.abort(404)
+        db = get_db()
+        raw_rows = list_all_requests(db)
+        rows = [
+            {
+                "id": r["id"],
+                "spotify_email": r["spotify_email"],
+                "user_email": r["user_email"],
+                "user_display_name": r["user_display_name"],
+                "status": r["status"],
+                # created_at/updated_at come back as a tz-aware datetime on
+                # Postgres, an ISO string on SQLite -- normalise before
+                # handing to Jinja so the rendered page looks the same on
+                # both backends (see db.iso_or_none).
+                "created_at": iso_or_none(r["created_at"]),
+                "updated_at": iso_or_none(r["updated_at"]),
+            }
+            for r in raw_rows
+        ]
+        return flask.render_template("admin_spotify_requests.html", rows=rows)
+
+    @app.route("/admin/spotify-requests/<int:request_id>/mark-added", methods=["POST"])
+    @login_required
+    def admin_mark_spotify_request_added(request_id):
+        cfg = get_config()
+        if not _is_owner(current_user(), cfg):
+            flask.abort(404)
+        require_csrf()
+        db = get_db()
+        mark_request_added(db, request_id)
+        return flask.jsonify({"ok": True})
 
 
 if __name__ == "__main__":

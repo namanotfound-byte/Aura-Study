@@ -70,6 +70,8 @@
     player: null,
     deviceId: null,
     selectedPlaylistId: null,
+    isPlaying: false,
+    accessRequest: null,
   };
 
   // -- fetch helpers ---------------------------------------------------
@@ -146,18 +148,24 @@
       '.as-playlist-meta .as-pl-name{font-size:12px;font-weight:700;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.as-playlist-meta .as-pl-count{font-size:10px;color:var(--text-muted)}' +
       '.as-embed-wrap{margin-top:16px;border-radius:16px;overflow:hidden}' +
-      '.as-strip{position:absolute;top:18px;right:24px;z-index:5;display:flex;align-items:center;gap:10px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:999px;padding:6px 14px 6px 6px;box-shadow:0 6px 18px rgba(var(--accent-rgb),0.12);max-width:280px}' +
+      '.as-strip{position:absolute;top:18px;right:24px;z-index:5;display:flex;align-items:center;gap:10px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:999px;padding:6px 8px 6px 6px;box-shadow:0 6px 18px rgba(var(--accent-rgb),0.12);max-width:280px}' +
       '.as-strip img{width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0}' +
-      '.as-strip-text{overflow:hidden}' +
+      '.as-strip-text{overflow:hidden;min-width:0}' +
       '.as-strip-title{font-size:11px;font-weight:800;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.as-strip-artist{font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.as-strip.as-hidden{display:none}' +
+      '.as-strip-btn{flex-shrink:0;width:28px;height:28px;border-radius:50%;border:none;background:var(--accent-solid);color:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;position:relative}' +
+      '.as-strip-btn i{width:13px;height:13px}' +
+      '.as-strip-btn:hover{filter:brightness(1.08)}' +
+      /* Invisible hit-slop so the visual dot can stay small while the tap target still
+         reaches something close to the 44px guideline, without inflating the strip. */
+      '.as-strip-btn::after{content:"";position:absolute;inset:-8px}' +
       /* -- mobile: keep the Music panel and the timer now-playing strip usable down to 320px -- */
       '@media (max-width:768px){' +
       '.as-row{flex-wrap:wrap}' +
       '.as-art{width:56px;height:56px}' +
       '.as-controls{justify-content:center}' +
-      '.as-strip{max-width:min(240px,calc(100vw - 32px));top:12px;right:12px;padding:5px 12px 5px 5px}' +
+      '.as-strip{max-width:min(240px,calc(100vw - 32px));top:12px;right:12px;padding:5px 6px 5px 5px}' +
       '.as-strip img{width:26px;height:26px}' +
       '}' +
       '@media (max-width:480px){' +
@@ -168,7 +176,20 @@
       '.as-icon-btn{width:44px;height:44px}' +
       '.as-icon-btn.as-play{width:52px;height:52px}' +
       '.as-volume input{min-height:24px}' +
-      '}';
+      '.as-strip-btn{width:32px;height:32px}' +
+      '.as-strip-btn::after{inset:-6px}' +
+      '}' +
+      /* -- access-request form (Music tab, always visible) -- */
+      '.as-access-note{font-size:12px;color:var(--text-muted);line-height:1.6;margin:0 0 14px}' +
+      '.as-access-form{display:flex;gap:10px;flex-wrap:wrap}' +
+      '.as-access-form input[type=email]{flex:1;min-width:180px}' +
+      '.as-access-state{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border-radius:14px;background:var(--bg-card-hover);border:1px solid var(--border-color)}' +
+      '.as-access-state .as-access-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}' +
+      '.as-access-state.pending .as-access-dot{background:#F5B942}' +
+      '.as-access-state.added .as-access-dot{background:var(--neon-green,#52E5A3)}' +
+      '.as-access-state-text{flex:1;min-width:160px;font-size:13px;color:var(--text-main);font-weight:600}' +
+      '.as-access-state-text small{display:block;font-weight:500;color:var(--text-muted);margin-top:2px}' +
+      '@media (pointer:coarse){.as-access-form input[type=email],.as-access-form button{min-height:44px}}';
     document.head.appendChild(style);
   }
 
@@ -225,7 +246,9 @@
         '<p class="as-note">The AuraStudy owner needs to add <code>SPOTIFY_CLIENT_ID</code> and ' +
         '<code>SPOTIFY_CLIENT_SECRET</code> to their <code>.env</code> file. See the ' +
         '"Create your Spotify app" section of the README for step-by-step instructions.</p>' +
-        '</div>';
+        '</div>' +
+        renderAccessRequestCardSkeleton();
+      loadAccessRequest();
       return;
     }
     if (!s.connected) {
@@ -234,7 +257,9 @@
         '<h3 style="margin-top:0;color:var(--text-main);">Bring your music into AuraStudy 🎧</h3>' +
         '<p class="as-note">Connect your Spotify account to see what’s playing and control playback without leaving your study session.</p>' +
         '<button class="btn btn-neon-pink" data-action="connect" style="margin-top:12px;">Connect Spotify</button>' +
-        '</div>';
+        '</div>' +
+        renderAccessRequestCardSkeleton();
+      loadAccessRequest();
       return;
     }
 
@@ -266,7 +291,8 @@
       '<div class="card-title">Your Playlists</div>' +
       '<div class="as-playlist-grid" id="as-playlist-grid"><p class="as-note">Loading playlists…</p></div>' +
       (premium ? '' : '<div class="as-embed-wrap" id="as-embed-wrap"></div>') +
-      '</div>';
+      '</div>' +
+      renderAccessRequestCardSkeleton();
 
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
 
@@ -280,6 +306,139 @@
     loadPlaylists();
     if (premium) initPremiumPlayer();
     pollNowPlaying();
+    loadAccessRequest();
+  }
+
+  // -- Spotify access-request form (Music tab, always visible) -------------
+  //
+  // Spotify apps start in Development Mode: only accounts the AuraStudy
+  // owner has explicitly allow-listed (max 25) can connect at all, whether
+  // or not the app itself is configured or the user already tried and
+  // failed to connect. So this card is appended in every renderPanel()
+  // branch above, not gated behind a failed connection attempt.
+
+  function renderAccessRequestCardSkeleton() {
+    return (
+      '<div class="card as-card" id="as-access-card">' +
+      '<div class="card-title">Request Spotify Access</div>' +
+      '<p class="as-access-note">Spotify only allows a small allow-list of accounts to connect while ' +
+      'AuraStudy is in developer mode. Share the email on your Spotify account below and it will be ' +
+      'seen only by the person who runs AuraStudy, so they can add you to that list. You can withdraw ' +
+      'this request at any time.</p>' +
+      '<div id="as-access-body"><p class="as-note">Loading…</p></div>' +
+      '</div>'
+    );
+  }
+
+  function accessBody() {
+    return document.getElementById('as-access-body');
+  }
+
+  function loadAccessRequest() {
+    var body = accessBody();
+    if (!body) return;
+    api('/api/spotify/access-request').then(function (r) {
+      body = accessBody(); // panel may have re-rendered while this was in flight
+      if (!body) return;
+      if (!r.ok) {
+        if (r.status === 401) {
+          window.location.replace('/login');
+          return;
+        }
+        renderAccessError(body);
+        return;
+      }
+      STATE.accessRequest = r.data;
+      renderAccessState(body, r.data);
+    }, function () {
+      body = accessBody();
+      if (body) renderAccessError(body);
+    });
+  }
+
+  function renderAccessError(body) {
+    body.innerHTML =
+      '<p class="as-note">Couldn’t load your access request right now.</p>' +
+      '<button class="btn" data-access-action="retry" style="font-size:12px;padding:6px 14px;">Try Again</button>';
+    body.querySelector('[data-access-action="retry"]').addEventListener('click', function () {
+      body.innerHTML = '<p class="as-note">Loading…</p>';
+      loadAccessRequest();
+    });
+  }
+
+  function renderAccessState(body, data) {
+    if (!data.submitted) {
+      body.innerHTML =
+        '<form class="as-access-form" id="as-access-form">' +
+        '<input type="email" class="form-control" id="as-access-email" placeholder="you@example.com" required>' +
+        '<button type="submit" class="btn btn-neon-pink">Request Access</button>' +
+        '</form>';
+      var form = document.getElementById('as-access-form');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        submitAccessRequest();
+      });
+      return;
+    }
+
+    var statusClass = data.status === 'added' ? 'added' : 'pending';
+    var statusLine =
+      data.status === 'added'
+        ? 'Access granted for <strong>' + esc(data.spotify_email) + '</strong>. You should be able to connect Spotify now.'
+        : 'Waiting on the owner to add <strong>' + esc(data.spotify_email) + '</strong> to Spotify’s allow-list.';
+    body.innerHTML =
+      '<div class="as-access-state ' + statusClass + '">' +
+      '<span class="as-access-dot"></span>' +
+      '<span class="as-access-state-text">' + statusLine +
+      '<small>Submitted ' + (data.submitted_at ? new Date(data.submitted_at).toLocaleDateString() : '') + '</small></span>' +
+      '<button class="btn" data-access-action="withdraw" style="font-size:12px;padding:6px 14px;flex-shrink:0;">Withdraw</button>' +
+      '</div>';
+    body.querySelector('[data-access-action="withdraw"]').addEventListener('click', withdrawAccessRequest);
+  }
+
+  function submitAccessRequest() {
+    var input = document.getElementById('as-access-email');
+    var btn = document.querySelector('#as-access-form button[type="submit"]');
+    var email = input ? input.value.trim() : '';
+    if (!email) return;
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+    }
+    api('/api/spotify/access-request', { method: 'POST', body: JSON.stringify({ spotify_email: email }) }).then(function (r) {
+      if (!r.ok) {
+        if (r.status === 401) {
+          window.location.replace('/login');
+          return;
+        }
+        var msg = (r.data && r.data.message) || 'Please enter a valid Spotify account email.';
+        if (r.status === 429) msg = "You've submitted this a few times already -- please wait a bit before trying again.";
+        toast('Couldn’t Submit', msg, false);
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Request Access';
+        }
+        return;
+      }
+      toast('Request Sent', 'The AuraStudy owner can now add you to Spotify’s allow-list.', true);
+      var body = accessBody();
+      if (body) loadAccessRequest();
+    });
+  }
+
+  function withdrawAccessRequest() {
+    api('/api/spotify/access-request', { method: 'DELETE' }).then(function (r) {
+      if (!r.ok) {
+        if (r.status === 401) {
+          window.location.replace('/login');
+          return;
+        }
+        toast('Couldn’t Withdraw', 'Please try again.', false);
+        return;
+      }
+      toast('Request Withdrawn', 'Your Spotify email was removed.', true);
+      loadAccessRequest();
+    });
   }
 
   function onPanelClick(e) {
@@ -361,17 +520,25 @@
   }
 
   function togglePlayPause() {
-    var btn = document.getElementById('as-playpause');
-    var isPlaying = btn && btn.getAttribute('data-playing') === '1';
     var body = {};
     if (STATE.deviceId) body.device_id = STATE.deviceId;
-    var req = isPlaying
+    var req = STATE.isPlaying
       ? api('/api/spotify/pause', { method: 'PUT' })
       : api('/api/spotify/play', { method: 'PUT', body: JSON.stringify(body) });
     req.then(function (r) {
       if (!r.ok) handlePlaybackError(r);
       else setTimeout(pollNowPlaying, 400);
     });
+  }
+
+  // Updates a play/pause button's icon + data-playing attribute in place.
+  // Shared by the full panel's control and the compact Timer-view strip so
+  // both always agree on the current playback state.
+  function setPlayPauseIcon(btnId, isPlaying) {
+    var btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.setAttribute('data-playing', isPlaying ? '1' : '0');
+    btn.innerHTML = isPlaying ? '<i data-lucide="pause"></i>' : '<i data-lucide="play"></i>';
   }
 
   function nextTrack() {
@@ -422,7 +589,6 @@
     var fill = document.getElementById('as-progress-fill');
     var curEl = document.getElementById('as-time-cur');
     var durEl = document.getElementById('as-time-dur');
-    var btn = document.getElementById('as-playpause');
 
     if (data.track) {
       nameEl.textContent = data.track.name || '';
@@ -440,11 +606,9 @@
       artistEl.textContent = '';
       if (fill) fill.style.width = '0%';
     }
-    if (btn) {
-      btn.setAttribute('data-playing', data.is_playing ? '1' : '0');
-      btn.innerHTML = data.is_playing ? '<i data-lucide="pause"></i>' : '<i data-lucide="play"></i>';
-      if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
-    }
+    STATE.isPlaying = !!data.is_playing;
+    setPlayPauseIcon('as-playpause', STATE.isPlaying);
+    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
     updateStrip(data);
   }
 
@@ -514,7 +678,18 @@
       '<div class="as-strip-text">' +
       '<div class="as-strip-title" id="as-strip-title">Not playing</div>' +
       '<div class="as-strip-artist" id="as-strip-artist"></div>' +
-      '</div>';
+      '</div>' +
+      '<button class="as-strip-btn" id="as-strip-playpause" type="button" data-action="playpause" ' +
+      'title="Play or pause" aria-label="Play or pause"><i data-lucide="play"></i></button>';
+    el.addEventListener('click', onStripClick);
+  }
+
+  function onStripClick(e) {
+    var btn = e.target.closest('[data-action="playpause"]');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    togglePlayPause();
   }
 
   function updateStrip(data) {
@@ -525,12 +700,15 @@
     if (!titleEl) return;
     if (data.track) {
       STATE.stripEl.classList.remove('as-hidden');
-      titleEl.textContent = (data.is_playing ? '♪ ' : '⏸ ') + (data.track.name || '');
+      titleEl.textContent = data.track.name || '';
       artistEl.textContent = data.track.artists || '';
       if (data.track.image && art) {
         art.src = data.track.image;
         art.style.display = '';
       }
+      STATE.isPlaying = !!data.is_playing;
+      setPlayPauseIcon('as-strip-playpause', STATE.isPlaying);
+      if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
     } else {
       STATE.stripEl.classList.add('as-hidden');
     }

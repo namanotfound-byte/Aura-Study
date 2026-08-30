@@ -240,6 +240,20 @@ html.js-enabled .cta-row {
   }
 }
 
+/* Session-repeat visits: landing.js marks the reveal as played (via
+   sessionStorage) the first time it runs in a tab session, and adds this
+   class on every later visit to `/` in that same tab instead of replaying
+   the animation -- same finished-state treatment as reduced motion above,
+   just triggered from JS instead of a media query. */
+html.skip-anim .wordmark .letters,
+html.skip-anim .wordmark .letters.is-split .letter,
+html.skip-anim .tagline,
+html.skip-anim .cta-row {
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+}
+
 @media (max-width: 360px) {
   .btn {
     min-width: 0;

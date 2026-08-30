@@ -5,14 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}AuraStudy{% endblock %}</title>
   <link rel="stylesheet" href="/static/auth.css">
+  <script>document.documentElement.classList.add('js-enabled');</script>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
   <div class="auth-page">
     <div class="auth-card">
       <div class="auth-brand">
-        <i data-lucide="sparkles"></i>
-        <span>AuraStudy</span>
+        <i data-lucide="sparkles" aria-hidden="true"></i>
+        <span class="auth-wordmark" aria-label="AuraStudy">
+          <span class="auth-wordmark-letters" id="auth-wordmark-letters" aria-hidden="true">AuraStudy</span>
+        </span>
       </div>
       {% block content %}{% endblock %}
     </div>
@@ -21,6 +24,7 @@
   <script>
     if (window.lucide) { lucide.createIcons(); }
   </script>
+  <script src="/static/landing.js"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

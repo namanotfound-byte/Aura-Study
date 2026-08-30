@@ -703,6 +703,16 @@
             align-items: center;
             justify-content: center;
         }
+        /* Groups the Pop Out + Fullscreen icon buttons on the right side of the
+           top-actions row. Needs its own flex context: the buttons themselves use
+           display:flex (not inline-flex), so without this they'd stack as block
+           boxes instead of sitting side by side. */
+        .timer-top-actions-right-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: auto;
+        }
 
         .engine-mode-tabs {
             display: flex;
@@ -1652,11 +1662,18 @@
                         <i data-lucide="sticky-note" style="width:14px; height:14px;"></i>
                         <span class="tfi-label">Brain Dump Note</span>
                     </button>
-                    
-                    <!-- FIXED TRIGGER FUNCTION: Native window element HTML5 Fullscreen Engine initialization -->
-                    <button class="timer-floating-interactive-trigger-btn timer-floating-circle-btn" onclick="toggleNativeWindowFullscreenEngine()" title="Toggle Fullscreen Mode">
-                        <i data-lucide="maximize-2" id="fullscreen-icon-indicator" style="width: 16px; height: 16px;"></i>
-                    </button>
+
+                    <!-- Secondary utility actions, kept small and out of the way of the
+                         countdown/controls: Pop Out (float the timer) and Fullscreen. -->
+                    <div class="timer-top-actions-right-group">
+                        <button class="timer-floating-interactive-trigger-btn timer-floating-circle-btn" onclick="AuraFocus.popOutTimer()" title="Float the timer in a small always-on-top window" aria-label="Pop out timer">
+                            <i data-lucide="picture-in-picture-2" style="width: 16px; height: 16px;"></i>
+                        </button>
+                        <!-- FIXED TRIGGER FUNCTION: Native window element HTML5 Fullscreen Engine initialization -->
+                        <button class="timer-floating-interactive-trigger-btn timer-floating-circle-btn" onclick="toggleNativeWindowFullscreenEngine()" title="Toggle Fullscreen Mode">
+                            <i data-lucide="maximize-2" id="fullscreen-icon-indicator" style="width: 16px; height: 16px;"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Draggable Yellow Post-It Note context menu -->
@@ -1711,9 +1728,6 @@
                     </button>
                     <button class="timer-btn timer-btn-secondary" style="background: rgba(82, 229, 163, 0.15); border-color: #52E5A3; color: #1E824C;" onclick="saveEngineWorkspaceBlockData()">
                         <i data-lucide="check-circle-2"></i> Log Focus
-                    </button>
-                    <button class="timer-btn timer-btn-secondary" onclick="AuraFocus.popOutTimer()" title="Float the timer in a small always-on-top window">
-                        <i data-lucide="picture-in-picture-2"></i> Pop Out
                     </button>
                 </div>
             </div>
@@ -2064,7 +2078,21 @@
         function verifyDailyGoalExcessRatio(state, factor) { const registry = {}; state.sessions.forEach(s => { registry[s.date] = (registry[s.date] || 0) + s.durationSeconds; }); return Object.values(registry).some(secs => secs >= (state.profile.dailyGoalHours * 3600 * factor)); }
         function checkTriathleteCondition(state) { const registry = {}; state.sessions.forEach(s => { if(!registry[s.date]) registry[s.date] = new Set(); registry[s.date].add(s.course); }); return Object.values(registry).some(setObj => setObj.size >= 3); }
 
+        // The verification link now logs the user straight in and lands them on
+        // /app?verified=1 -- nothing else acknowledges that, so show a brief welcome
+        // toast and strip the param immediately so a later refresh doesn't repeat it.
+        function handleVerifiedRedirectParam() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('verified') !== '1') return;
+            triggerAlertToast("Welcome to AuraStudy", "Your email is verified -- you're all set to start studying.", true);
+            params.delete('verified');
+            const qs = params.toString();
+            const newUrl = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+            window.history.replaceState({}, document.title, newUrl);
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
+            handleVerifiedRedirectParam();
             // Auth gate + account state hydration must resolve BEFORE the app reads
             // localStorage, so that if the server has a saved copy of this account's
             // state it lands in localStorage first and the app boots from account data

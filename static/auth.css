@@ -2,12 +2,16 @@
    Matches the main app's pastel, rounded, playful visual language. */
 
 :root {
-  --aura-accent: #FF66B2;
-  --aura-accent-dark: #E0499A;
-  --aura-blue: #7FE9E4;
-  --aura-text: #3a2233;
-  --aura-text-soft: #8a6b78;
-  --aura-border: #f3d6e6;
+  /* Blue palette -- matches landing.css's blue-themed tokens (--accent-solid,
+     --neon-blue, --accent-strong) so the signed-out pages read consistently
+     with the landing page, since new accounts now default to the blue theme. */
+  --aura-accent: #2F9BE0;
+  --aura-accent-dark: #1B82C6;
+  --aura-accent-rgb: 47, 155, 224;
+  --aura-blue: #6C8CFF;
+  --aura-text: #35404D;
+  --aura-text-soft: #6F8092;
+  --aura-border: #C9E2FF;
   --aura-error: #e0426b;
   --aura-error-bg: #fdeaf0;
   --aura-success: #22a37a;
@@ -27,7 +31,7 @@ html, body {
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: var(--aura-text);
-  background: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%);
+  background: linear-gradient(135deg, #E3F3FF 0%, #EAF3FF 55%, #E9EAFF 100%);
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
@@ -56,7 +60,7 @@ body {
   background: #ffffff;
   border-radius: 28px;
   padding: 36px 32px;
-  box-shadow: 0 20px 60px rgba(255, 102, 178, 0.28), 0 2px 8px rgba(255, 102, 178, 0.12);
+  box-shadow: 0 20px 60px rgba(var(--aura-accent-rgb), 0.22), 0 2px 8px rgba(var(--aura-accent-rgb), 0.10);
   position: relative;
   overflow: hidden;
 }
@@ -68,7 +72,7 @@ body {
   right: -60px;
   width: 160px;
   height: 160px;
-  background: radial-gradient(circle, rgba(255, 102, 178, 0.25), transparent 70%);
+  background: radial-gradient(circle, rgba(var(--aura-accent-rgb), 0.20), transparent 70%);
   pointer-events: none;
 }
 
@@ -76,16 +80,95 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 700;
-  font-size: 1.05rem;
-  color: var(--aura-accent-dark);
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .auth-brand i {
   width: 20px;
   height: 20px;
   stroke: var(--aura-accent);
+  flex-shrink: 0;
+}
+
+/* ---------- Mini animated wordmark ----------
+   A smaller, quicker cousin of landing.css's full-page reveal -- purely
+   decorative branding above the form, so it must never block or delay it.
+   Fully visible by default (progressive enhancement): these rules only take
+   effect once the inline bootstrap script in base.html's <head> marks
+   <html> js-enabled, and landing.js is what actually splits the text into
+   per-letter spans and adds .is-split. With JS disabled the wordmark is
+   just static text, always visible. */
+
+.auth-wordmark {
+  margin: 0;
+  display: inline-block;
+  font-size: clamp(1.15rem, 5.5vw, 1.45rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--aura-accent-dark);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.auth-wordmark .letter {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+.auth-wordmark .letter.is-space {
+  width: 0.22em;
+}
+
+html.js-enabled .auth-wordmark-letters {
+  opacity: 0;
+  animation: auth-word-fallback-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s forwards;
+}
+
+/* Once landing.js has split the word into individual letters it adds
+   .is-split, which hands the animating over to the per-letter spans below. */
+html.js-enabled .auth-wordmark-letters.is-split {
+  opacity: 1;
+  animation: none;
+}
+
+html.js-enabled .auth-wordmark-letters.is-split .letter {
+  opacity: 0;
+  animation: auth-letter-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation-delay: var(--delay, 0s);
+}
+
+/* Session-repeat visits and click/key/touch-to-skip both land here (see
+   landing.js) -- jumps any in-flight animation straight to its finished
+   state at once. */
+html.skip-anim .auth-wordmark-letters,
+html.skip-anim .auth-wordmark-letters.is-split .letter {
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+@keyframes auth-word-fallback-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes auth-letter-in {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.9); }
+  60%  { opacity: 1; transform: translateY(-1px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Belt-and-braces: even if JS mis-times something, reduced motion always wins. */
+@media (prefers-reduced-motion: reduce) {
+  html.js-enabled .auth-wordmark-letters,
+  html.js-enabled .auth-wordmark-letters.is-split .letter {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
 }
 
 .auth-heading {
@@ -134,7 +217,7 @@ body {
   padding: 13px 16px;
   border-radius: 16px;
   border: 2px solid var(--aura-border);
-  background: #fff9fb;
+  background: #f8fbff;
   color: var(--aura-text);
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -143,7 +226,7 @@ body {
 
 .auth-field input:focus {
   border-color: var(--aura-accent);
-  box-shadow: 0 0 0 4px rgba(255, 102, 178, 0.15);
+  box-shadow: 0 0 0 4px rgba(var(--aura-accent-rgb), 0.15);
 }
 
 .auth-field input.is-invalid {
@@ -234,12 +317,12 @@ body {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  box-shadow: 0 10px 24px rgba(255, 102, 178, 0.35);
+  box-shadow: 0 10px 24px rgba(var(--aura-accent-rgb), 0.32);
   transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
   text-decoration: none;
 }
 
-.auth-submit:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(255, 102, 178, 0.4); }
+.auth-submit:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(var(--aura-accent-rgb), 0.4); }
 .auth-submit:active { transform: translateY(0); }
 .auth-submit:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
 
@@ -323,7 +406,7 @@ body {
 .auth-card:has(.auth-message-icon) .auth-brand { justify-content: center; }
 
 .auth-footnote {
-  color: #6b4a58;
+  color: #4d6274;
   opacity: 0.75;
   font-size: 0.78rem;
   text-align: center;
