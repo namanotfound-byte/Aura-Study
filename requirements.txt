@@ -1,5 +1,23 @@
-flask
-cryptography
-requests
-python-dotenv
-pytest
+# Every entry pinned to an exact version (SPEC-PHASE3 PART B). Local dev and
+# Render both run Python 3.12 (see PART C / Phase 3 Python-upgrade note) via
+# `uv` (https://astral.sh/uv) -- Python 3.9 (macOS's system/Xcode CLT Python)
+# is no longer supported by this project; run.sh will refuse to build a venv
+# on anything older than 3.11. Re-run `pip-audit` after any bump.
+#
+# NOTE on pip-audit: as of this pin set (Python 3.12), pip-audit reports
+# ZERO known vulnerabilities in this dependency tree. The previous CVEs
+# (click, python-dotenv, pytest, requests, urllib3, setuptools, pip) were
+# all fixed by upgrading past the versions whose fixed releases required
+# Python >=3.10 -- which is exactly why the project moved off Python 3.9.
+flask==3.1.3
+werkzeug==3.1.8
+click==8.5.0
+cryptography==50.0.1
+requests==2.34.2
+urllib3==2.7.0
+python-dotenv==1.2.3
+pytest==9.1.1
+pgserver==0.1.4
+gunicorn==26.2.0
+psycopg[binary]==3.3.4
+psycopg_pool==3.3.1
