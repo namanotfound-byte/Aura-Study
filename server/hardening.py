@@ -163,6 +163,20 @@ def init_hardening(app: flask.Flask) -> None:
     cfg = get_config()
     app.config["MAX_CONTENT_LENGTH"] = cfg.max_content_length
 
+    # Flask's own signed session cookie is separate from the app's
+    # `aurastudy_session` login cookie, and it is not unused: the Spotify
+    # OAuth flow keeps its `state` and PKCE `code_verifier` in it across
+    # the redirect. Those are precisely the values that stop someone
+    # completing an OAuth authorisation on another user's behalf, so give
+    # it the same flags the login cookie already sets rather than leaving
+    # it on Flask's defaults (no Secure, no explicit SameSite).
+    # SameSite=Lax rather than Strict: the Spotify callback arrives as a
+    # top-level GET navigation from accounts.spotify.com, which Lax allows
+    # and Strict would block, breaking the flow.
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_SECURE"] = cfg.app_base_url.startswith("https")
+
     # Debug mode and the reloader must never be reachable via environment
     # variables in this app -- both leak stack traces/source and, for the
     # reloader, are not meant for a production process at all. Setting these
