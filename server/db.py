@@ -2,11 +2,41 @@
 
 Two backends are supported:
 
-- **PostgreSQL** (via `psycopg` v3 + a `psycopg_pool.ConnectionPool`) when the
-  `DATABASE_URL` env var is set. This is the production path (Neon).
+- **PostgreSQL** (via `psycopg` v3, a plain `psycopg.connect()` opened per
+  request) when the `DATABASE_URL` env var is set. This is the production
+  path (Neon).
 - **SQLite** (stdlib `sqlite3`) as a zero-config local-dev fallback when
   `DATABASE_URL` is unset, so `./run.sh` keeps working with no external
   database to stand up.
+
+There is deliberately no application-side connection pool. `DATABASE_URL` in
+production points at Neon's `-pooler` endpoint, which is PgBouncer running
+in front of the database -- a pool already sits between this app and
+Postgres, on Neon's side. Running an app-level `psycopg_pool.ConnectionPool`
+in front of that was a pool-in-front-of-a-pool, and it was actively
+dangerous: Neon's free tier drops idle connections, and the pool did not
+reliably reclaim the slot when that happened. Measured against the live
+database, probing after idle gaps:
+
+    t=0      pool_size=1  available=1  connections_lost=0
+    t=6min   pool_size=2  available=2  connections_lost=1
+    t=12min  pool_size=3  available=2  connections_lost=3   <- a slot leaked
+
+`pool_size` climbed while `available` lagged behind it. Once `pool_size`
+reached `max_size` with nothing available, every `getconn()` blocked for the
+full timeout and every DB-backed request 500'd until the process was
+restarted -- in production this showed up as healthy right after a deploy,
+fine under sustained traffic, and dead after any idle period, logging
+`PoolTimeout: couldn't get a connection after 45.00 sec` with no pool
+activity otherwise. A plain connection per request sidesteps the whole
+failure class: there is no pool state to leak, so there is nothing to leak.
+The app and database are in the same region (Singapore), so opening a fresh
+connection per request is cheap -- see the latency numbers this change was
+verified with. If a future change points `DATABASE_URL` at Neon's *direct*
+(non-pooled) endpoint instead, or moves to a region where connection setup
+is no longer cheap, an app-side pool may be worth reconsidering then -- but
+do not reintroduce one in front of the pooler endpoint without re-measuring
+the leak above.
 
 Every query in this codebase is written once, using `%s` placeholders (the
 psycopg / production style -- see spec PART A: "audit every single query").
@@ -28,7 +58,6 @@ import datetime
 import logging
 import re
 import sqlite3
-import threading
 
 import flask
 
@@ -262,140 +291,70 @@ def _sqlite_connect(database_path: str) -> _SqliteConnAdapter:
 
 
 # ---------------------------------------------------------------------------
-# Postgres adapter -- pooled connections
+# Postgres adapter -- one connection per request, no app-side pool
 # ---------------------------------------------------------------------------
-
-# One pool per DATABASE_URL, process-wide (keyed rather than a single global
-# so the test suite -- which spins up a fresh Postgres database per test --
-# can hold several pools alive at once and tear each down independently).
-_pg_pools = {}
-_pg_pools_lock = threading.Lock()
-
-
-def _get_pg_pool(database_url: str):
-    with _pg_pools_lock:
-        pool = _pg_pools.get(database_url)
-        if pool is None:
-            from psycopg.rows import dict_row
-            from psycopg_pool import ConnectionPool
-
-            # Sized for Render's free web tier: small and bounded. Neon also
-            # offers a separate pooled (pgbouncer) endpoint for serverless /
-            # high-connection-count clients; either DATABASE_URL works here,
-            # but prefer the *direct* (non-pooled) Neon connection string
-            # when running behind this app-level pool, and the *pooled*
-            # Neon endpoint only if this pool is bypassed (e.g. a one-off
-            # script). Using both stacked is fine but redundant.
-            pool = ConnectionPool(
-                conninfo=database_url,
-                # Neon's free tier suspends the compute after a few minutes
-                # idle, but Render pings /healthz every 5s, so the web process
-                # stays alive holding connections to a database that went to
-                # sleep underneath it. Without the settings below the pool
-                # hands out those dead connections forever and every
-                # DB-backed request hangs until the 30s default timeout --
-                # observed in production: the app 500'd on every DB route
-                # while /healthz stayed green, and only a redeploy cleared it.
-                #
-                # min_size=0   -> hold nothing while idle, so there are no
-                #                 connections to go stale in the first place.
-                # check=...    -> validate a connection before handing it out;
-                #                 a dead one is discarded and replaced instead
-                #                 of being served to a request.
-                # max_idle     -> retire idle connections well before Neon
-                #                 would suspend under them.
-                # max_lifetime -> bound total connection age.
-                # timeout=15   -> fail fast rather than hanging 30s; a Neon
-                #                 cold resume takes a few seconds, not thirty.
-                min_size=0,
-                max_size=5,
-                # Neon's free tier suspends the compute when idle, and a cold
-                # resume was measured at up to ~36s (deliberately suspended
-                # the endpoint and timed it). A shorter wait makes the pool
-                # give up *while the database is still booting* -- the
-                # connection attempt itself is what triggers the wake, so
-                # timing out here means every request after an idle period
-                # 500s even though nothing is actually broken. Wait longer
-                # than the worst observed resume, and stay under gunicorn's
-                # 60s request timeout.
-                timeout=45.0,
-                # Don't churn connections every minute; that forced a cold
-                # connect on almost every request after a quiet spell.
-                max_idle=300.0,
-                max_lifetime=1800.0,
-                check=ConnectionPool.check_connection,
-                kwargs={
-                    "connect_timeout": 30,
-                    "row_factory": dict_row,
-                    "autocommit": False,
-                    # Force the session timezone to UTC. Postgres always
-                    # stores TIMESTAMPTZ internally as UTC, but renders it
-                    # back to Python (and would render it in SQL text) in
-                    # whatever the session's TimeZone setting is -- without
-                    # this, a datetime read back from the same row as it was
-                    # written could show a non-UTC offset (e.g. the host
-                    # machine's local zone), which is confusing even though
-                    # it's the same instant. Keeps the "timezone-aware UTC
-                    # throughout" rule visibly true, not just technically true.
-                    "options": "-c TimeZone=UTC",
-                    # Disable psycopg3's automatic server-side prepared
-                    # statements (default: PREPARE after the same query text
-                    # has run 5 times on a connection -- `prepare_threshold`).
-                    # This app has no control over which Neon endpoint ends
-                    # up in DATABASE_URL: the operator may reasonably set it
-                    # to Neon's pooled (`-pooler`, PgBouncer-style
-                    # transaction-mode) endpoint, which is in fact the
-                    # deployed configuration. Transaction-mode poolers are
-                    # free to serve a client's next transaction from a
-                    # *different* backend server process than the one that
-                    # served its last -- a server-side PREPARE issued on
-                    # backend A is simply not there when psycopg later sends
-                    # EXECUTE for it against backend B, raising
-                    # "prepared statement ... does not exist". A pool of
-                    # sequential/lightly-concurrent connections opened during
-                    # testing may never observe this (Neon's pooler can stay
-                    # sticky to one backend when there's no contention for
-                    # it -- confirmed empirically: pg_backend_pid() stayed
-                    # constant across dozens of getconn/putconn cycles, both
-                    # sequential and with 8 concurrent threads against this
-                    # 5-connection pool), which is exactly what makes this
-                    # bug so dangerous: it can pass every test and then
-                    # surface only under real, higher-concurrency production
-                    # traffic. Setting prepare_threshold=None makes every
-                    # query a plain (unprepared) parameterised EXECUTE --
-                    # still fully parameterised/SQL-injection-safe, just
-                    # without the server-side-PREPARE optimisation -- which
-                    # is safe on both the pooled and direct Neon endpoints,
-                    # so there's no need to branch on which one is in use.
-                    "prepare_threshold": None,
-                },
-                open=True,
-            )
-            _pg_pools[database_url] = pool
-        return pool
+#
+# See the module docstring for why: Neon's `-pooler` endpoint is already
+# PgBouncer, an app-side pool stacked in front of it leaked slots whenever
+# Neon's free tier dropped an idle connection, and in-region connection
+# setup is cheap enough that opening one per request is not worth the risk
+# of reintroducing that failure class.
 
 
-def close_pg_pool(database_url: str) -> None:
-    """Close and forget the pool for a given DATABASE_URL. Not used by the
-    app itself (pools live for the process lifetime); the test suite calls
-    this in teardown after dropping a per-test database, since Postgres
-    refuses to DROP DATABASE while connections are still open against it."""
-    with _pg_pools_lock:
-        pool = _pg_pools.pop(database_url, None)
-    if pool is not None:
-        pool.close()
+def _pg_connect(database_url: str):
+    from psycopg.rows import dict_row
+    import psycopg
+
+    return psycopg.connect(
+        database_url,
+        # Fail fast rather than hang the whole gunicorn request timeout if
+        # the network path to Neon is broken. A cold Neon compute resume
+        # was measured at up to ~36s in production (server/db.py history),
+        # so this is generous enough to ride that out while still bounded.
+        connect_timeout=30,
+        row_factory=dict_row,
+        autocommit=False,
+        # Force the session timezone to UTC. Postgres always stores
+        # TIMESTAMPTZ internally as UTC, but renders it back to Python (and
+        # would render it in SQL text) in whatever the session's TimeZone
+        # setting is -- without this, a datetime read back from the same
+        # row as it was written could show a non-UTC offset (e.g. the host
+        # machine's local zone), which is confusing even though it's the
+        # same instant. Keeps the "timezone-aware UTC throughout" rule
+        # visibly true, not just technically true.
+        options="-c TimeZone=UTC",
+        # Disable psycopg3's automatic server-side prepared statements
+        # (default: PREPARE after the same query text has run 5 times on a
+        # connection -- `prepare_threshold`). `DATABASE_URL` in production
+        # points at Neon's pooled (`-pooler`, PgBouncer-style
+        # transaction-mode) endpoint. Transaction-mode poolers are free to
+        # serve a client's next transaction from a *different* backend
+        # server process than the one that served its last -- a
+        # server-side PREPARE issued on backend A is simply not there when
+        # psycopg later sends EXECUTE for it against backend B, raising
+        # "prepared statement ... does not exist". This is still required
+        # with per-request connections: each request is exactly the kind of
+        # short-lived client PgBouncer is free to bounce between backends,
+        # so the same statement text seen 5 times *within one connection's
+        # lifetime* (e.g. a request that queries the same table twice) can
+        # still trip it. Setting prepare_threshold=None makes every query a
+        # plain (unprepared) parameterised EXECUTE -- still fully
+        # parameterised/SQL-injection-safe, just without the
+        # server-side-PREPARE optimisation.
+        prepare_threshold=None,
+    )
 
 
 class _PgConnAdapter:
-    """Wraps a pooled psycopg connection to match the same `execute` /
-    `commit` / `rollback` / `close` surface as `_SqliteConnAdapter`. `close`
-    returns the connection to the pool rather than actually closing it."""
+    """Wraps a plain (non-pooled) psycopg connection to match the same
+    `execute` / `commit` / `rollback` / `close` surface as
+    `_SqliteConnAdapter`. `close` actually closes the underlying socket --
+    there is no pool to return the connection to."""
 
-    __slots__ = ("_pool", "_conn")
+    __slots__ = ("_conn",)
 
-    def __init__(self, pool):
-        self._pool = pool
-        self._conn = pool.getconn()
+    def __init__(self, database_url: str):
+        self._conn = _pg_connect(database_url)
 
     def execute(self, sql, params=()):
         return self._conn.execute(sql, params)
@@ -407,7 +366,7 @@ class _PgConnAdapter:
         self._conn.rollback()
 
     def close(self):
-        self._pool.putconn(self._conn)
+        self._conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -421,52 +380,30 @@ def _using_postgres(cfg) -> bool:
 def get_db():
     """Return the per-request connection, creating it on first use.
 
-    Postgres when `DATABASE_URL` is configured (pooled connection, returned
-    to the pool at teardown); SQLite otherwise (a plain file connection,
-    closed at teardown). Both expose the same `execute`/`commit` surface and
-    both return mapping-style rows (`row["col"]`).
+    Postgres when `DATABASE_URL` is configured (a fresh `psycopg.connect()`,
+    closed at teardown -- see the module docstring for why there is no
+    app-side pool); SQLite otherwise (a plain file connection, also closed
+    at teardown). Both expose the same `execute`/`commit` surface and both
+    return mapping-style rows (`row["col"]`).
     """
     if "db" not in flask.g:
         cfg = get_config()
         if _using_postgres(cfg):
-            pool = _get_pg_pool(cfg.database_url)
             try:
-                flask.g.db = _PgConnAdapter(pool)
-            except Exception:
-                # psycopg_pool reports an exhausted pool as a bare
-                # PoolTimeout ("couldn't get a connection after N sec"),
-                # which says nothing about *why* every connection attempt
-                # failed -- DNS, routing, TLS and a rejected password all
-                # look identical from here. Make one direct attempt purely
-                # to capture the real error in the logs, then re-raise the
-                # original. Only runs on the already-failing path.
-                _diag = logging.getLogger(__name__)
-                # Pool stats are what actually distinguish "every slot is
-                # checked out and never returned" from "the pool cannot
-                # create connections at all". Print them before anything
-                # else, since both look identical from the traceback.
-                try:
-                    _diag.error("DB DIAGNOSTIC pool stats: %r", pool.get_stats())
-                except Exception as _stats_exc:
-                    _diag.error("DB DIAGNOSTIC: pool stats unavailable: %s", _stats_exc)
-                try:
-                    import psycopg as _psycopg
-                    with _psycopg.connect(cfg.database_url, connect_timeout=10):
-                        _diag.error(
-                            "DB DIAGNOSTIC: pool timed out, but a direct "
-                            "connection then succeeded. Most likely the "
-                            "pool's own attempt woke a suspended compute "
-                            "and gave up before it finished booting; a "
-                            "genuinely exhausted pool is the other "
-                            "possibility. Check pool stats to tell them "
-                            "apart."
-                        )
-                except Exception as exc:
-                    _diag.error(
-                        "DB DIAGNOSTIC: direct connection failed -- %s: %s",
-                        type(exc).__name__,
-                        exc,
-                    )
+                flask.g.db = _PgConnAdapter(cfg.database_url)
+            except Exception as exc:
+                # A failed connection attempt gives no hint on its own
+                # whether the cause was DNS, routing, TLS, a rejected
+                # password, or Neon's compute still waking up -- log the
+                # exception type and message (never the connection string
+                # or anything derived from it, which could contain the
+                # password) before re-raising, so the real reason ends up
+                # in the logs instead of just "the request 500'd".
+                logging.getLogger(__name__).error(
+                    "DB DIAGNOSTIC: connection to Postgres failed -- %s: %s",
+                    type(exc).__name__,
+                    exc,
+                )
                 raise
         else:
             flask.g.db = _sqlite_connect(cfg.database_path)
@@ -478,9 +415,10 @@ def close_db(exception=None):
     if conn is not None:
         if exception is not None:
             # Best-effort: an unhandled error mid-request must not leave a
-            # half-committed transaction sitting on a pooled connection that
-            # gets reused by the next request. (psycopg_pool also resets
-            # connections on return, but don't rely solely on that.)
+            # half-committed transaction on a connection. There's no pool to
+            # reset it for us now that each request gets its own connection
+            # (previously psycopg_pool did this on return), so roll back
+            # explicitly before closing.
             try:
                 conn.rollback()
             except Exception:
@@ -493,13 +431,12 @@ def init_db(app: flask.Flask) -> None:
     teardown. Safe to call on every boot."""
     cfg = get_config()
     if _using_postgres(cfg):
-        pool = _get_pg_pool(cfg.database_url)
-        conn = pool.getconn()
+        conn = _pg_connect(cfg.database_url)
         try:
             conn.execute(PG_SCHEMA)
             conn.commit()
         finally:
-            pool.putconn(conn)
+            conn.close()
     else:
         conn = sqlite3.connect(cfg.database_path)
         try:

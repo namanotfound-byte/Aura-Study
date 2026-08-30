@@ -99,12 +99,12 @@ def _pg_test_database(pg_cluster):
     db_url = _make_test_db_url(admin_uri, dbname)
     yield db_url
 
-    # Release the app's pooled connection(s) to this database before
-    # dropping it -- Postgres refuses to DROP DATABASE while any session is
-    # still connected to it.
-    from server.db import close_pg_pool
-
-    close_pg_pool(db_url)
+    # The app no longer pools connections app-side (server/db.py opens one
+    # per request and closes it at teardown), so there's nothing to release
+    # here -- but a request that raised mid-test, or a fixture that grabbed
+    # `get_db()` directly, could in principle still be holding one open.
+    # Postgres refuses to DROP DATABASE while any session is still connected
+    # to it, so terminate any stragglers before dropping, same as before.
     with psycopg.connect(admin_uri, autocommit=True) as conn:
         conn.execute(
             "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "

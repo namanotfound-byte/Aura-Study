@@ -21,13 +21,16 @@ import os
 bind = "0.0.0.0:{}".format(os.environ.get("PORT", "10000"))
 
 # 2 worker *processes* is the ceiling that's actually sane on a 512 MB
-# instance once you account for each worker holding its own Postgres
-# connection pool (server/db.py sizes that pool at up to 5 connections per
-# process -- 2 workers x 5 = 10 max, comfortably under Neon free tier's
-# connection limit). Threads (not more processes) absorb concurrent
-# requests within that memory budget -- this workload is I/O-bound
-# (Postgres, SMTP, Spotify's API) so threads spend most of their time
-# blocked on network I/O, which the GIL releases for.
+# instance. server/db.py opens one Postgres connection per request rather
+# than pooling them app-side (see that module's docstring for why -- Neon's
+# `-pooler` endpoint is already PgBouncer, and an app-side pool in front of
+# it used to leak connection slots), so the per-worker connection count
+# tracks concurrent in-flight requests (workers x threads = 2 x 4 = 8 max)
+# rather than a fixed pool size -- comfortably under Neon free tier's
+# connection limit. Threads (not more processes) absorb concurrent requests
+# within that memory budget -- this workload is I/O-bound (Postgres, SMTP,
+# Spotify's API) so threads spend most of their time blocked on network
+# I/O, which the GIL releases for.
 workers = 2
 threads = 4
 worker_class = "gthread"
@@ -48,21 +51,20 @@ errorlog = "-"
 loglevel = "info"
 
 # Recycle each worker after a while to bound the effect of any slow memory
-# growth over the process lifetime (e.g. from long-lived pooled
-# connections) -- cheap insurance on a memory-constrained instance. The
-# jitter staggers restarts across workers so they don't all recycle in the
-# same instant.
+# growth over the process lifetime -- cheap insurance on a
+# memory-constrained instance. The jitter staggers restarts across workers
+# so they don't all recycle in the same instant.
 max_requests = 500
 max_requests_jitter = 50
 
 # IMPORTANT: leave preload_app at its default (False) -- do not set it to
-# True. server/db.py's init_db() opens a psycopg_pool.ConnectionPool
-# (background maintenance threads + live sockets) at app-factory time.
-# preload_app=True would build that pool once in gunicorn's master process
-# *before* forking the workers; forking a process that already has open
-# sockets and background threads is unsafe (the pool's maintenance threads
-# do not survive fork(), and workers could share or corrupt the parent's
-# connections). With the default, each worker process imports the app and
-# runs create_app() itself, *after* forking, so each worker gets its own
-# independent, correctly-initialised pool.
+# True. server/db.py's init_db() opens a Postgres connection (a live socket)
+# at app-factory time to create the schema. preload_app=True would do that
+# once in gunicorn's master process *before* forking the workers; forking a
+# process that already holds an open socket is unsafe (the fork does not
+# duplicate the connection cleanly, and workers could share or corrupt the
+# parent's connection). With the default, each worker process imports the
+# app and runs create_app() itself, *after* forking, so each worker opens
+# its own independent connection for schema init and for each request it
+# serves afterward.
 preload_app = False

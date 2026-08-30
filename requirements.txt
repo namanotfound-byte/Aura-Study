@@ -20,4 +20,3 @@ pytest==9.1.1
 pgserver==0.1.4
 gunicorn==26.2.0
 psycopg[binary]==3.3.4
-psycopg_pool==3.3.1
