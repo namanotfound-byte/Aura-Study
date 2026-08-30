@@ -12,6 +12,7 @@ from .state import bp as state_bp
 from .spotify import bp as spotify_bp
 from .config import get_config
 from .db import init_db, get_db
+from .hardening import init_hardening
 from .security import (
     ApiError,
     current_user,
@@ -37,6 +38,11 @@ def create_app() -> flask.Flask:
         static_url_path="/static",
     )
     app.secret_key = cfg.secret_key
+
+    # ProxyFix, security headers, MAX_CONTENT_LENGTH, and locking down
+    # debug/reloader -- see server/hardening.py. Applied before the routes
+    # below so every response (including error responses) gets the headers.
+    init_hardening(app)
 
     init_db(app)
 
@@ -104,7 +110,7 @@ def _register_page_routes(app: flask.Flask) -> None:
         detail = "This verification link is invalid. Please request a new one from the login page."
 
         row = db.execute(
-            "SELECT * FROM email_tokens WHERE token_hash = ? AND purpose = 'verify'",
+            "SELECT * FROM email_tokens WHERE token_hash = %s AND purpose = 'verify'",
             (hash_token(raw_token),),
         ).fetchone() if raw_token else None
 
@@ -119,11 +125,14 @@ def _register_page_routes(app: flask.Flask) -> None:
             detail = "Verification links expire after 24 hours. Request a new one from the login page."
         else:
             from .db import utcnow_iso
-            db.execute("UPDATE users SET is_verified = 1 WHERE id = ?", (row["user_id"],))
-            db.execute("UPDATE email_tokens SET used_at = ? WHERE id = ?", (utcnow_iso(), row["id"]))
+            # is_verified is a real BOOLEAN column on Postgres -- an integer
+            # literal `1` is rejected outright ("column is of type boolean
+            # but expression is of type integer"), so bind a Python bool.
+            db.execute("UPDATE users SET is_verified = %s WHERE id = %s", (True, row["user_id"]))
+            db.execute("UPDATE email_tokens SET used_at = %s WHERE id = %s", (utcnow_iso(), row["id"]))
             db.commit()
             success = True
-            heading = "You're verified! ✨"
+            heading = "You're verified"
             detail = "Your email is confirmed -- you can log in now and start studying."
 
         return flask.render_template(
@@ -134,4 +143,7 @@ def _register_page_routes(app: flask.Flask) -> None:
 if __name__ == "__main__":
     cfg = get_config()
     app = create_app()
-    app.run(host="127.0.0.1", port=cfg.port, debug=False)
+    # debug/use_reloader are hardcoded, not read from any env var -- see
+    # server/hardening.py:init_hardening for why. This __main__ block is
+    # local-dev-only; production runs under gunicorn (PART C), never this.
+    app.run(host="127.0.0.1", port=cfg.port, debug=False, use_reloader=False)

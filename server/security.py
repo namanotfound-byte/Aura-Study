@@ -6,12 +6,15 @@ import datetime
 import functools
 import hashlib
 import hmac
+import logging
 import re
 import secrets
+import sqlite3
 from typing import Optional
 from urllib.parse import quote
 
 import flask
+import requests
 from cryptography.fernet import Fernet
 
 from .config import get_config
@@ -25,6 +28,19 @@ MAX_PASSWORD_LENGTH = 200
 MIN_PASSWORD_LENGTH = 8
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+_log = logging.getLogger("aurastudy.security")
+
+# psycopg is a hard dependency (requirements.txt), but keep this import
+# defensive rather than assuming it -- a missing/broken psycopg install
+# should surface as an ImportError where it's actually used (server/db.py),
+# not here.
+try:
+    import psycopg
+
+    INTEGRITY_ERRORS = (sqlite3.IntegrityError, psycopg.IntegrityError)
+except ImportError:  # pragma: no cover - psycopg is always installed per requirements.txt
+    INTEGRITY_ERRORS = (sqlite3.IntegrityError,)
 
 
 class ApiError(Exception):
@@ -100,7 +116,7 @@ def create_session(user_id: int, user_agent: Optional[str]) -> str:
     expires = now + datetime.timedelta(days=SESSION_LIFETIME_DAYS)
     db.execute(
         "INSERT INTO sessions (user_id, token_hash, created_at, expires_at, user_agent) "
-        "VALUES (?, ?, ?, ?, ?)",
+        "VALUES (%s, %s, %s, %s, %s)",
         (user_id, hash_token(raw), now.isoformat(), expires.isoformat(), user_agent),
     )
     db.commit()
@@ -109,7 +125,7 @@ def create_session(user_id: int, user_agent: Optional[str]) -> str:
 
 def delete_session_by_token(raw: str) -> None:
     db = get_db()
-    db.execute("DELETE FROM sessions WHERE token_hash = ?", (hash_token(raw),))
+    db.execute("DELETE FROM sessions WHERE token_hash = %s", (hash_token(raw),))
     db.commit()
 
 
@@ -119,11 +135,11 @@ def delete_other_sessions(user_id: int, keep_raw_token: Optional[str] = None) ->
     db = get_db()
     if keep_raw_token:
         db.execute(
-            "DELETE FROM sessions WHERE user_id = ? AND token_hash != ?",
+            "DELETE FROM sessions WHERE user_id = %s AND token_hash != %s",
             (user_id, hash_token(keep_raw_token)),
         )
     else:
-        db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM sessions WHERE user_id = %s", (user_id,))
     db.commit()
 
 
@@ -159,22 +175,24 @@ def _resolve_user_from_cookie():
         return None
     db = get_db()
     session_row = db.execute(
-        "SELECT * FROM sessions WHERE token_hash = ?", (hash_token(token),)
+        "SELECT * FROM sessions WHERE token_hash = %s", (hash_token(token),)
     ).fetchone()
     if session_row is None:
         return None
     if parse_iso(session_row["expires_at"]) <= utcnow():
-        db.execute("DELETE FROM sessions WHERE id = ?", (session_row["id"],))
+        db.execute("DELETE FROM sessions WHERE id = %s", (session_row["id"],))
         db.commit()
         return None
     return db.execute(
-        "SELECT * FROM users WHERE id = ?", (session_row["user_id"],)
+        "SELECT * FROM users WHERE id = %s", (session_row["user_id"],)
     ).fetchone()
 
 
 def current_user():
-    """-> Optional[sqlite3.Row]. Resolves (and caches on flask.g) the user for
-    the current request's session cookie, independent of `login_required`."""
+    """-> Optional mapping-like row (sqlite3.Row on SQLite, a dict via
+    psycopg's dict_row on Postgres). Resolves (and caches on flask.g) the
+    user for the current request's session cookie, independent of
+    `login_required`."""
     if "user" not in flask.g:
         flask.g.user = _resolve_user_from_cookie()
     return flask.g.user
@@ -218,10 +236,10 @@ def require_csrf() -> None:
 def record_attempt(key: str) -> None:
     db = get_db()
     db.execute(
-        "INSERT INTO auth_attempts (key, created_at) VALUES (?, ?)", (key, utcnow_iso())
+        "INSERT INTO auth_attempts (key, created_at) VALUES (%s, %s)", (key, utcnow_iso())
     )
     cutoff = (utcnow() - datetime.timedelta(hours=24)).isoformat()
-    db.execute("DELETE FROM auth_attempts WHERE created_at < ?", (cutoff,))
+    db.execute("DELETE FROM auth_attempts WHERE created_at < %s", (cutoff,))
     db.commit()
 
 
@@ -229,7 +247,7 @@ def count_attempts(key: str, since_minutes: int) -> int:
     db = get_db()
     cutoff = (utcnow() - datetime.timedelta(minutes=since_minutes)).isoformat()
     row = db.execute(
-        "SELECT COUNT(*) AS c FROM auth_attempts WHERE key = ? AND created_at >= ?",
+        "SELECT COUNT(*) AS c FROM auth_attempts WHERE key = %s AND created_at >= %s",
         (key, cutoff),
     ).fetchone()
     return row["c"]
@@ -247,3 +265,84 @@ def encrypt_token(plaintext: str) -> str:
 
 def decrypt_token(ciphertext: str) -> str:
     return _fernet().decrypt(ciphertext.encode("utf-8")).decode("utf-8")
+
+
+# --------------------------------------------------------- breached passwords
+
+HIBP_RANGE_URL = "https://api.pwnedpasswords.com/range/{}"
+HIBP_TIMEOUT_SECONDS = 3
+
+
+def is_password_breached(password: str) -> bool:
+    """Have I Been Pwned k-anonymity check: only the first 5 hex characters
+    of the password's SHA-1 hash are ever sent -- never the password, never
+    the full hash. HIBP returns every suffix sharing that prefix (with a
+    count), and the match happens locally.
+
+    Fails OPEN: any network error, timeout, or non-2xx response logs a
+    warning and returns False (not breached) rather than blocking the
+    caller -- a third-party outage must never prevent registration/reset.
+    """
+    sha1 = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
+    prefix, suffix = sha1[:5], sha1[5:]
+    try:
+        resp = requests.get(
+            HIBP_RANGE_URL.format(prefix),
+            timeout=HIBP_TIMEOUT_SECONDS,
+            # Asks HIBP to pad the response with decoy entries so a passive
+            # network observer can't infer the k-anonymity set size (and
+            # thus narrow down the password) from the response length alone.
+            headers={"Add-Padding": "true"},
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        _log.warning("HIBP breached-password check unreachable, failing open: %s", exc)
+        return False
+
+    for line in resp.text.splitlines():
+        candidate, _, _count = line.strip().partition(":")
+        if candidate == suffix:
+            return True
+    return False
+
+
+# ------------------------------------------------------------ login lockout
+
+# Layered on top of the flat "10 failed logins per email per 15 minutes ->
+# 429 rate_limited" check already in auth.py:login(). This adds a *growing*
+# delay between attempts as failures accumulate, so an attacker can't simply
+# burn through the flat allowance as fast as the network allows -- while a
+# genuine user who mistypes a password 2-3 times sees no friction at all.
+LOCKOUT_THRESHOLD = 5          # backoff engages once this many recent failures exist
+LOCKOUT_WINDOW_MINUTES = 2     # only failures this fresh count toward backoff
+LOCKOUT_BASE_SECONDS = 2
+LOCKOUT_MAX_SECONDS = 5 * 60   # cap so a very old burst can't lock an account out indefinitely
+
+
+def lockout_seconds_remaining(rate_key: str) -> int:
+    """Seconds the caller must still wait before another login attempt for
+    this `rate_key` (see auth.py's "login:<email>" keys), or 0 if not
+    currently locked out. Reads the same `auth_attempts` table that
+    record_attempt()/count_attempts() already write -- no separate storage.
+
+    Backoff = min(BASE * 2^(fails - THRESHOLD), MAX) seconds since the most
+    recent failure, where `fails` is the count of failures within the last
+    LOCKOUT_WINDOW_MINUTES. Older failures age out of the window and stop
+    counting, so a stale burst from an hour ago doesn't lock anyone out now.
+    """
+    db = get_db()
+    window_cutoff = (utcnow() - datetime.timedelta(minutes=LOCKOUT_WINDOW_MINUTES)).isoformat()
+    rows = db.execute(
+        "SELECT created_at FROM auth_attempts WHERE key = %s AND created_at >= %s "
+        "ORDER BY created_at DESC",
+        (rate_key, window_cutoff),
+    ).fetchall()
+    fails = len(rows)
+    if fails < LOCKOUT_THRESHOLD:
+        return 0
+
+    backoff = min(LOCKOUT_BASE_SECONDS * (2 ** (fails - LOCKOUT_THRESHOLD)), LOCKOUT_MAX_SECONDS)
+    last_fail = parse_iso(rows[0]["created_at"])
+    elapsed = (utcnow() - last_fail).total_seconds()
+    remaining = backoff - elapsed
+    return int(remaining) + 1 if remaining > 0 else 0

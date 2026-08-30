@@ -1,8 +1,11 @@
 """Tests for server/auth.py -- register/verify/login/logout/me, resend,
 forgot/reset, change-password, CSRF and rate limiting. See spec section 10.
 """
+import datetime
 import json
 import re
+
+from server.security import is_password_breached as _real_is_password_breached
 
 JSON_HEADERS = {"X-Requested-With": "XMLHttpRequest"}
 
@@ -43,6 +46,26 @@ def _verify_user(client, outbox, email="user@example.com", password="pw123456"):
     register(client, email=email, password=password)
     token = latest_link_token(outbox)
     client.get("/verify?token={}".format(token))
+
+
+def _defuse_backoff(app, rate_key):
+    """Push every recorded auth_attempts row for `rate_key` back in time far
+    enough to fall outside the login exponential-backoff's short lockout
+    window, while staying well inside the flat rate limiter's 15-minute
+    window. Lets a test drive the flat limiter to its exact boundary without
+    tripping the (separately, directly tested) backoff, and without a real
+    sleep."""
+    with app.app_context():
+        from server.db import get_db
+        from server.security import LOCKOUT_WINDOW_MINUTES
+
+        db = get_db()
+        aged = (
+            datetime.datetime.now(datetime.timezone.utc)
+            - datetime.timedelta(minutes=LOCKOUT_WINDOW_MINUTES + 1)
+        ).isoformat()
+        db.execute("UPDATE auth_attempts SET created_at = %s WHERE key = %s", (aged, rate_key))
+        db.commit()
 
 
 # --------------------------------------------------------------------- register
@@ -108,6 +131,149 @@ def test_register_requires_csrf_header(client):
         content_type="application/json",
     )
     assert resp.status_code == 403
+
+
+def test_register_rejects_breached_password(client, monkeypatch):
+    """The `_stub_hibp` autouse fixture (conftest.py) makes every password
+    "not breached" by default; override it here to prove a breached password
+    is actually rejected, without ever touching the real HIBP API.
+
+    Patches `server.auth.is_password_breached` specifically: auth.py does
+    `from .security import is_password_breached`, which binds its own name
+    at import time, so patching security.py's copy of the name (as the
+    autouse fixture also does) does not affect what the route itself calls.
+    """
+    import server.auth as auth_module
+
+    monkeypatch.setattr(auth_module, "is_password_breached", lambda pw: True)
+    resp = client.post(
+        "/api/auth/register",
+        data=json.dumps({"email": "pwned@example.com", "password": "pw123456"}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["error"] == "password_breached"
+
+
+def test_breached_password_registrations_still_count_against_rate_limit(client, monkeypatch):
+    """Regression test for a gap found in security review: record_attempt()
+    for the per-IP register limiter used to run AFTER the is_password_breached()
+    check, so a request rejected for a breached password never counted
+    against the limit. Since HIBP is a real outbound network call, that let
+    an unauthenticated caller force unlimited HIBP requests (and tie up a
+    worker thread on each) by always sending a common breached password,
+    completely bypassing the "5 registrations per IP per hour" limit. Each
+    of these 5 requests is rejected as breached, but must still count -- the
+    6th must be rate-limited, not another 400 password_breached."""
+    import server.auth as auth_module
+
+    monkeypatch.setattr(auth_module, "is_password_breached", lambda pw: True)
+    for i in range(5):
+        resp = client.post(
+            "/api/auth/register",
+            data=json.dumps({"email": "pwned{}@example.com".format(i), "password": "pw123456"}),
+            content_type="application/json",
+            headers=JSON_HEADERS,
+        )
+        assert resp.status_code == 400
+        assert resp.get_json()["error"] == "password_breached"
+
+    resp = client.post(
+        "/api/auth/register",
+        data=json.dumps({"email": "pwned-sixth@example.com", "password": "pw123456"}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert resp.status_code == 429
+    assert resp.get_json()["error"] == "rate_limited"
+
+
+def test_hibp_check_fails_open_when_unreachable(monkeypatch):
+    """Unit-level test of the real is_password_breached implementation
+    (captured as `_real_is_password_breached` above, before the autouse
+    stub replaces `server.security.is_password_breached` for the duration
+    of each test): a network failure talking to HIBP must be swallowed and
+    treated as "not breached", never raised, and the real network must never
+    be touched -- `requests.get` is mocked to raise."""
+    import requests
+
+    import server.security as security_module
+
+    def _boom(*args, **kwargs):
+        raise requests.exceptions.ConnectTimeout("simulated HIBP outage")
+
+    monkeypatch.setattr(security_module.requests, "get", _boom)
+    assert _real_is_password_breached("whatever-password-1") is False
+
+
+def test_hibp_check_detects_breach_from_mocked_response(monkeypatch):
+    """Unit-level test proving a genuine match in the (mocked) HIBP response
+    is detected, and that only the 5-char SHA-1 prefix -- never the password
+    or full hash -- is sent."""
+    import hashlib
+
+    import server.security as security_module
+
+    password = "correcthorsebatterystaple"
+    sha1 = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
+    prefix, suffix = sha1[:5], sha1[5:]
+
+    class _FakeResponse:
+        text = "{}:{}\nDEADBEEF00000000000000000000000000:1".format(suffix, 42)
+
+        def raise_for_status(self):
+            pass
+
+    captured = {}
+
+    def _fake_get(url, timeout=None, headers=None):
+        captured["url"] = url
+        captured["prefix_sent"] = prefix in url
+        captured["full_hash_sent"] = sha1 in url
+        return _FakeResponse()
+
+    monkeypatch.setattr(security_module.requests, "get", _fake_get)
+    assert _real_is_password_breached(password) is True
+    assert captured["prefix_sent"] is True
+    assert captured["full_hash_sent"] is False
+
+
+def test_concurrent_duplicate_registration_returns_generic_202_not_500(client, outbox, monkeypatch):
+    """Two registrations racing for the same email: the second one's
+    duplicate-email pre-check can lose the race and see nothing, so it falls
+    through to the INSERT, which then hits the database's own
+    `lower(email)` uniqueness constraint. That must be caught and turned
+    into the same generic 202 as the normal "already registered" path, never
+    an unhandled 500 -- and, being identical either way, this also can't be
+    used to detect the race (email enumeration).
+
+    Simulated deterministically (rather than relying on real thread timing)
+    by monkeypatching the pre-check helper to report "not found" even though
+    the row already exists, exactly reproducing the race window.
+    """
+    import server.auth as auth_module
+
+    resp1 = register(client, email="race@example.com", password="pw123456")
+    assert resp1.status_code == 202
+    outbox.clear()
+
+    monkeypatch.setattr(auth_module, "_user_exists", lambda db, email: False)
+
+    resp2 = register(client, email="race@example.com", password="pw123456")
+    assert resp2.status_code == 202
+    assert resp2.get_json()["message"] == auth_module.REGISTER_MESSAGE
+    assert len(outbox) == 0  # no duplicate verification email sent
+
+    # Exactly one user row exists -- the losing INSERT was rolled back, not
+    # left half-applied.
+    with client.application.app_context():
+        from server.db import get_db
+
+        count = get_db().execute(
+            "SELECT COUNT(*) AS c FROM users WHERE email = %s", ("race@example.com",)
+        ).fetchone()["c"]
+    assert count == 1
 
 
 # ------------------------------------------------------- verification gating
@@ -211,6 +377,38 @@ def test_resend_verification_is_generic_and_works(client, outbox):
     assert len(outbox) == 0
 
 
+def test_resend_verification_is_rate_limited_per_email(client, outbox):
+    """Regression test: resend-verification previously had NO rate limit at
+    all. Being unauthenticated and triggering a real SMTP send, that let
+    anyone script an unbounded loop of requests against one victim's address
+    -- either to spam their inbox or, at scale, to burn through the whole
+    app's daily email-provider quota (Brevo's free tier is 300/day) so no
+    verification or reset email gets through for *any* user. 3 requests for
+    the same email should succeed (each actually emails); the 4th within the
+    hour must be rejected before ever calling the mailer."""
+    register(client)
+    outbox.clear()
+    for _ in range(3):
+        resp = client.post(
+            "/api/auth/resend-verification",
+            data=json.dumps({"email": "user@example.com"}),
+            content_type="application/json",
+            headers=JSON_HEADERS,
+        )
+        assert resp.status_code == 202
+    assert len(outbox) == 3
+
+    resp = client.post(
+        "/api/auth/resend-verification",
+        data=json.dumps({"email": "user@example.com"}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert resp.status_code == 429
+    assert resp.get_json()["error"] == "rate_limited"
+    assert len(outbox) == 3  # the 4th request never reached the mailer
+
+
 # --------------------------------------------------- login failures / limits
 
 def test_wrong_password_returns_401(client, outbox):
@@ -218,6 +416,36 @@ def test_wrong_password_returns_401(client, outbox):
     resp = login(client, "user@example.com", "wrongpassword1")
     assert resp.status_code == 401
     assert resp.get_json()["error"] == "invalid_credentials"
+
+
+def test_login_pays_pbkdf2_cost_for_nonexistent_email(client, monkeypatch):
+    """Regression test for a timing side-channel found in security review:
+    login() used to call verify_password() (a real PBKDF2-240k check) only
+    when a user row was found, so a nonexistent email returned in roughly
+    the time of one indexed SELECT while a wrong password for a real account
+    paid the full hashing cost -- a measurable difference an attacker could
+    use to enumerate registered emails via response *timing*, even though
+    the response *body* ("invalid_credentials") is identical either way.
+
+    Rather than asserting on wall-clock time (flaky in CI), this asserts on
+    the actual mechanism of the fix: verify_password() must now be called
+    exactly once whether or not the email exists, so both branches do the
+    same PBKDF2 work."""
+    import server.auth as auth_module
+
+    calls = []
+    real_verify = auth_module.verify_password
+
+    def counting_verify(pw, stored):
+        calls.append(stored)
+        return real_verify(pw, stored)
+
+    monkeypatch.setattr(auth_module, "verify_password", counting_verify)
+
+    resp = login(client, "nobody-like-this-exists@example.com", "whatever123")
+    assert resp.status_code == 401
+    assert resp.get_json()["error"] == "invalid_credentials"
+    assert len(calls) == 1  # verify_password ran even though no user matched
 
 
 def test_login_validation_error_on_missing_fields(client):
@@ -231,14 +459,43 @@ def test_login_validation_error_on_missing_fields(client):
     assert resp.get_json()["error"] == "validation_error"
 
 
-def test_eleven_bad_attempts_rate_limited(client, outbox):
+def test_eleven_bad_attempts_rate_limited(client, outbox, app):
     _verify_user(client, outbox)
+    # The exponential backoff added on top of this flat limit (tested
+    # separately below) would otherwise start blocking these with
+    # "account_locked" well before the 10th attempt -- age each failure out
+    # of the backoff's short window immediately so this exercises the flat
+    # 10-per-15-minutes limiter specifically, same as before backoff existed.
+    rate_key = "login:user@example.com"
     for _ in range(10):
         resp = login(client, "user@example.com", "wrongpassword1")
         assert resp.status_code == 401
+        _defuse_backoff(app, rate_key)
     resp = login(client, "user@example.com", "wrongpassword1")
     assert resp.status_code == 429
     assert resp.get_json()["error"] == "rate_limited"
+
+
+def test_repeated_bad_logins_trigger_exponential_backoff(client, outbox):
+    """New in PART B: on top of the flat rate limit above, a run of failures
+    close together triggers a growing lockout keyed to the account, distinct
+    from (and reached well before) the flat limit."""
+    _verify_user(client, outbox)
+    for _ in range(5):
+        resp = login(client, "user@example.com", "wrongpassword1")
+        assert resp.status_code == 401
+
+    resp = login(client, "user@example.com", "wrongpassword1")
+    assert resp.status_code == 429
+    assert resp.get_json()["error"] == "account_locked"
+    assert "Retry-After" in resp.headers
+    assert int(resp.headers["Retry-After"]) > 0
+
+    # Even the *correct* password is refused while locked out -- this is a
+    # lockout on the account, not just another failed-credentials check.
+    resp = login(client, "user@example.com", "pw123456")
+    assert resp.status_code == 429
+    assert resp.get_json()["error"] == "account_locked"
 
 
 def test_login_requires_csrf_header(client, outbox):
@@ -323,6 +580,61 @@ def test_forgot_password_unknown_email_is_generic(client, outbox):
     assert len(outbox) == 0
 
 
+def test_forgot_password_is_rate_limited_per_email(client, outbox):
+    """Same gap as resend-verification, same endpoint class: forgot-password
+    is unauthenticated, sends a real email, and previously had no rate limit
+    -- unbounded requests for one address either harasses that user or burns
+    the shared Brevo quota for everyone. 3 requests succeed; the 4th is
+    rejected before a reset email goes out."""
+    _verify_user(client, outbox)
+    outbox.clear()
+    for _ in range(3):
+        resp = client.post(
+            "/api/auth/forgot-password",
+            data=json.dumps({"email": "user@example.com"}),
+            content_type="application/json",
+            headers=JSON_HEADERS,
+        )
+        assert resp.status_code == 202
+    assert len(outbox) == 3
+
+    resp = client.post(
+        "/api/auth/forgot-password",
+        data=json.dumps({"email": "user@example.com"}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert resp.status_code == 429
+    assert resp.get_json()["error"] == "rate_limited"
+    assert len(outbox) == 3
+
+
+def test_forgot_password_is_rate_limited_per_ip_across_emails(client, outbox):
+    """The per-email limit above wouldn't stop an attacker who spreads
+    requests across many different (e.g. guessed or enumerated) target
+    addresses from the same IP -- a separate per-IP counter bounds that. 5
+    requests to 5 different addresses succeed (register()'s own IP limit is
+    also 5/hour but keyed independently under "register_ip:", so it doesn't
+    interfere here); the 6th, a 6th distinct address, is rejected."""
+    for i in range(5):
+        resp = client.post(
+            "/api/auth/forgot-password",
+            data=json.dumps({"email": "nobody{}@example.com".format(i)}),
+            content_type="application/json",
+            headers=JSON_HEADERS,
+        )
+        assert resp.status_code == 202
+
+    resp = client.post(
+        "/api/auth/forgot-password",
+        data=json.dumps({"email": "nobody-sixth@example.com"}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert resp.status_code == 429
+    assert resp.get_json()["error"] == "rate_limited"
+
+
 def test_reset_password_rejects_used_token(client, outbox):
     _verify_user(client, outbox)
     outbox.clear()
@@ -403,6 +715,86 @@ def test_reset_password_rejects_weak_password(client, outbox):
     assert resp.get_json()["error"] == "validation_error"
 
 
+def test_reset_password_rejects_breached_password(client, outbox, monkeypatch):
+    # See test_register_rejects_breached_password for why this patches
+    # server.auth's bound name, not server.security's.
+    import server.auth as auth_module
+
+    _verify_user(client, outbox)
+    outbox.clear()
+    client.post(
+        "/api/auth/forgot-password",
+        data=json.dumps({"email": "user@example.com"}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    reset_token = extract_token(outbox[-1]["text"])
+
+    monkeypatch.setattr(auth_module, "is_password_breached", lambda pw: True)
+    resp = client.post(
+        "/api/auth/reset-password",
+        data=json.dumps({"token": reset_token, "password": "newpassword1"}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["error"] == "password_breached"
+
+
+def test_reset_password_checks_token_before_calling_hibp(client, monkeypatch):
+    """Regression test for a DoS/quota-burning gap found in security review:
+    reset-password used to call is_password_breached() (a real outbound HTTP
+    request to HIBP) BEFORE looking up the token at all, so a garbage token
+    with a syntactically-valid password still triggered a network call --
+    meaning this *unauthenticated* endpoint could be hit with an unbounded
+    stream of nonsense tokens purely to force outbound HTTP requests and tie
+    up worker threads, no valid token or account knowledge required.
+
+    The fix reorders token validation ahead of the breach check; assert the
+    mechanism directly: with an invalid token, is_password_breached() must
+    never be called, and the response is the token error, not a breach or
+    HIBP-related one."""
+    import server.auth as auth_module
+
+    calls = []
+    monkeypatch.setattr(auth_module, "is_password_breached", lambda pw: calls.append(pw) or False)
+
+    resp = client.post(
+        "/api/auth/reset-password",
+        data=json.dumps({"token": "not-a-real-token", "password": "whatever123"}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["error"] == "invalid_token"
+    assert calls == []  # HIBP was never reached for a token that was never valid
+
+
+def test_reset_password_is_rate_limited_per_ip(client):
+    """Defense in depth alongside the reordering above: this endpoint is
+    unauthenticated, so bound the sheer number of attempts (valid token or
+    not) any one source can make per hour, independent of which token or
+    password is submitted."""
+    for _ in range(20):
+        resp = client.post(
+            "/api/auth/reset-password",
+            data=json.dumps({"token": "garbage-token", "password": "whatever123"}),
+            content_type="application/json",
+            headers=JSON_HEADERS,
+        )
+        assert resp.status_code == 400
+        assert resp.get_json()["error"] == "invalid_token"
+
+    resp = client.post(
+        "/api/auth/reset-password",
+        data=json.dumps({"token": "garbage-token", "password": "whatever123"}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert resp.status_code == 429
+    assert resp.get_json()["error"] == "rate_limited"
+
+
 # ---------------------------------------------------------- change password
 
 def test_change_password_flow(client, outbox):
@@ -435,6 +827,23 @@ def test_change_password_wrong_current_returns_401(client, outbox):
         headers=JSON_HEADERS,
     )
     assert resp.status_code == 401
+
+
+def test_change_password_rejects_breached_password(client, outbox, monkeypatch):
+    import server.auth as auth_module
+
+    _verify_user(client, outbox)
+    login(client, "user@example.com", "pw123456")
+
+    monkeypatch.setattr(auth_module, "is_password_breached", lambda pw: True)
+    resp = client.post(
+        "/api/auth/change-password",
+        data=json.dumps({"current_password": "pw123456", "new_password": "brandnew1"}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["error"] == "password_breached"
 
 
 def test_change_password_requires_login(client):
