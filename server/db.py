@@ -309,12 +309,23 @@ def _get_pg_pool(database_url: str):
                 #                 cold resume takes a few seconds, not thirty.
                 min_size=0,
                 max_size=5,
-                timeout=15.0,
-                max_idle=60.0,
+                # Neon's free tier suspends the compute when idle, and a cold
+                # resume was measured at up to ~36s (deliberately suspended
+                # the endpoint and timed it). A shorter wait makes the pool
+                # give up *while the database is still booting* -- the
+                # connection attempt itself is what triggers the wake, so
+                # timing out here means every request after an idle period
+                # 500s even though nothing is actually broken. Wait longer
+                # than the worst observed resume, and stay under gunicorn's
+                # 60s request timeout.
+                timeout=45.0,
+                # Don't churn connections every minute; that forced a cold
+                # connect on almost every request after a quiet spell.
+                max_idle=300.0,
                 max_lifetime=1800.0,
                 check=ConnectionPool.check_connection,
                 kwargs={
-                    "connect_timeout": 15,
+                    "connect_timeout": 30,
                     "row_factory": dict_row,
                     "autocommit": False,
                     # Force the session timezone to UTC. Postgres always
@@ -434,9 +445,13 @@ def get_db():
                     import psycopg as _psycopg
                     with _psycopg.connect(cfg.database_url, connect_timeout=10):
                         _diag.error(
-                            "DB DIAGNOSTIC: pool timed out but a direct "
-                            "connection succeeded -- pool exhaustion, not "
-                            "connectivity."
+                            "DB DIAGNOSTIC: pool timed out, but a direct "
+                            "connection then succeeded. Most likely the "
+                            "pool's own attempt woke a suspended compute "
+                            "and gave up before it finished booting; a "
+                            "genuinely exhausted pool is the other "
+                            "possibility. Check pool stats to tell them "
+                            "apart."
                         )
                 except Exception as exc:
                     _diag.error(
