@@ -1,16 +1,122 @@
 """Shared pytest fixtures for the AuraStudy backend test suite.
 
-Builds a fresh Flask app per test against a temp SQLite file, with
-REQUIRE_EMAIL_VERIFICATION on and the mailer monkeypatched so no real email
-is ever sent -- messages are captured into the `outbox` fixture instead.
+Builds a fresh Flask app per test, with REQUIRE_EMAIL_VERIFICATION on and the
+mailer monkeypatched so no real email is ever sent -- messages are captured
+into the `outbox` fixture instead.
 
-`app` and `client` are also consumed by Agent B's tests/test_spotify.py.
+Runs against **both** database backends: the `app`/`client` fixtures are
+parametrized over "sqlite" (a fresh temp file per test -- the local-dev
+fallback) and "postgres" (a fresh, throwaway database per test on a real
+PostgreSQL server spun up once for the whole session via the `pgserver`
+package, which bundles real Postgres binaries -- no Homebrew/Docker/network
+needed). Every test in this suite therefore runs twice unless it explicitly
+opts out.
+
+If `pgserver` (or the `postgresql-wheel` fallback) isn't installed/working
+on this machine, the postgres-parametrized runs are skipped with a loud,
+session-scoped warning printed once -- they are never silently downgraded to
+SQLite-only in a way that could be mistaken for "Postgres was verified".
+
+`app` and `client` are also consumed by tests/test_spotify.py.
 """
+import os
+import uuid
+import warnings
+from urllib.parse import urlparse, urlunparse
+
 import pytest
 from cryptography.fernet import Fernet
 
 from server import config as config_module
 
+
+# ---------------------------------------------------------------------------
+# Real Postgres cluster (session-scoped) via pgserver
+# ---------------------------------------------------------------------------
+
+def _try_start_pgserver(pgdata_dir):
+    """Returns (server, admin_uri) or (None, reason) if pgserver isn't usable."""
+    try:
+        import pgserver
+    except ImportError:
+        return None, "pgserver is not installed"
+    try:
+        srv = pgserver.get_server(str(pgdata_dir), cleanup_mode="delete")
+        # Smoke-test the connection before trusting it for the whole session.
+        import psycopg
+
+        with psycopg.connect(srv.get_uri(), autocommit=True) as conn:
+            conn.execute("SELECT 1")
+        return srv, srv.get_uri()
+    except Exception as exc:  # noqa: BLE001 -- report exactly why, don't guess
+        return None, "pgserver failed to start a real Postgres server: {}".format(exc)
+
+
+PG_UNAVAILABLE_REASON = None  # set by the pg_cluster fixture the first time it runs
+
+
+@pytest.fixture(scope="session")
+def pg_cluster(tmp_path_factory):
+    """Starts one real PostgreSQL server (via pgserver) for the whole test
+    session, or yields None if that isn't possible on this machine."""
+    global PG_UNAVAILABLE_REASON
+    pgdata_dir = tmp_path_factory.mktemp("pgdata")
+    srv, admin_uri_or_reason = _try_start_pgserver(pgdata_dir)
+    if srv is None:
+        PG_UNAVAILABLE_REASON = admin_uri_or_reason
+        warnings.warn(
+            "\n"
+            + "=" * 72
+            + "\nPOSTGRES TESTING UNAVAILABLE: {}\n"
+            "All postgres-parametrized tests will be SKIPPED, not silently run "
+            "on SQLite. See the test summary for skip counts.\n".format(admin_uri_or_reason)
+            + "=" * 72
+        )
+        yield None
+        return
+
+    yield {"server": srv, "admin_uri": admin_uri_or_reason}
+    srv.cleanup()  # stops the server and deletes the pgdata directory
+
+
+def _make_test_db_url(admin_uri: str, dbname: str) -> str:
+    parsed = urlparse(admin_uri)
+    return urlunparse(parsed._replace(path="/" + dbname))
+
+
+@pytest.fixture
+def _pg_test_database(pg_cluster):
+    """Creates a throwaway Postgres database for one test and drops it
+    afterward. Only used when the test is parametrized onto the postgres
+    backend and a cluster is available."""
+    import psycopg
+
+    admin_uri = pg_cluster["admin_uri"]
+    dbname = "test_{}".format(uuid.uuid4().hex[:16])
+    with psycopg.connect(admin_uri, autocommit=True) as conn:
+        conn.execute('CREATE DATABASE "{}"'.format(dbname))
+
+    db_url = _make_test_db_url(admin_uri, dbname)
+    yield db_url
+
+    # Release the app's pooled connection(s) to this database before
+    # dropping it -- Postgres refuses to DROP DATABASE while any session is
+    # still connected to it.
+    from server.db import close_pg_pool
+
+    close_pg_pool(db_url)
+    with psycopg.connect(admin_uri, autocommit=True) as conn:
+        conn.execute(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+            "WHERE datname = %s AND pid <> pg_backend_pid()",
+            (dbname,),
+        )
+        conn.execute('DROP DATABASE IF EXISTS "{}"'.format(dbname))
+
+
+# ---------------------------------------------------------------------------
+# App / client fixtures -- parametrized over both backends
+# ---------------------------------------------------------------------------
 
 @pytest.fixture
 def outbox():
@@ -19,17 +125,60 @@ def outbox():
     return []
 
 
+@pytest.fixture(autouse=True)
+def _stub_hibp(monkeypatch):
+    """Every password is treated as NOT breached by default, with zero
+    network access -- the register/reset/change-password breached-password
+    check must never hit the real HIBP API from the test suite. Tests that
+    specifically exercise the breached or HIBP-unreachable paths override
+    this themselves with their own monkeypatch.
+
+    Patches BOTH `server.security.is_password_breached` (for anything that
+    imports the module and calls it via attribute access) AND
+    `server.auth.is_password_breached` -- auth.py does `from .security
+    import is_password_breached`, which binds its own name at import time,
+    so patching security.py's copy alone does NOT affect what the
+    register/reset-password/change-password routes actually call. Autouse
+    so this applies even to tests that don't use the `app`/`client`
+    fixtures.
+    """
+    from server import auth, security
+
+    monkeypatch.setattr(security, "is_password_breached", lambda pw: False)
+    monkeypatch.setattr(auth, "is_password_breached", lambda pw: False)
+
+
+@pytest.fixture(params=["sqlite", "postgres"])
+def backend(request, pg_cluster):
+    if request.param == "postgres" and pg_cluster is None:
+        pytest.skip("postgres backend unavailable: {}".format(PG_UNAVAILABLE_REASON))
+    return request.param
+
+
 @pytest.fixture
-def app(tmp_path, monkeypatch, outbox):
-    db_path = tmp_path / "test.db"
-    monkeypatch.setenv("DATABASE_PATH", str(db_path))
+def app(request, tmp_path, monkeypatch, outbox, backend):
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-not-for-prod")
     monkeypatch.setenv("TOKEN_ENC_KEY", Fernet.generate_key().decode())
     monkeypatch.setenv("APP_BASE_URL", "http://127.0.0.1:5055")
     monkeypatch.setenv("REQUIRE_EMAIL_VERIFICATION", "true")
-    monkeypatch.setenv("SMTP_HOST", "")
+    # A real (non-empty) value here, even though `mailer.send_email` is
+    # monkeypatched below and never actually touches SMTP: the
+    # postgres-backend runs set DATABASE_URL, which now puts Config into
+    # "production" mode (see server/config.py), and production refuses to
+    # boot with SMTP_HOST unset. "smtp.test.invalid" is an RFC 2606 reserved
+    # test domain -- it is never resolved or connected to in this suite.
+    monkeypatch.setenv("SMTP_HOST", "smtp.test.invalid")
     monkeypatch.setenv("SPOTIFY_CLIENT_ID", "")
     monkeypatch.setenv("SPOTIFY_CLIENT_SECRET", "")
+
+    if backend == "postgres":
+        db_url = request.getfixturevalue("_pg_test_database")
+        monkeypatch.setenv("DATABASE_URL", db_url)
+        monkeypatch.delenv("DATABASE_PATH", raising=False)
+    else:
+        db_path = tmp_path / "test.db"
+        monkeypatch.setenv("DATABASE_PATH", str(db_path))
+        monkeypatch.delenv("DATABASE_URL", raising=False)
 
     # Config is a cached singleton (see server/config.py); force a fresh read
     # of the env vars we just set for this test.

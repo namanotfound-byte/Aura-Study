@@ -28,9 +28,9 @@ def register_and_login(client, email="spotify-user@example.com", password="hunte
     if verify:
         with client.application.app_context():
             db = get_db()
-            db.execute("UPDATE users SET is_verified = 1 WHERE email = ?", (email,))
+            db.execute("UPDATE users SET is_verified = %s WHERE email = %s", (True, email))
             db.commit()
-            user_id = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()["id"]
+            user_id = db.execute("SELECT id FROM users WHERE email = %s", (email,)).fetchone()["id"]
     login_resp = client.post(
         "/api/auth/login",
         data=json.dumps({"email": email, "password": password}),
@@ -50,7 +50,7 @@ def connect_fake_account(app, user_id, expires_in=3600, product="premium"):
             INSERT INTO spotify_accounts
                 (user_id, spotify_user_id, display_name, product, access_token,
                  refresh_token, expires_at, scopes, connected_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT(user_id) DO UPDATE SET
                 spotify_user_id=excluded.spotify_user_id,
                 display_name=excluded.display_name,
@@ -196,7 +196,7 @@ def test_get_valid_access_token_refreshes_when_expired(client, app, monkeypatch)
         post_mock.assert_called_once()
 
         db = get_db()
-        row = db.execute("SELECT * FROM spotify_accounts WHERE user_id=?", (user_id,)).fetchone()
+        row = db.execute("SELECT * FROM spotify_accounts WHERE user_id=%s", (user_id,)).fetchone()
         from server.security import decrypt_token
 
         assert decrypt_token(row["access_token"]) == "new-access-token"
@@ -214,7 +214,7 @@ def test_get_valid_access_token_invalid_grant_disconnects(client, app, monkeypat
         with pytest.raises(spotify.SpotifyNotConnected):
             spotify.get_valid_access_token(user_id)
         db = get_db()
-        row = db.execute("SELECT * FROM spotify_accounts WHERE user_id=?", (user_id,)).fetchone()
+        row = db.execute("SELECT * FROM spotify_accounts WHERE user_id=%s", (user_id,)).fetchone()
         assert row is None
 
 
@@ -334,7 +334,7 @@ def test_disconnect(client, app):
 
     with app.app_context():
         db = get_db()
-        row = db.execute("SELECT * FROM spotify_accounts WHERE user_id=?", (user_id,)).fetchone()
+        row = db.execute("SELECT * FROM spotify_accounts WHERE user_id=%s", (user_id,)).fetchone()
         assert row is None
 
 

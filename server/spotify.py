@@ -106,7 +106,7 @@ def get_valid_access_token(user_id):
     cfg = get_config()
     db = get_db()
     row = db.execute(
-        "SELECT * FROM spotify_accounts WHERE user_id = ?", (user_id,)
+        "SELECT * FROM spotify_accounts WHERE user_id = %s", (user_id,)
     ).fetchone()
     if not row or not row["refresh_token"]:
         raise SpotifyNotConnected()
@@ -132,7 +132,7 @@ def get_valid_access_token(user_id):
         except ValueError:
             err_code = None
         if err_code == "invalid_grant":
-            db.execute("DELETE FROM spotify_accounts WHERE user_id = ?", (user_id,))
+            db.execute("DELETE FROM spotify_accounts WHERE user_id = %s", (user_id,))
             db.commit()
             raise SpotifyNotConnected()
         raise SpotifyApiError("token_refresh_failed")
@@ -146,7 +146,7 @@ def get_valid_access_token(user_id):
     new_expires_at = _iso(utcnow() + timedelta(seconds=expires_in))
 
     db.execute(
-        "UPDATE spotify_accounts SET access_token=?, refresh_token=?, expires_at=? WHERE user_id=?",
+        "UPDATE spotify_accounts SET access_token=%s, refresh_token=%s, expires_at=%s WHERE user_id=%s",
         (encrypt_token(access_token), encrypt_token(new_refresh_token), new_expires_at, user_id),
     )
     db.commit()
@@ -177,7 +177,7 @@ def status():
         )
     db = get_db()
     row = db.execute(
-        "SELECT * FROM spotify_accounts WHERE user_id = ?", (g.user["id"],)
+        "SELECT * FROM spotify_accounts WHERE user_id = %s", (g.user["id"],)
     ).fetchone()
     if not row or not row["refresh_token"]:
         return jsonify(
@@ -286,7 +286,7 @@ def spotify_callback():
         INSERT INTO spotify_accounts
             (user_id, spotify_user_id, display_name, product, access_token,
              refresh_token, expires_at, scopes, connected_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT(user_id) DO UPDATE SET
             spotify_user_id=excluded.spotify_user_id,
             display_name=excluded.display_name,
@@ -318,7 +318,7 @@ def spotify_callback():
 def disconnect():
     require_csrf()
     db = get_db()
-    db.execute("DELETE FROM spotify_accounts WHERE user_id = ?", (g.user["id"],))
+    db.execute("DELETE FROM spotify_accounts WHERE user_id = %s", (g.user["id"],))
     db.commit()
     return jsonify({"ok": True})
 
@@ -331,7 +331,7 @@ def token():
         return err
     db = get_db()
     row = db.execute(
-        "SELECT expires_at FROM spotify_accounts WHERE user_id = ?", (g.user["id"],)
+        "SELECT expires_at FROM spotify_accounts WHERE user_id = %s", (g.user["id"],)
     ).fetchone()
     expires_in = 3600
     if row and row["expires_at"]:

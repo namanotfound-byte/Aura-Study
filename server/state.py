@@ -9,7 +9,7 @@ import json
 
 import flask
 
-from .db import get_db, utcnow_iso
+from .db import get_db, iso_or_none, utcnow_iso
 from .security import json_error, login_required, require_csrf
 
 bp = flask.Blueprint("state", __name__)
@@ -22,7 +22,7 @@ MAX_PAYLOAD_BYTES = 1024 * 1024
 def get_state():
     db = get_db()
     row = db.execute(
-        "SELECT payload, version, updated_at FROM user_state WHERE user_id = ?",
+        "SELECT payload, version, updated_at FROM user_state WHERE user_id = %s",
         (flask.g.user["id"],),
     ).fetchone()
     if row is None:
@@ -30,7 +30,11 @@ def get_state():
     return flask.jsonify({
         "payload": json.loads(row["payload"]),
         "version": row["version"],
-        "updated_at": row["updated_at"],
+        # row["updated_at"] is a datetime on Postgres (TIMESTAMPTZ) and an
+        # ISO string on SQLite -- normalise so the wire format doesn't change
+        # depending on backend (flask.jsonify would otherwise render a raw
+        # datetime as an HTTP-date string, not ISO-8601).
+        "updated_at": iso_or_none(row["updated_at"]),
     })
 
 
@@ -61,7 +65,7 @@ def put_state():
     db = get_db()
     user_id = flask.g.user["id"]
     row = db.execute(
-        "SELECT payload, version FROM user_state WHERE user_id = ?", (user_id,)
+        "SELECT payload, version FROM user_state WHERE user_id = %s", (user_id,)
     ).fetchone()
     current_version = row["version"] if row is not None else 0
 
@@ -77,12 +81,12 @@ def put_state():
     now = utcnow_iso()
     if row is None:
         db.execute(
-            "INSERT INTO user_state (user_id, payload, version, updated_at) VALUES (?, ?, ?, ?)",
+            "INSERT INTO user_state (user_id, payload, version, updated_at) VALUES (%s, %s, %s, %s)",
             (user_id, raw, new_version, now),
         )
     else:
         db.execute(
-            "UPDATE user_state SET payload = ?, version = ?, updated_at = ? WHERE user_id = ?",
+            "UPDATE user_state SET payload = %s, version = %s, updated_at = %s WHERE user_id = %s",
             (raw, new_version, now, user_id),
         )
     db.commit()
