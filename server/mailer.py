@@ -4,6 +4,7 @@
 `send_reset_email` build the branded AuraStudy messages on top of it.
 """
 import datetime
+import logging
 import os
 import re
 import smtplib
@@ -69,7 +70,14 @@ def _send_smtp(cfg, to: str, subject: str, html_body: str, text_body: str) -> bo
             smtp.send_message(msg)
         return True
     except Exception as exc:  # noqa: BLE001 -- never let mail failure 500 the request
-        print("[mailer] WARNING: failed to send email to {}: {}".format(to, exc))
+        # Log rather than print: under gunicorn a bare print() goes to a
+        # buffered stdout and can be lost entirely, which hid the real
+        # reason verification emails were not arriving in production.
+        logging.getLogger(__name__).error(
+            "MAIL FAILED to=%s host=%s port=%s user_set=%s from=%r -- %s: %s",
+            to, cfg.smtp_host, cfg.smtp_port, bool(cfg.smtp_user),
+            cfg.smtp_from, type(exc).__name__, exc,
+        )
         return False
 
 
