@@ -11,6 +11,12 @@
   var alertBox = document.getElementById("form-alert");
   var submitBtn = document.getElementById("submit-btn");
 
+  // Captured once, before the "verification email sent" panel (below) ever
+  // creates its own heading -- these are unambiguously the page's own
+  // <h1 class="auth-heading"> / subheading, from base.html's content block.
+  var pageHeadingEl = document.querySelector(".auth-heading");
+  var pageSubheadingEl = document.querySelector(".auth-subheading");
+
   function showAlert(msg, kind) {
     if (!alertBox) return;
     alertBox.textContent = msg;
@@ -47,6 +53,104 @@
     if (label) label.style.opacity = loading ? "0.6" : "1";
   }
 
+  // -- "Verification email sent" confirmation panel (spec §3) --------------
+  // Requesting a verification email (on register, or via the login page's
+  // "Resend it" link) must replace the form with a single confirmation
+  // panel -- the email and password inputs have to actually leave the DOM
+  // render / accessibility tree, not just go `disabled`, so this hides the
+  // whole <form> (the `hidden` attribute does exactly that) rather than
+  // disabling its fields.
+  function showVerificationSentPanel(email, opts) {
+    opts = opts || {};
+    hideAlert();
+    var resendBox = document.getElementById("resend-box");
+    if (resendBox) resendBox.hidden = true;
+    if (form) {
+      form.reset(); // clear any typed password out of the DOM before hiding it
+      // `.auth-form` sets `display:flex` in auth.css, which (being an author
+      // rule) beats the UA default `[hidden]{display:none}` -- so the
+      // `hidden` attribute alone would leave the inputs visibly on screen.
+      // Belt-and-braces: set the attribute (for a11y/semantics) AND an
+      // inline display:none (which wins the cascade) so the email/password
+      // inputs are genuinely gone, not just visually behind the panel.
+      form.hidden = true;
+      form.style.display = "none";
+    }
+    if (pageHeadingEl) pageHeadingEl.hidden = true;
+    if (pageSubheadingEl) pageSubheadingEl.hidden = true;
+
+    var panel = document.getElementById("verify-sent-panel");
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "verify-sent-panel";
+
+      var icon = document.createElement("div");
+      icon.className = "auth-message-icon is-success";
+      var iconEl = document.createElement("i");
+      iconEl.setAttribute("data-lucide", "check");
+      icon.appendChild(iconEl);
+
+      var heading = document.createElement("h1");
+      heading.className = "auth-heading";
+      heading.textContent = "Verification email sent";
+
+      var body = document.createElement("p");
+      body.className = "auth-subheading";
+      body.id = "verify-sent-body";
+
+      panel.appendChild(icon);
+      panel.appendChild(heading);
+      panel.appendChild(body);
+
+      if (opts.showBackToLogin) {
+        var backWrap = document.createElement("p");
+        backWrap.className = "auth-switch";
+        var backBtn = document.createElement("button");
+        backBtn.type = "button";
+        backBtn.className = "auth-link-btn";
+        backBtn.id = "verify-sent-back-btn";
+        backBtn.textContent = "Back to the log in form";
+        backBtn.addEventListener("click", hideVerificationSentPanel);
+        backWrap.appendChild(backBtn);
+        panel.appendChild(backWrap);
+      }
+
+      var anchor = form || document.querySelector(".auth-card");
+      if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(panel, anchor);
+      else if (anchor) anchor.appendChild(panel);
+    }
+
+    var bodyEl = document.getElementById("verify-sent-body");
+    if (bodyEl) {
+      bodyEl.textContent = "";
+      var lead = document.createTextNode("We sent a confirmation link");
+      bodyEl.appendChild(lead);
+      if (email) {
+        bodyEl.appendChild(document.createTextNode(" to "));
+        var strong = document.createElement("strong");
+        strong.textContent = email;
+        bodyEl.appendChild(strong);
+      }
+      bodyEl.appendChild(
+        document.createTextNode(". Check your inbox, and your spam folder if it doesn't show up in a few minutes.")
+      );
+    }
+
+    panel.hidden = false;
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function hideVerificationSentPanel() {
+    var panel = document.getElementById("verify-sent-panel");
+    if (panel) panel.hidden = true;
+    if (pageHeadingEl) pageHeadingEl.hidden = false;
+    if (pageSubheadingEl) pageSubheadingEl.hidden = false;
+    if (form) {
+      form.hidden = false;
+      form.style.display = "";
+    }
+  }
+
   function apiFetch(path, body) {
     return fetch(path, {
       method: "POST",
@@ -75,10 +179,11 @@
   // this page's own origin right after a real, successful login. Only a
   // same-origin, root-relative path (single leading slash, not `//host/...`
   // or `/\host/...`, both of which browsers treat as protocol-relative) is
-  // ever honoured; anything else falls back to "/".
+  // ever honoured; anything else falls back to "/app" (the app now lives
+  // there, not at "/" -- see SPEC-PHASE4.md's routing change).
   function safeNextPath(raw) {
-    if (typeof raw !== "string" || !raw) return "/";
-    if (!/^\/(?!\/|\\)/.test(raw)) return "/";
+    if (typeof raw !== "string" || !raw) return "/app";
+    if (!/^\/(?!\/|\\)/.test(raw)) return "/app";
     return raw;
   }
 
@@ -121,7 +226,7 @@
       resendBtn.disabled = true;
       apiFetch("/api/auth/resend-verification", { email: email })
         .then(function () {
-          showAlert("Verification email sent! Check your inbox.", "success");
+          showVerificationSentPanel(email, { showBackToLogin: true });
         })
         .finally(function () {
           resendBtn.disabled = false;
@@ -190,8 +295,10 @@
         .then(function (r) {
           setLoading(false);
           if (r.ok) {
-            showAlert(r.data.message || "Check your email to confirm your account!", "success");
-            form.reset();
+            // The page's existing "Already have an account? Log in" link
+            // (outside the form, untouched by this panel) doubles as the way
+            // back to the log in form here, so no extra back control needed.
+            showVerificationSentPanel(rEmail, { showBackToLogin: false });
           } else {
             showAlert(r.data.message || "Something went wrong.", null);
           }

@@ -225,7 +225,7 @@ def spotify_callback():
     cfg = get_config()
 
     def fail(reason):
-        return redirect("/?spotify=error&reason=" + reason)
+        return redirect("/app?spotify=error&reason=" + reason)
 
     if request.args.get("error"):
         return fail(request.args.get("error"))
@@ -310,7 +310,7 @@ def spotify_callback():
         ),
     )
     db.commit()
-    return redirect("/?spotify=connected")
+    return redirect("/app?spotify=connected")
 
 
 @bp.route("/disconnect", methods=["POST"])

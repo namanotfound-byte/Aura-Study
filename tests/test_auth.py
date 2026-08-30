@@ -289,8 +289,14 @@ def test_verification_token_unlocks_login(client, app, outbox):
     register(client)
     token = latest_link_token(outbox)
 
+    # /verify now auto-logs in on a valid token (redirect, not a 200 message
+    # page) -- see the dedicated test_verify_auto_login_* tests below for the
+    # full contract. This test's original point, that verifying unlocks
+    # login for the account, still holds: an explicit login() afterwards
+    # must also succeed, independent of the session /verify just created.
     verify_resp = client.get("/verify?token={}".format(token))
-    assert verify_resp.status_code == 200
+    assert verify_resp.status_code == 302
+    assert verify_resp.headers["Location"] == "/app?verified=1"
 
     login_resp = login(client, "user@example.com", "pw123456")
     assert login_resp.status_code == 200
@@ -299,6 +305,99 @@ def test_verification_token_unlocks_login(client, app, outbox):
     assert data["user"]["email"] == "user@example.com"
     assert data["user"]["is_verified"] is True
     assert "aurastudy_session" in login_resp.headers.get("Set-Cookie", "")
+
+
+# ------------------------------------------------------- verify auto-login
+
+def test_verify_auto_login_sets_session_and_redirects(client, app, outbox):
+    """The success path (spec section 4): a valid, unused, unexpired token
+    marks the account verified, issues a session exactly as login() does,
+    and redirects to /app?verified=1 -- all in the one GET /verify request,
+    no separate login step required."""
+    register(client)
+    token = latest_link_token(outbox)
+
+    resp = client.get("/verify?token={}".format(token))
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/app?verified=1"
+
+    set_cookie = resp.headers.get("Set-Cookie", "")
+    assert "aurastudy_session" in set_cookie
+    # Same cookie flags login()'s set_session_cookie() uses.
+    assert "HttpOnly" in set_cookie
+    assert "SameSite=Lax" in set_cookie
+    assert "Path=/" in set_cookie
+
+    # The session actually works -- no separate login() call needed.
+    me_resp = client.get("/api/auth/me", headers=JSON_HEADERS)
+    assert me_resp.status_code == 200
+    me_data = me_resp.get_json()
+    assert me_data["user"]["email"] == "user@example.com"
+    assert me_data["user"]["is_verified"] is True
+
+    with app.app_context():
+        from server.db import get_db
+
+        db = get_db()
+        row = db.execute("SELECT COUNT(*) AS c FROM sessions").fetchone()
+        assert row["c"] == 1  # exactly one session, created by /verify itself
+
+
+def test_verify_expired_token_does_not_create_session(client, app, outbox):
+    register(client)
+    token = latest_link_token(outbox)
+
+    from server.db import get_db
+
+    with app.app_context():
+        db = get_db()
+        db.execute(
+            "UPDATE email_tokens SET expires_at = '2000-01-01T00:00:00+00:00' WHERE purpose='verify'"
+        )
+        db.commit()
+
+    resp = client.get("/verify?token={}".format(token))
+    assert resp.status_code == 200  # message page, not a redirect
+    assert "aurastudy_session" not in resp.headers.get("Set-Cookie", "")
+
+    me_resp = client.get("/api/auth/me", headers=JSON_HEADERS)
+    assert me_resp.status_code == 401
+
+
+def test_verify_already_used_token_does_not_create_session(client, app, outbox):
+    register(client)
+    token = latest_link_token(outbox)
+
+    first = client.get("/verify?token={}".format(token))
+    assert first.status_code == 302  # the first, valid use auto-logs in
+
+    # Log back out so the client has no session, then reuse the same
+    # (now-used) token.
+    client.post("/api/auth/logout", headers=JSON_HEADERS)
+
+    second = client.get("/verify?token={}".format(token))
+    assert second.status_code == 200  # message page, not a redirect
+    assert "aurastudy_session" not in second.headers.get("Set-Cookie", "")
+
+    me_resp = client.get("/api/auth/me", headers=JSON_HEADERS)
+    assert me_resp.status_code == 401
+
+    from server.db import get_db
+
+    with app.app_context():
+        db = get_db()
+        row = db.execute("SELECT COUNT(*) AS c FROM sessions").fetchone()
+        assert row["c"] == 0  # the one session from the first use was logged out, no second was made
+
+
+def test_verify_unknown_token_does_not_create_session(client, outbox):
+    register(client)
+    resp = client.get("/verify?token=totally-made-up-token")
+    assert resp.status_code == 200
+    assert "aurastudy_session" not in resp.headers.get("Set-Cookie", "")
+
+    me_resp = client.get("/api/auth/me", headers=JSON_HEADERS)
+    assert me_resp.status_code == 401
 
 
 def test_verification_token_is_single_use(client, app, outbox):

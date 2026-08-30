@@ -127,6 +127,21 @@ CREATE TABLE IF NOT EXISTS auth_attempts (
   created_at        TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_attempts_key ON auth_attempts(key, created_at);
+
+-- Weekly totals feeding the anonymous leaderboard (SPEC-PHASE4.md). One row
+-- per user per ISO week (Monday 00:00 UTC), recomputed wholesale on every
+-- PUT /api/state -- see server/leaderboard.py:upsert_week_seconds. week_start
+-- is stored as plain ISO-date TEXT here (SQLite has no DATE type); Postgres
+-- uses a real DATE column below.
+CREATE TABLE IF NOT EXISTS leaderboard_weeks (
+  user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  week_start        TEXT NOT NULL,
+  seconds           INTEGER NOT NULL DEFAULT 0,
+  opted_in          INTEGER NOT NULL DEFAULT 1,
+  updated_at        TEXT NOT NULL,
+  PRIMARY KEY (user_id, week_start)
+);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_week ON leaderboard_weeks(week_start, seconds DESC);
 """
 
 # Postgres (production, Neon): IDENTITY primary keys, TIMESTAMPTZ throughout,
@@ -194,6 +209,19 @@ CREATE TABLE IF NOT EXISTS auth_attempts (
   created_at        TIMESTAMPTZ NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_attempts_key ON auth_attempts(key, created_at);
+
+-- Weekly totals feeding the anonymous leaderboard (SPEC-PHASE4.md). One row
+-- per user per ISO week (Monday 00:00 UTC), recomputed wholesale on every
+-- PUT /api/state -- see server/leaderboard.py:upsert_week_seconds.
+CREATE TABLE IF NOT EXISTS leaderboard_weeks (
+  user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  week_start        DATE NOT NULL,
+  seconds           INTEGER NOT NULL DEFAULT 0,
+  opted_in          BOOLEAN NOT NULL DEFAULT TRUE,
+  updated_at        TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (user_id, week_start)
+);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_week ON leaderboard_weeks(week_start, seconds DESC);
 """
 
 

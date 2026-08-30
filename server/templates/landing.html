@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AuraStudy — Focus Timer &amp; Study Tracker</title>
+<link rel="stylesheet" href="/static/landing.css">
+<script>document.documentElement.classList.add('js-enabled');</script>
+{% if authenticated %}
+<noscript><meta http-equiv="refresh" content="2;url=/app"></noscript>
+{% endif %}
+</head>
+<body data-authenticated="{{ 'true' if authenticated else 'false' }}">
+
+  <main class="landing">
+    <div class="landing-glow" aria-hidden="true"></div>
+
+    <div class="landing-inner">
+      <h1 class="wordmark" id="wordmark" aria-label="AuraStudy">
+        <span class="letters" id="letters" aria-hidden="true">AuraStudy</span>
+      </h1>
+
+      <p class="tagline" id="tagline">Focus timer &amp; study tracker.</p>
+
+      <div class="cta-row" id="cta-row">
+        <a href="/login" class="btn btn-outline" id="login-btn">Log in</a>
+        <a href="/register" class="btn btn-primary" id="signup-btn">Sign up</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="/static/landing.js"></script>
+</body>
+</html>

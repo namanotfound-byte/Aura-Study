@@ -104,7 +104,11 @@ def test_safe_next_path_rejects_absolute_and_protocol_relative_urls():
     plus a few it must still accept, so a future tweak to the regex itself
     is caught even though this suite can't run real browser JS."""
     js = _read("static", "auth.js")
-    match = re.search(r"if \(!(\/\^.*?\/)\.test\(raw\)\) return \"/\";", js)
+    # The invalid-path fallback is "/app" (not "/") since SPEC-PHASE4.md's
+    # routing change moved the app from "/" to "/app" -- "/" is now the
+    # unauthenticated landing page, so falling back to it after a successful
+    # login would just show the arrival animation again instead of the app.
+    match = re.search(r"if \(!(\/\^.*?\/)\.test\(raw\)\) return \"/app\";", js)
     assert match, "could not find the safeNextPath validation regex in static/auth.js"
     pattern = match.group(1)[1:-1]  # strip the JS regex literal's slashes
 

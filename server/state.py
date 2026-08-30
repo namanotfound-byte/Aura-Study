@@ -10,6 +10,7 @@ import json
 import flask
 
 from .db import get_db, iso_or_none, utcnow_iso
+from .leaderboard import upsert_week_seconds
 from .security import json_error, login_required, require_csrf
 
 bp = flask.Blueprint("state", __name__)
@@ -89,6 +90,14 @@ def put_state():
             "UPDATE user_state SET payload = %s, version = %s, updated_at = %s WHERE user_id = %s",
             (raw, new_version, now, user_id),
         )
+
+    # Recomputed wholesale from this payload's sessions on every successful
+    # write (not incrementally), on the same connection/transaction as the
+    # state save above -- see leaderboard.upsert_week_seconds. A failure here
+    # must not silently save state while leaving the leaderboard stale, and
+    # vice versa; both go out on the single db.commit() below.
+    upsert_week_seconds(db, user_id, payload)
+
     db.commit()
 
     return flask.jsonify({"ok": True, "version": new_version, "updated_at": now})

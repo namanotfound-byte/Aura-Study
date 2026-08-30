@@ -1292,6 +1292,166 @@
                 scroll-behavior: auto !important;
             }
         }
+
+        /* ---- Leaderboard view ---- */
+        .lb-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .lb-copy {
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.6;
+            max-width: 560px;
+            margin-top: 6px;
+        }
+        .lb-opt-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main);
+            white-space: nowrap;
+        }
+        .lb-toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 26px;
+            flex-shrink: 0;
+        }
+        .lb-toggle-switch input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            cursor: pointer;
+        }
+        .lb-toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: var(--border-color);
+            border-radius: 999px;
+            transition: background 0.2s;
+            pointer-events: none;
+        }
+        .lb-toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            left: 3px;
+            top: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.2s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+        .lb-toggle-switch input:checked + .lb-toggle-slider { background: var(--neon-pink); }
+        .lb-toggle-switch input:checked + .lb-toggle-slider::before { transform: translateX(18px); }
+        .lb-toggle-switch input:focus-visible + .lb-toggle-slider { outline: 2px solid var(--neon-pink); outline-offset: 2px; }
+
+        .lb-you-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.12), rgba(var(--accent-rgb), 0.02));
+            border: 2px solid var(--border-color);
+            border-radius: 20px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .lb-you-rank {
+            font-size: 26px;
+            font-weight: 900;
+            color: var(--neon-pink);
+            min-width: 52px;
+            text-align: center;
+        }
+        .lb-you-meta { flex: 1; min-width: 160px; }
+        .lb-you-alias { font-weight: 800; font-size: 15px; color: var(--text-main); }
+        .lb-you-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .lb-you-hours { font-size: 20px; font-weight: 900; color: var(--text-main); white-space: nowrap; }
+
+        .lb-state-panel {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .lb-state-panel i { display: block; margin: 0 auto 10px; width: 32px; height: 32px; color: var(--text-muted); }
+        .lb-state-panel.lb-spin-icon i { animation: lb-spin 0.9s linear infinite; }
+        @keyframes lb-spin { to { transform: rotate(360deg); } }
+        .lb-state-retry {
+            margin-top: 14px;
+            background: none;
+            border: 2px solid var(--border-color);
+            color: var(--neon-pink);
+            font-weight: 700;
+            font-size: 13px;
+            padding: 8px 18px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        .lb-state-retry:hover { border-color: var(--neon-pink); }
+
+        .lb-chart-wrap { height: 240px; width: 100%; }
+
+        .lb-list { display: flex; flex-direction: column; gap: 2px; }
+        .lb-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 12px;
+            border-radius: 14px;
+        }
+        .lb-row.is-you {
+            background: rgba(var(--accent-rgb), 0.1);
+            border: 1px solid rgba(var(--accent-rgb), 0.35);
+        }
+        .lb-row-rank {
+            width: 30px;
+            text-align: center;
+            font-weight: 800;
+            font-size: 13px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .lb-row.is-you .lb-row-rank,
+        .lb-row-rank.is-top3 { color: var(--neon-pink); }
+        .lb-row-alias { flex: 1; font-weight: 700; font-size: 13px; color: var(--text-main); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lb-row-hours { font-weight: 800; font-size: 13px; color: var(--text-main); flex-shrink: 0; }
+        .lb-you-pill {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #fff;
+            background: var(--neon-pink);
+            padding: 2px 8px;
+            border-radius: 999px;
+            margin-left: 6px;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 600px) {
+            .lb-header-row { flex-direction: column; }
+            .lb-copy { max-width: none; }
+            .lb-you-card { padding: 14px 16px; }
+            .lb-you-hours { font-size: 17px; }
+        }
+        @media (pointer: coarse) {
+            .lb-toggle-switch { width: 44px; height: 44px; }
+            .lb-toggle-slider { top: 9px; bottom: 9px; left: 0; right: 0; }
+            .lb-state-retry { min-height: 44px; }
+        }
     </style>
 </head>
 <body>
@@ -1333,6 +1493,10 @@
                 <div class="nav-item" id="nav-item-music-toggle" onclick="switchView('spotify', this); closeMobileNav();">
                     <i data-lucide="music"></i>
                     <span>Music</span>
+                </div>
+                <div class="nav-item" onclick="switchView('leaderboard', this); closeMobileNav();">
+                    <i data-lucide="bar-chart-3"></i>
+                    <span>Leaderboard</span>
                 </div>
             </div>
         </div>
@@ -1628,6 +1792,54 @@
         <!-- VIEW: SPOTIFY (all inner markup injected by static/spotify.js via AuraSpotify.renderInto) -->
         <div id="view-spotify" class="view-panel"></div>
 
+        <!-- VIEW: LEADERBOARD -->
+        <div id="view-leaderboard" class="view-panel">
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="lb-header-row">
+                    <div>
+                        <h3 style="font-weight: 800; font-size: 18px; color: var(--text-main);">This Week's Leaderboard</h3>
+                        <p class="lb-copy">Total study hours logged this week, across everyone who's opted in. Entries are fully anonymous: each person gets a random two-word alias that changes every Monday, so it can never be traced back across weeks -- or to an account.</p>
+                    </div>
+                    <label class="lb-opt-row" for="leaderboard-opt-toggle">
+                        <span>Show me on the board</span>
+                        <span class="lb-toggle-switch">
+                            <input type="checkbox" id="leaderboard-opt-toggle" onchange="onLeaderboardOptToggle(this)">
+                            <span class="lb-toggle-slider"></span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="leaderboard-you-card" class="lb-you-card" style="display: none;">
+                <div class="lb-you-rank" id="lb-you-rank">--</div>
+                <div class="lb-you-meta">
+                    <div class="lb-you-alias" id="lb-you-alias">You</div>
+                    <div class="lb-you-sub" id="lb-you-sub">Your alias this week</div>
+                </div>
+                <div class="lb-you-hours" id="lb-you-hours">0.0h</div>
+            </div>
+
+            <div id="leaderboard-state-panel" class="card lb-state-panel" style="display: none;">
+                <i data-lucide="loader-circle"></i>
+                <span id="leaderboard-state-text">Loading the leaderboard...</span>
+                <div><button type="button" class="lb-state-retry" id="leaderboard-retry-btn" onclick="loadLeaderboardData()" style="display: none;">Try Again</button></div>
+            </div>
+
+            <div id="leaderboard-content" style="display: none;">
+                <div class="card" style="margin-bottom: 24px;">
+                    <div class="card-title">
+                        <span>Top 20 This Week</span>
+                        <span id="lb-participants-label" style="text-transform: none; letter-spacing: normal; font-weight: 700;"></span>
+                    </div>
+                    <div class="lb-chart-wrap"><canvas id="leaderboardChart"></canvas></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Rankings</div>
+                    <div class="lb-list" id="leaderboard-list"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- VIEW: SETTINGS -->
         <div id="view-settings" class="view-panel">
             <div class="card" style="max-width: 600px;">
@@ -1757,7 +1969,7 @@
             selectedMode: "countdown",
             ambientKey: "cottoncandy",
             isDarkAmbient: false,
-            colourTheme: "pink",
+            colourTheme: "blue", // Phase 4 §6: brand-new users start on blue; anyone with a saved theme keeps it (see loadStateFromLocalStorageRegister)
             streak: 0
         };
 
@@ -1771,6 +1983,9 @@
         let bankedElapsedSeconds = 0;         // elapsed seconds banked from earlier segments (before a pause)
         let countdownTotalSeconds = 25 * 60;  // length of the current countdown block
         let operationalBarChartInstance = null;
+        let leaderboardChartInstance = null;
+        let leaderboardPollTimer = null;
+        let leaderboardRequestInFlight = false;
 
         const fullBadgesDatabase = [
             { id: 'b_active_day', category: 'Daily', title: 'Active Day Badge', desc: 'Log at least one study session today.', icon: 'flame' },
@@ -2163,6 +2378,11 @@
             if (wasSpotifyActive && targetPanelKey !== 'spotify' && typeof AuraSpotify !== 'undefined') {
                 AuraSpotify.onViewHidden();
             }
+            // Leaderboard polls only while its own view is visible -- same rule as Spotify's now-playing poll.
+            const wasLeaderboardActive = previouslyActivePanel && previouslyActivePanel.id === 'view-leaderboard';
+            if (wasLeaderboardActive && targetPanelKey !== 'leaderboard') {
+                stopLeaderboardPolling();
+            }
 
             document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
             document.getElementById(`view-${targetPanelKey}`).classList.add('active');
@@ -2183,6 +2403,7 @@
             else if (targetPanelKey === 'trophies') evaluateCabinetTrophyMetrics();
             else if (targetPanelKey === 'spotify' && typeof AuraSpotify !== 'undefined') AuraSpotify.onViewShown();
             else if (targetPanelKey === 'settings') refreshSettingsSpotifyStatus();
+            else if (targetPanelKey === 'leaderboard') startLeaderboardPolling();
         }
 
         function changeEngineMode(modeKey) {
@@ -2435,6 +2656,242 @@
                 else { if (sStr === today.toISOString().split('T')[0]) { checkDate.setDate(checkDate.getDate() - 1); continue; } break; }
             }
             appState.streak = currentStreak; document.getElementById('streak-count-label').innerHTML = `Current Streak: <strong>${currentStreak} days</strong>`;
+        }
+
+        // -- Leaderboard view (spec §7) ---------------------------------------
+        // Polls GET /api/leaderboard only while #view-leaderboard is the active
+        // panel (started/stopped from switchView() above), renders a "you" summary
+        // card, a Chart.js bar chart and a ranked list, and drives the opt-in
+        // toggle through PUT /api/leaderboard/opt. Every entry the server returns
+        // carries only rank/alias/seconds -- nothing here ever tries to resolve an
+        // alias back to a person, on purpose.
+        const LEADERBOARD_POLL_MS = 20000;
+        let leaderboardHasLoadedOnce = false;
+        let leaderboardOptTogglePending = false;
+
+        function startLeaderboardPolling() {
+            stopLeaderboardPolling();
+            loadLeaderboardData();
+            leaderboardPollTimer = setInterval(loadLeaderboardData, LEADERBOARD_POLL_MS);
+        }
+
+        function stopLeaderboardPolling() {
+            if (leaderboardPollTimer) { clearInterval(leaderboardPollTimer); leaderboardPollTimer = null; }
+        }
+
+        function formatLeaderboardHours(seconds) {
+            const s = (typeof seconds === 'number' && isFinite(seconds) && seconds > 0) ? seconds : 0;
+            return (s / 3600).toFixed(1) + 'h';
+        }
+
+        function showLeaderboardState(kind, message) {
+            const panel = document.getElementById('leaderboard-state-panel');
+            const text = document.getElementById('leaderboard-state-text');
+            const retryBtn = document.getElementById('leaderboard-retry-btn');
+            const content = document.getElementById('leaderboard-content');
+            const youCard = document.getElementById('leaderboard-you-card');
+            panel.style.display = 'block';
+            panel.classList.toggle('lb-spin-icon', kind === 'loading');
+            text.textContent = message;
+            retryBtn.style.display = (kind === 'error') ? 'inline-block' : 'none';
+            // lucide.createIcons() replaces the <i data-lucide> with an <svg data-lucide>
+            // the first time it runs, so target the attribute (works for either tag) rather
+            // than the element type -- otherwise every state change after the first would
+            // silently fail to find it and the icon would stay frozen on whatever rendered first.
+            const iconEl = panel.querySelector('[data-lucide]');
+            if (iconEl) iconEl.setAttribute('data-lucide', kind === 'error' ? 'wifi-off' : (kind === 'empty' ? 'users' : 'loader-circle'));
+            if (kind !== 'empty') content.style.display = 'none';
+            if (kind === 'error' || kind === 'loading') youCard.style.display = 'none';
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function hideLeaderboardState() {
+            document.getElementById('leaderboard-state-panel').style.display = 'none';
+        }
+
+        function loadLeaderboardData() {
+            if (leaderboardRequestInFlight) return;
+            leaderboardRequestInFlight = true;
+            if (!leaderboardHasLoadedOnce) showLeaderboardState('loading', 'Loading the leaderboard...');
+            fetch('/api/leaderboard', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(res => {
+                    if (res.status === 401) { window.location.replace('/login'); return null; }
+                    if (!res.ok) throw new Error('leaderboard_http_' + res.status);
+                    return res.json();
+                })
+                .then(data => {
+                    leaderboardRequestInFlight = false;
+                    if (!data) return; // 401 -- already navigating away
+                    leaderboardHasLoadedOnce = true;
+                    renderLeaderboardData(data);
+                })
+                .catch(() => {
+                    leaderboardRequestInFlight = false;
+                    // A background poll failing quietly keeps whatever's already on
+                    // screen; only a *first* load failure needs a visible error state.
+                    if (!leaderboardHasLoadedOnce) {
+                        showLeaderboardState('error', "Couldn't load the leaderboard. Check your connection and try again.");
+                    }
+                });
+        }
+
+        function renderLeaderboardData(data) {
+            const youCard = document.getElementById('leaderboard-you-card');
+            const content = document.getElementById('leaderboard-content');
+            const you = (data && typeof data.you === 'object' && data.you) || {};
+            const entries = Array.isArray(data && data.entries) ? data.entries : [];
+            const participants = typeof (data && data.participants) === 'number' ? data.participants : entries.length;
+
+            const optToggle = document.getElementById('leaderboard-opt-toggle');
+            if (optToggle && !leaderboardOptTogglePending) optToggle.checked = !!you.opted_in;
+
+            if (participants === 0 && entries.length === 0) {
+                content.style.display = 'none';
+                youCard.style.display = 'none';
+                showLeaderboardState('empty', you.opted_in
+                    ? "No one has logged study time this week yet -- be the first! Your total will show up here once you've studied a bit."
+                    : "No one has logged study time this week yet. Flip \"Show me on the board\" above to join in once you start studying.");
+                return;
+            }
+
+            hideLeaderboardState();
+            content.style.display = 'block';
+
+            if (you.rank) {
+                youCard.style.display = 'flex';
+                document.getElementById('lb-you-rank').textContent = '#' + you.rank;
+                document.getElementById('lb-you-alias').textContent = you.alias || 'You';
+                document.getElementById('lb-you-sub').textContent = you.rank <= entries.length
+                    ? "Your alias this week -- it changes again next Monday"
+                    : ('Out of ' + participants + (participants === 1 ? ' participant' : ' participants') + ' -- your alias changes every Monday');
+                document.getElementById('lb-you-hours').textContent = formatLeaderboardHours(you.seconds);
+            } else if (you.opted_in) {
+                youCard.style.display = 'flex';
+                document.getElementById('lb-you-rank').textContent = '--';
+                document.getElementById('lb-you-alias').textContent = you.alias || 'You';
+                document.getElementById('lb-you-sub').textContent = "You're on the board -- log a study session to appear in the rankings.";
+                document.getElementById('lb-you-hours').textContent = formatLeaderboardHours(you.seconds || 0);
+            } else {
+                youCard.style.display = 'flex';
+                document.getElementById('lb-you-rank').textContent = '--';
+                document.getElementById('lb-you-alias').textContent = "You're opted out";
+                document.getElementById('lb-you-sub').textContent = "Only you can see this total -- flip the toggle above to join this week's board.";
+                document.getElementById('lb-you-hours').textContent = formatLeaderboardHours(you.seconds || 0);
+            }
+
+            const participantsLabel = document.getElementById('lb-participants-label');
+            if (participantsLabel) participantsLabel.textContent = participants + (participants === 1 ? ' participant' : ' participants');
+
+            renderLeaderboardList(entries, you);
+            renderLeaderboardChart(entries, you);
+        }
+
+        function renderLeaderboardList(entries, you) {
+            const list = document.getElementById('leaderboard-list');
+            list.innerHTML = '';
+            if (!entries.length) {
+                list.innerHTML = '<div class="lb-state-panel" style="padding:20px 12px;">No one is ranked yet this week.</div>';
+                return;
+            }
+            const yourRank = you && you.rank;
+            entries.forEach(e => {
+                const isYou = yourRank != null && e.rank === yourRank;
+                const row = document.createElement('div');
+                row.className = 'lb-row' + (isYou ? ' is-you' : '');
+
+                const rankEl = document.createElement('div');
+                rankEl.className = 'lb-row-rank' + (e.rank <= 3 ? ' is-top3' : '');
+                rankEl.textContent = '#' + e.rank;
+
+                const aliasEl = document.createElement('div');
+                aliasEl.className = 'lb-row-alias';
+                aliasEl.textContent = e.alias;
+                if (isYou) {
+                    const pill = document.createElement('span');
+                    pill.className = 'lb-you-pill';
+                    pill.textContent = 'You';
+                    aliasEl.appendChild(pill);
+                }
+
+                const hoursEl = document.createElement('div');
+                hoursEl.className = 'lb-row-hours';
+                hoursEl.textContent = formatLeaderboardHours(e.seconds);
+
+                row.appendChild(rankEl);
+                row.appendChild(aliasEl);
+                row.appendChild(hoursEl);
+                list.appendChild(row);
+            });
+        }
+
+        function renderLeaderboardChart(entries, you) {
+            const canvasEl = document.getElementById('leaderboardChart');
+            if (!canvasEl) return;
+            if (leaderboardChartInstance) { leaderboardChartInstance.destroy(); leaderboardChartInstance = null; }
+            if (!entries.length) return;
+
+            const ctx = canvasEl.getContext('2d');
+            const accentSolid = readThemeToken('--accent-solid', '#FF66B2');
+            const accentSecondaryRgb = hexToRgbTriplet(readThemeToken('--accent-secondary', '#B57CFF'), '181, 124, 255');
+            const gridColour = readThemeToken('--chart-grid', '#FFEAF2');
+            const tickColour = readThemeToken('--text-muted', '#8A7680');
+            const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+            const yourRank = you && you.rank;
+
+            const labels = entries.map(e => e.alias);
+            const dataPoints = entries.map(e => Math.round((e.seconds / 3600) * 10) / 10);
+            const barColors = entries.map(e => e.rank === yourRank ? accentSolid : `rgba(${accentSecondaryRgb}, 0.4)`);
+
+            leaderboardChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels, datasets: [{ data: dataPoints, backgroundColor: barColors, borderRadius: 8, maxBarThickness: 28 }] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: reduceMotion ? false : undefined,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (item) => item.parsed.y + 'h' } }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: gridColour }, ticks: { color: tickColour } },
+                        x: { grid: { display: false }, ticks: { color: tickColour, autoSkip: true, maxRotation: 45, minRotation: 0 } }
+                    }
+                }
+            });
+        }
+
+        function onLeaderboardOptToggle(el) {
+            if (!el) return;
+            const nextVal = el.checked;
+            leaderboardOptTogglePending = true;
+            el.disabled = true;
+            fetch('/api/leaderboard/opt', {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ opted_in: nextVal })
+            })
+                .then(res => {
+                    if (res.status === 401) { window.location.replace('/login'); return null; }
+                    if (!res.ok) throw new Error('leaderboard_opt_http_' + res.status);
+                    return res.json();
+                })
+                .then(result => {
+                    leaderboardOptTogglePending = false;
+                    if (!result) return; // 401 -- already navigating away
+                    loadLeaderboardData();
+                })
+                .catch(() => {
+                    leaderboardOptTogglePending = false;
+                    el.checked = !nextVal;
+                    triggerAlertToast("Couldn't Update", "We couldn't save that just now. Please try again.", false);
+                })
+                .finally(() => { el.disabled = false; });
         }
 
         function buildAnalyticsChartCanvasComponent() {

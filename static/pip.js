@@ -24,16 +24,27 @@
  * floating window is strictly a second *view* onto the one real timer and
  * the two can never drift apart.
  *
+ * PHASE 4 CHANGE (spec §1): the floating window must NOT appear while the
+ * Timer view itself is on screen -- only once the user navigates to a
+ * *different* screen, or the tab is hidden. It used to open on the Start
+ * gesture; it now opens on the `switchView()` gesture that carries the user
+ * AWAY from `view-timer` (still a click, so transient activation is live and
+ * `requestWindow()` is still permitted synchronously inside that handler),
+ * and it closes again the moment `switchView()` brings them BACK to
+ * `view-timer`. The Start/Resume click itself no longer opens anything.
+ *
  * WHAT THIS FILE DOES ON ITS OWN THE INSTANT IT LOADS (no wiring needed):
  *   - Self-installing wraps (same pattern as sync.js's wrap of
  *     saveStateToLocalStorageRegister) around:
- *       toggleEngineExecutionLoop   -> opens the floating window on the
- *                                      Start/Resume gesture when the "float
- *                                      timer" preference is on (this MUST
- *                                      happen synchronously, before anything
- *                                      is awaited, or transient activation is
- *                                      lost and documentPictureInPicture
- *                                      throws NotAllowedError).
+ *       switchView                  -> leaving `view-timer` while a session
+ *                                      is actively running opens the floating
+ *                                      window (if the "float timer"
+ *                                      preference is on); returning TO
+ *                                      `view-timer` closes it. This is the
+ *                                      primary open path -- see PHASE 4
+ *                                      CHANGE above.
+ *       toggleEngineExecutionLoop   -> no longer opens the floating window
+ *                                      (Phase 4); still drives the wake lock.
  *       resetEngineDisplayState     -> ends the session -> closes the window,
  *                                      restores the tab title, clears any
  *                                      notification, releases the wake lock.
@@ -68,9 +79,10 @@
  *          onclick="AuraFocus.popOutTimer()"
  *      This must be a bare, synchronous onclick (same activation rule as #1).
  *
- * DEGRADE CHAIN (see SPEC-PHASE2.md Part A):
- *   1. documentPictureInPicture.requestWindow() on the Start/Resume gesture
- *      (Chromium only).
+ * DEGRADE CHAIN (see SPEC-PHASE2.md Part A, amended by SPEC-PHASE4.md §1):
+ *   1. documentPictureInPicture.requestWindow() on the `switchView()` click
+ *      that navigates AWAY from `view-timer` (Chromium only). Never on the
+ *      Start/Resume gesture, and never while `view-timer` is the active panel.
  *   2. Best-effort documentPictureInPicture attempt on visibilitychange-hidden,
  *      wrapped in try/catch — expected to throw (no activation) almost every
  *      time; failure is silent.
@@ -681,10 +693,15 @@
     updateTitleFallback();
   }
 
-  function maybeAutoFloatOnStart() {
+  // Opens the floating window the moment the user navigates AWAY from the
+  // Timer view while a session is actively running (Phase 4 §1). Called from
+  // inside the switchView() wrap below, synchronously within that click
+  // handler's call stack, so transient activation is still live.
+  function maybeFloatOnLeavingTimer() {
     if (!prefs().floatTimer) return;
+    if (!isEngineActivelyRunning) return;
     if (STATE.pipMode) return; // already open, nothing to do
-    attemptOpenFloatingWindow("auto");
+    attemptOpenFloatingWindow("navaway");
   }
 
   function afterEngineStateChange() {
@@ -835,10 +852,30 @@
   }
 
   wrapGlobalFn("toggleEngineExecutionLoop", function (original, thisArg, args) {
-    var wasRunning = isEngineActivelyRunning;
-    if (!wasRunning) maybeAutoFloatOnStart();
+    // Phase 4 §1: the Start/Resume gesture no longer opens the floating
+    // window by itself -- it only opens once the user leaves the Timer view
+    // (see the switchView() wrap below) or the tab is hidden (see
+    // onVisibilityChange). This wrap now only drives the wake lock.
     var result = original.apply(thisArg, args);
     afterEngineStateChange();
+    return result;
+  });
+
+  wrapGlobalFn("switchView", function (original, thisArg, args) {
+    var targetPanelKey = args[0];
+    var activePanelBefore = document.querySelector(".view-panel.active");
+    var wasOnTimer = !!(activePanelBefore && activePanelBefore.id === "view-timer");
+
+    var result = original.apply(thisArg, args);
+
+    if (targetPanelKey === "timer") {
+      // Back on the Timer screen -- the floating window must close, per spec.
+      if (STATE.pipMode) closeFloatingWindow();
+    } else if (wasOnTimer) {
+      // Left the Timer screen via a click -- transient activation is live.
+      maybeFloatOnLeavingTimer();
+    }
+
     return result;
   });
 
