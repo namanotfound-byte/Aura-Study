@@ -76,8 +76,13 @@ services:
         sync: false
       - key: SMTP_PASSWORD
         sync: false
+      # MUST match an address verified as a sender in Brevo, otherwise
+      # Brevo rejects every send. Start with the Gmail you verified, e.g.
+      #   AuraStudy <aurastudy.app@gmail.com>
+      # Once aurastudy.is-a.dev is live you can verify the domain in Brevo
+      # and switch this to AuraStudy <no-reply@aurastudy.is-a.dev>.
       - key: SMTP_FROM
-        value: "AuraStudy <no-reply@aurastudy.is-a.dev>"
+        sync: false
       - key: SMTP_USE_TLS
         value: "true"
 
