@@ -441,6 +441,14 @@ def get_db():
                 # to capture the real error in the logs, then re-raise the
                 # original. Only runs on the already-failing path.
                 _diag = logging.getLogger(__name__)
+                # Pool stats are what actually distinguish "every slot is
+                # checked out and never returned" from "the pool cannot
+                # create connections at all". Print them before anything
+                # else, since both look identical from the traceback.
+                try:
+                    _diag.error("DB DIAGNOSTIC pool stats: %r", pool.get_stats())
+                except Exception as _stats_exc:
+                    _diag.error("DB DIAGNOSTIC: pool stats unavailable: %s", _stats_exc)
                 try:
                     import psycopg as _psycopg
                     with _psycopg.connect(cfg.database_url, connect_timeout=10):
