@@ -18,6 +18,12 @@ services:
     name: aurastudy
     env: python
     plan: free
+    # MUST match the Neon database's region (ap-southeast-1 / Singapore).
+    # Blueprints take the region from this file -- the dashboard offers no
+    # picker -- and Render defaults to Oregon when it is omitted, which
+    # would put every query on a cross-Pacific round trip. Neither Render
+    # nor Neon can move a service between regions after creation.
+    region: singapore
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn -c gunicorn.conf.py "server.app:create_app()"
     healthCheckPath: /healthz
