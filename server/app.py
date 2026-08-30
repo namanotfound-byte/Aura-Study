@@ -2,7 +2,9 @@
 
 Run directly (`python -m server.app`) for local dev, or via `run.sh`.
 """
+import logging
 import os
+import sys
 
 import flask
 from werkzeug.exceptions import HTTPException
@@ -50,9 +52,41 @@ def create_app() -> flask.Flask:
     app.register_blueprint(state_bp, url_prefix="/api")
     app.register_blueprint(spotify_bp, url_prefix="/api/spotify")
 
+    # Under gunicorn, Flask's app.logger has no handler attached to
+    # gunicorn's error stream, so anything it logs -- including the
+    # traceback for an unhandled 500 -- is written nowhere. In production
+    # that makes the app undebuggable: it returns a JSON 500 and leaves no
+    # record of why. Adopt gunicorn's handlers when running under it.
+    gunicorn_logger = logging.getLogger("gunicorn.error")
+    if gunicorn_logger.handlers:
+        app.logger.handlers = gunicorn_logger.handlers
+        app.logger.setLevel(gunicorn_logger.level)
+    elif not app.logger.handlers:
+        logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
     @app.errorhandler(ApiError)
     def _handle_api_error(err: ApiError):
         return json_error(err.code, err.message, err.status)
+
+    @app.errorhandler(Exception)
+    def _handle_unexpected(err: Exception):
+        # HTTPExceptions are deliberate (404/405/403...) -- let the handler
+        # below format them. Anything else is a genuine bug or an
+        # infrastructure failure, and must leave a traceback behind.
+        if isinstance(err, HTTPException):
+            return err
+        app.logger.exception(
+            "Unhandled exception on %s %s",
+            flask.request.method,
+            flask.request.path,
+        )
+        if flask.request.path.startswith("/api/"):
+            return json_error(
+                "internal_server_error",
+                "The server hit an unexpected error. Please try again.",
+                500,
+            )
+        return ("Internal Server Error", 500)
 
     @app.errorhandler(HTTPException)
     def _handle_http_exception(err: HTTPException):
