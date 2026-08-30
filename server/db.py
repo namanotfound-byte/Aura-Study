@@ -287,9 +287,33 @@ def _get_pg_pool(database_url: str):
             # script). Using both stacked is fine but redundant.
             pool = ConnectionPool(
                 conninfo=database_url,
-                min_size=1,
+                # Neon's free tier suspends the compute after a few minutes
+                # idle, but Render pings /healthz every 5s, so the web process
+                # stays alive holding connections to a database that went to
+                # sleep underneath it. Without the settings below the pool
+                # hands out those dead connections forever and every
+                # DB-backed request hangs until the 30s default timeout --
+                # observed in production: the app 500'd on every DB route
+                # while /healthz stayed green, and only a redeploy cleared it.
+                #
+                # min_size=0   -> hold nothing while idle, so there are no
+                #                 connections to go stale in the first place.
+                # check=...    -> validate a connection before handing it out;
+                #                 a dead one is discarded and replaced instead
+                #                 of being served to a request.
+                # max_idle     -> retire idle connections well before Neon
+                #                 would suspend under them.
+                # max_lifetime -> bound total connection age.
+                # timeout=15   -> fail fast rather than hanging 30s; a Neon
+                #                 cold resume takes a few seconds, not thirty.
+                min_size=0,
                 max_size=5,
+                timeout=15.0,
+                max_idle=60.0,
+                max_lifetime=1800.0,
+                check=ConnectionPool.check_connection,
                 kwargs={
+                    "connect_timeout": 15,
                     "row_factory": dict_row,
                     "autocommit": False,
                     # Force the session timezone to UTC. Postgres always
