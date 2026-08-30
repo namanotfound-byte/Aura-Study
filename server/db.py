@@ -25,6 +25,7 @@ the two places that serialise a raw `*_at` value straight into an API
 response.
 """
 import datetime
+import logging
 import re
 import sqlite3
 import threading
@@ -418,7 +419,32 @@ def get_db():
         cfg = get_config()
         if _using_postgres(cfg):
             pool = _get_pg_pool(cfg.database_url)
-            flask.g.db = _PgConnAdapter(pool)
+            try:
+                flask.g.db = _PgConnAdapter(pool)
+            except Exception:
+                # psycopg_pool reports an exhausted pool as a bare
+                # PoolTimeout ("couldn't get a connection after N sec"),
+                # which says nothing about *why* every connection attempt
+                # failed -- DNS, routing, TLS and a rejected password all
+                # look identical from here. Make one direct attempt purely
+                # to capture the real error in the logs, then re-raise the
+                # original. Only runs on the already-failing path.
+                _diag = logging.getLogger(__name__)
+                try:
+                    import psycopg as _psycopg
+                    with _psycopg.connect(cfg.database_url, connect_timeout=10):
+                        _diag.error(
+                            "DB DIAGNOSTIC: pool timed out but a direct "
+                            "connection succeeded -- pool exhaustion, not "
+                            "connectivity."
+                        )
+                except Exception as exc:
+                    _diag.error(
+                        "DB DIAGNOSTIC: direct connection failed -- %s: %s",
+                        type(exc).__name__,
+                        exc,
+                    )
+                raise
         else:
             flask.g.db = _sqlite_connect(cfg.database_path)
     return flask.g.db
