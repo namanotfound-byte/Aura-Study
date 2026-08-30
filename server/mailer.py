@@ -79,7 +79,7 @@ def _wrap_html(heading: str, body_html: str, link: str) -> str:
 padding:32px;color:#3a2233;">
   <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:20px;
       padding:32px;box-shadow:0 8px 24px rgba(255,102,178,0.18);">
-    <h1 style="color:{accent};margin-top:0;">AuraStudy &#10024;</h1>
+    <h1 style="color:{accent};margin-top:0;">AuraStudy</h1>
     <h2 style="margin-bottom:8px;">{heading}</h2>
     <p style="line-height:1.5;">{body}</p>
     <p style="margin:24px 0;">
@@ -99,8 +99,8 @@ padding:32px;color:#3a2233;">
 def send_verification_email(to: str, raw_token: str) -> bool:
     cfg = get_config()
     link = "{}/verify?token={}".format(cfg.app_base_url, raw_token)
-    subject = "Verify your email for AuraStudy ✨"
-    body_html = ("Welcome to AuraStudy, smartiepants! Confirm this is really you and "
+    subject = "Verify your email for AuraStudy"
+    body_html = ("Welcome to AuraStudy! Confirm this is really you and "
                  "your account will be ready to study with. This link expires in "
                  "<strong>24 hours</strong>.")
     text_body = (

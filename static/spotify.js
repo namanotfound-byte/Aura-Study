@@ -472,7 +472,7 @@
     loadSdk().then(function (Spotify) {
       if (!Spotify || STATE.player) return;
       var player = new Spotify.Player({
-        name: 'AuraStudy ✨',
+        name: 'AuraStudy',
         getOAuthToken: function (cb) {
           api('/api/spotify/token').then(function (r) {
             cb(r.ok ? r.data.access_token : '');

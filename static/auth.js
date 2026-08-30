@@ -68,6 +68,20 @@
     });
   }
 
+  // The `next` query param on /login is attacker-controlled (it's just part
+  // of the URL a phishing link can set) and was previously handed straight
+  // to `window.location.href`, which happily navigates to an absolute URL on
+  // another origin -- or, worse, a `javascript:` URI, which would execute in
+  // this page's own origin right after a real, successful login. Only a
+  // same-origin, root-relative path (single leading slash, not `//host/...`
+  // or `/\host/...`, both of which browsers treat as protocol-relative) is
+  // ever honoured; anything else falls back to "/".
+  function safeNextPath(raw) {
+    if (typeof raw !== "string" || !raw) return "/";
+    if (!/^\/(?!\/|\\)/.test(raw)) return "/";
+    return raw;
+  }
+
   function emailClientError(email) {
     if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return "Enter a valid email address.";
@@ -139,7 +153,7 @@
           setLoading(false);
           if (r.ok) {
             var params = new URLSearchParams(window.location.search);
-            window.location.href = params.get("next") || "/";
+            window.location.href = safeNextPath(params.get("next"));
             return;
           }
           var code = r.data.error;

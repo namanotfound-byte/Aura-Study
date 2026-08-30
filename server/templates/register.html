@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Sign up - AuraStudy{% endblock %}
 {% block content %}
-  <h1 class="auth-heading">Hi, future smartiepants ✨</h1>
-  <p class="auth-subheading">Create your account and let's start studying.</p>
+  <h1 class="auth-heading">Create your account</h1>
+  <p class="auth-subheading">Sign up and let's start studying.</p>
 
   <div class="auth-alert" id="form-alert" hidden></div>
 
   <form id="auth-form" class="auth-form" novalidate>
     <label class="auth-field">
       <span>What should we call you? <em>(optional)</em></span>
-      <input type="text" name="display_name" id="display_name" autocomplete="nickname" placeholder="Cutie McStudy">
+      <input type="text" name="display_name" id="display_name" autocomplete="nickname" placeholder="Jane Doe">
     </label>
 
     <label class="auth-field">

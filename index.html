@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>AuraStudy ✨ Your Ultimate Cute Pastel Neon Workspace</title>
+    <title>AuraStudy — Focus Timer & Study Tracker</title>
     <!-- Chart.js for data analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Lucide Icons library -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
-            /* Cute & Girly Neon Aesthetic Theme Palette */
+            /* Pastel Neon Theme Palette */
             --bg-main: #FFF5F8;
             --bg-sidebar: #FFEAF2;
             --bg-card: #FFFFFF;
@@ -500,7 +500,7 @@
             text-transform: uppercase;
         }
 
-        /* Cute Pastel To-Do List Engine Card Structure */
+        /* Pastel To-Do List Card Structure */
         .todo-engine-card {
             background: #FFFFFF;
             border: 2px solid var(--border-color);
@@ -1307,7 +1307,7 @@
         <div>
             <div class="brand">
                 <i data-lucide="sparkles" style="color: var(--neon-pink);"></i>
-                <span>AuraStudy ✨</span>
+                <span>AuraStudy</span>
             </div>
             <div class="nav-group">
                 <div class="nav-item active" onclick="switchView('dashboard', this); closeMobileNav();">
@@ -1324,11 +1324,11 @@
                 </div>
                 <div class="nav-item" onclick="switchView('sessions', this); closeMobileNav();">
                     <i data-lucide="scroll"></i>
-                    <span>Sessions Log</span>
+                    <span>Sessions</span>
                 </div>
                 <div class="nav-item" onclick="switchView('trophies', this); closeMobileNav();">
                     <i data-lucide="star"></i>
-                    <span>Trophies Cabinet</span>
+                    <span>Achievements</span>
                 </div>
                 <div class="nav-item" id="nav-item-music-toggle" onclick="switchView('spotify', this); closeMobileNav();">
                     <i data-lucide="music"></i>
@@ -1354,7 +1354,7 @@
             </div>
             <div class="user-profile">
                 <i data-lucide="heart" style="color: var(--neon-pink); fill: var(--neon-pink);"></i>
-                <span id="user-email-display">smartiepants@local.app</span>
+                <span id="user-email-display">you@example.com</span>
             </div>
             <div class="nav-item" id="nav-item-logout" onclick="AuraSync.logout()">
                 <i data-lucide="log-out"></i>
@@ -1376,7 +1376,7 @@
             </div>
             <div class="header-actions">
                 <button class="btn btn-neon-pink" onclick="switchView('timer', document.getElementById('nav-item-timer-toggle'))">
-                    <i data-lucide="heart-handshake"></i> <span class="hdr-btn-label">Start :)</span>
+                    <i data-lucide="heart-handshake"></i> <span class="hdr-btn-label">Start Session</span>
                 </button>
             </div>
         </div>
@@ -1388,12 +1388,12 @@
             <div class="pet-container-card">
                 <div class="pet-sprite-frame" id="pet-avatar-emoji">🌱</div>
                 <div class="pet-status-info">
-                    <div class="pet-level-badge" id="pet-level-display-tag">Level 1 Sprout</div>
-                    <h3 style="font-size:16px; font-weight:800; color:var(--text-main);" id="pet-headline-label">Mochi the Study Bunny</h3>
+                    <div class="pet-level-badge" id="pet-level-display-tag">Level 1: Seedling</div>
+                    <h3 style="font-size:16px; font-weight:800; color:var(--text-main);" id="pet-headline-label">Mochi is just starting to grow.</h3>
                     <div class="progress-wrapper" style="margin-top:6px;">
                         <div class="progress-labels" style="font-size:11px; margin-bottom:4px;">
                             <span id="pet-xp-numerical-label">0 / 60 mins focused</span>
-                            <span style="font-weight:bold; color:var(--neon-purple);">Next Evolution ✨</span>
+                            <span style="font-weight:bold; color:var(--neon-purple);">Next Level</span>
                         </div>
                         <div class="progress-bar-bg" style="height:8px;">
                             <div class="progress-bar-fill" id="pet-xp-progress-fill" style="background: linear-gradient(to right, var(--neon-blue), var(--neon-green));"></div>
@@ -1406,10 +1406,10 @@
                 
                 <div class="card">
                     <div class="card-title">
-                        <span>Weekly Streak Matrix</span>
+                        <span>Weekly Streak</span>
                         <i data-lucide="flame" style="color: var(--neon-pink);"></i>
                     </div>
-                    <p class="text-muted" style="font-size: 13px; margin-bottom: 12px;">Commit study timer intervals to preserve your continuous weekly streak routine!</p>
+                    <p class="text-muted" style="font-size: 13px; margin-bottom: 12px;">Log a study session each day to keep your streak going.</p>
                     <div class="streak-container">
                         <div class="streak-day"><span>Mon</span><div class="streak-dot" id="streak-0">-</div></div>
                         <div class="streak-day"><span>Tue</span><div class="streak-dot" id="streak-1">-</div></div>
@@ -1420,7 +1420,7 @@
                         <div class="streak-day"><span>Sun</span><div class="streak-dot" id="streak-6">-</div></div>
                     </div>
                     <div style="margin-top: 18px; font-size: 14px; font-weight: 700; color: var(--text-main);" id="streak-count-label">
-                        💖 Continuous Active Aura: <strong>0 days</strong>
+                        Current Streak: <strong>0 days</strong>
                     </div>
                 </div>
 
@@ -1443,7 +1443,7 @@
 
                 <div class="card dashboard-row-full">
                     <div class="card-title">
-                        <span>Study Velocity Metric Profile Chart</span>
+                        <span>Study Time Trends</span>
                         <i data-lucide="heart-pulse" style="color: var(--neon-pink);"></i>
                     </div>
                     <div class="analytics-chart-wrap">
@@ -1455,16 +1455,16 @@
                         <div class="todo-header-row">
                             <h3 style="font-size: 15px; font-weight: 800; color: var(--text-main); display:flex; align-items:center; gap:8px;">
                                 <i data-lucide="check-square" style="color: var(--neon-pink); width:18px; height:18px;"></i>
-                                ✨ Daily Academic Tasks List
+                                Today's Tasks
                             </h3>
                             <label class="todo-toggle-filter-label">
                                 <input type="checkbox" class="todo-toggle-checkbox" id="todo-filter-hide-completed" onchange="refreshTodoListViewLayout()">
                                 Hide Completed
                             </label>
                         </div>
-                        
+
                         <div class="todo-input-bar">
-                            <input type="text" class="form-control" id="todo-new-task-input" placeholder="Type a task you want to complete next... 🎀" style="height: 44px;">
+                            <input type="text" class="form-control" id="todo-new-task-input" placeholder="Add a task..." style="height: 44px;">
                             <button class="btn btn-neon-pink" style="height: 44px; padding: 0 24px;" onclick="addNewTodoListItemEntry()">Add</button>
                         </div>
 
@@ -1501,7 +1501,7 @@
                         <span>📝 Brain Dump Note</span>
                         <i data-lucide="x" style="width:12px; height:12px; cursor:pointer; color:#7A7A43;" onclick="toggleBrainDumpPostitPopoverState()"></i>
                     </div>
-                    <textarea class="timer-braindump-textarea" id="sticky-scratchpad-input" placeholder="Type thoughts or side distractions here to keep your main mind clean and focused... 💕" oninput="saveStickyScratchpadContent()"></textarea>
+                    <textarea class="timer-braindump-textarea" id="sticky-scratchpad-input" placeholder="Jot down thoughts or distractions here to keep your mind clear..." oninput="saveStickyScratchpadContent()"></textarea>
                 </div>
 
                 <!-- Compact Spotify now-playing strip, filled/positioned entirely by static/spotify.js -->
@@ -1513,7 +1513,7 @@
                     <div class="ambient-preset-dot" style="background: var(--ambient-grad-peachy);" title="Sweet Peach Aura" onclick="selectAmbientEnvironmentPreset('peachy', false, this)"></div>
                     <div class="ambient-preset-dot" style="background: var(--ambient-grad-mintrefresh);" title="Minty Refresh Glow" onclick="selectAmbientEnvironmentPreset('mintrefresh', false, this)"></div>
                     <div class="ambient-preset-dot" style="background: var(--ambient-grad-lavenderdream);" title="Lavender Macaron" onclick="selectAmbientEnvironmentPreset('lavenderdream', false, this)"></div>
-                    <div class="ambient-preset-dot" style="background: var(--ambient-grad-auroracute);" title="Cute Aurora" onclick="selectAmbientEnvironmentPreset('auroracute', false, this)"></div>
+                    <div class="ambient-preset-dot" style="background: var(--ambient-grad-auroracute);" title="Aurora Glow" onclick="selectAmbientEnvironmentPreset('auroracute', false, this)"></div>
                     <div class="ambient-preset-dot" style="background: var(--ambient-grad-magicaldark);" title="Magical Dark Galaxy" onclick="selectAmbientEnvironmentPreset('magicaldark', true, this)"></div>
                 </div>
 
@@ -1536,7 +1536,7 @@
                 </div>
 
                 <div class="timer-clock-display" id="timer-display">25:00</div>
-                <div class="timer-meta" id="timer-start-timestamp">Select your subject and initialize runtime block</div>
+                <div class="timer-meta" id="timer-start-timestamp">Pick a course and start your session</div>
 
                 <div class="timer-controls">
                     <button class="timer-btn timer-btn-secondary" onclick="resetEngineDisplayState()">
@@ -1558,7 +1558,7 @@
         <!-- VIEW: COURSES -->
         <div id="view-courses" class="view-panel">
             <div class="card" style="margin-bottom: 28px; border-color: var(--border-color);">
-                <div class="card-title">Provision New Course Vector</div>
+                <div class="card-title">Add a New Course</div>
                 <div class="course-add-row" style="display: flex; gap: 16px; align-items: flex-end;">
                     <div class="input-group" style="flex: 1; margin-bottom: 0;">
                         <input type="text" class="form-control" id="new-course-name" placeholder="e.g. Advanced Calculus, Physics, English Literature...">
@@ -1567,7 +1567,7 @@
                 </div>
             </div>
 
-            <h3 style="margin-bottom: 16px; font-weight: 800; font-size: 18px; color: var(--text-main);">Registered Academic Tracks</h3>
+            <h3 style="margin-bottom: 16px; font-weight: 800; font-size: 18px; color: var(--text-main);">Your Courses</h3>
             <div class="courses-list-grid" id="courses-container-list">
                 <!-- Loaded dynamically -->
             </div>
@@ -1577,18 +1577,18 @@
         <div id="view-sessions" class="view-panel">
             <div class="card">
                 <div class="card-title">
-                    <span>Archived Study Performance Sequences</span>
+                    <span>Session History</span>
                     <button class="btn" style="padding: 6px 14px; font-size: 11px; color:#FF4D6D;" onclick="clearAllLogs()">Clear History</button>
                 </div>
                 <div style="overflow-x: auto;">
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Execution Date</th>
-                                <th>Subject Domain</th>
-                                <th>Timer Profile</th>
-                                <th>Elapsed Duration</th>
-                                <th>Timestamp</th>
+                                <th>Date</th>
+                                <th>Course</th>
+                                <th>Mode</th>
+                                <th>Duration</th>
+                                <th>Time</th>
                             </tr>
                         </thead>
                         <tbody id="sessions-table-rows">
@@ -1599,13 +1599,13 @@
             </div>
         </div>
 
-        <!-- VIEW: TROPHIES CABINET -->
+        <!-- VIEW: ACHIEVEMENTS -->
         <div id="view-trophies" class="view-panel">
             <div class="card" style="margin-bottom:24px; background: linear-gradient(to right, #FFFFFF, #FFF0F5);">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div>
-                        <h3 style="font-weight: 800; font-size: 18px; color: var(--text-main);">Rewards & Achievements Showcase</h3>
-                        <p class="text-muted" style="font-size: 13px; margin-top: 2px;">Keep studying to unlock cute custom milestone reward profiles badges.</p>
+                        <h3 style="font-weight: 800; font-size: 18px; color: var(--text-main);">Badges & Achievements</h3>
+                        <p class="text-muted" style="font-size: 13px; margin-top: 2px;">Keep studying to unlock badges and achievements.</p>
                     </div>
                     <div style="text-align: right;">
                         <span style="font-size: 14px; font-weight: 800; color: var(--neon-pink);" id="trophy-unlocked-ratio-label">0 / 0 Earned</span>
@@ -1631,24 +1631,24 @@
         <!-- VIEW: SETTINGS -->
         <div id="view-settings" class="view-panel">
             <div class="card" style="max-width: 600px;">
-                <div class="card-title">System Configuration Profile parameters</div>
+                <div class="card-title">Preferences</div>
 
                 <div class="input-group" style="margin-bottom:16px;">
                     <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Account Email</label>
-                    <input type="text" class="form-control" id="settings-user-email" value="smartiepants@local.app" readonly style="opacity:0.7; cursor:not-allowed;">
+                    <input type="text" class="form-control" id="settings-user-email" value="you@example.com" readonly style="opacity:0.7; cursor:not-allowed;">
                 </div>
 
                 <div class="input-group" style="margin-bottom:16px;">
-                    <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Target Daily Study Intensity (Hours)</label>
+                    <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Daily Study Goal (Hours)</label>
                     <input type="number" class="form-control" id="settings-daily-goal" value="3" onchange="updateProfileSettings()">
                 </div>
 
                 <div class="input-group" style="margin-bottom:24px;">
-                    <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Default Countdown Block Duration (Minutes)</label>
+                    <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Default Timer Length (Minutes)</label>
                     <input type="number" class="form-control" id="settings-timer-duration" value="25" onchange="updateProfileSettings()">
                 </div>
 
-                <button class="btn btn-neon-pink" onclick="triggerManualSaveNotification()">Synchronize Changes</button>
+                <button class="btn btn-neon-pink" onclick="triggerManualSaveNotification()">Save Changes</button>
             </div>
 
             <div class="card" style="max-width: 600px; margin-top: 24px;">
@@ -1733,15 +1733,26 @@
     </div>
 
     <script>
-        // Core State Engine Allocation 
+        // Escapes user-supplied text before it is interpolated into an
+        // innerHTML template literal (todo text, course names, etc. are all
+        // free-form strings the signed-in user controls and which now
+        // persist to their account, so they must never be inserted as raw
+        // HTML -- see the security review for the stored-XSS this closes).
+        function escapeHtml(value) {
+            return String(value === null || value === undefined ? '' : value).replace(/[&<>"']/g, function (ch) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+            });
+        }
+
+        // Core State Engine Allocation
         let appState = {
-            profile: { email: "smartiepants@local.app", dailyGoalHours: 3, defaultTimerMinutes: 25 },
+            profile: { email: "you@example.com", dailyGoalHours: 3, defaultTimerMinutes: 25 },
             courses: ["Math", "Physics", "Chemistry", "Literature"],
-            sessions: [], 
+            sessions: [],
             todoItems: [
-                { id: 1, text: "Revise organic chemistry mechanics summary sheets", completed: false },
-                { id: 2, text: "Finish calculus assignment section 4.2 data loops", completed: true }
-            ], 
+                { id: 1, text: "Review today's lecture notes", completed: false },
+                { id: 2, text: "Finish a practice problem set", completed: true }
+            ],
             selectedCourse: "Math",
             selectedMode: "countdown",
             ambientKey: "cottoncandy",
@@ -1762,75 +1773,75 @@
         let operationalBarChartInstance = null;
 
         const fullBadgesDatabase = [
-            { id: 'b_active_day', category: 'Daily', title: 'Active Day Badge', desc: 'You logged at least one focus session inside current day frames.', icon: 'flame' },
-            { id: 'b_early_bird', category: 'Daily', title: 'Early Bird Badge', desc: 'You studied before 7:00 AM (and after 3:00 AM).', icon: 'cloud-sun' },
-            { id: 'b_night_owl', category: 'Daily', title: 'Night Owl Badge', desc: 'You studied after 11:00 PM (and before 3:00 AM).', icon: 'moon' },
-            { id: 'b_daily_goal', category: 'Daily', title: 'Daily Goal Badge', desc: 'You have reached your daily study target hours limitation.', icon: 'target' },
-            { id: 'b_bronze_medal', category: 'Daily', title: 'Bronze Medal', desc: 'You studied more than 180 collective minutes in a single day.', icon: 'medal' },
-            { id: 'b_silver_medal', category: 'Daily', title: 'Silver Medal', desc: 'You studied more than 240 collective minutes in a single day.', icon: 'medal' },
-            { id: 'b_gold_medal', category: 'Daily', title: 'Gold Medal', desc: 'You studied more than 300 collective minutes in a single day.', icon: 'medal' },
-            { id: 'b_weekly_goal', category: 'Weekly', title: 'Weekly Goal Badge', desc: 'You have reached your total weekly aggregated target parameters.', icon: 'milestone' },
-            { id: 'b_bronze_week', category: 'Weekly', title: 'Bronze Week', desc: 'You achieved at least a bronze medal on every single day of a week.', icon: 'shield' },
-            { id: 'b_silver_week', category: 'Weekly', title: 'Silver Week', desc: 'You achieved at least a silver medal on every single day of a week.', icon: 'award' },
-            { id: 'b_golden_week', category: 'Weekly', title: 'Golden Week', desc: 'You achieved a gold medal performance score on every single day of a week.', icon: 'crown' },
-            { id: 'b_monthly_goal', category: 'Milestone', title: 'Monthly Goal Badge', desc: 'You have completed your macro monthly tracking goal metrics.', icon: 'sparkles' },
-            { id: 'b_course_goal', category: 'Milestone', title: 'Course Badge', desc: 'You achieved a specific registered course\'s study target requirements.', icon: 'book-open' },
-            { id: 'b_school_year', category: 'Milestone', title: 'School Year Badge', desc: 'You achieved your composite school year total accumulation target limits.', icon: 'graduation-cap' }
+            { id: 'b_active_day', category: 'Daily', title: 'Active Day Badge', desc: 'Log at least one study session today.', icon: 'flame' },
+            { id: 'b_early_bird', category: 'Daily', title: 'Early Bird Badge', desc: 'Study before 7:00 AM (and after 3:00 AM).', icon: 'cloud-sun' },
+            { id: 'b_night_owl', category: 'Daily', title: 'Night Owl Badge', desc: 'Study after 11:00 PM (and before 3:00 AM).', icon: 'moon' },
+            { id: 'b_daily_goal', category: 'Daily', title: 'Daily Goal Badge', desc: 'Reach your daily study goal.', icon: 'target' },
+            { id: 'b_bronze_medal', category: 'Daily', title: 'Bronze Medal', desc: 'Study more than 180 minutes in a single day.', icon: 'medal' },
+            { id: 'b_silver_medal', category: 'Daily', title: 'Silver Medal', desc: 'Study more than 240 minutes in a single day.', icon: 'medal' },
+            { id: 'b_gold_medal', category: 'Daily', title: 'Gold Medal', desc: 'Study more than 300 minutes in a single day.', icon: 'medal' },
+            { id: 'b_weekly_goal', category: 'Weekly', title: 'Weekly Goal Badge', desc: 'Reach your weekly study goal.', icon: 'milestone' },
+            { id: 'b_bronze_week', category: 'Weekly', title: 'Bronze Week', desc: 'Earn a Bronze Medal every day for a full week.', icon: 'shield' },
+            { id: 'b_silver_week', category: 'Weekly', title: 'Silver Week', desc: 'Earn a Silver Medal every day for a full week.', icon: 'award' },
+            { id: 'b_golden_week', category: 'Weekly', title: 'Golden Week', desc: 'Earn a Gold Medal every day for a full week.', icon: 'crown' },
+            { id: 'b_monthly_goal', category: 'Milestone', title: 'Monthly Goal Badge', desc: 'Reach your monthly study goal.', icon: 'sparkles' },
+            { id: 'b_course_goal', category: 'Milestone', title: 'Course Badge', desc: 'Reach your study goal for a specific course.', icon: 'book-open' },
+            { id: 'b_school_year', category: 'Milestone', title: 'School Year Badge', desc: 'Reach your total study goal for the school year.', icon: 'graduation-cap' }
         ];
 
         const fullAchievementsDatabase = [
-            { id: 'a_first_steps', category: 'Getting Started', title: 'First Steps', desc: 'Log your first study session into the platform ledger.', check: (state) => state.sessions.length >= 1, icon: 'footprints' },
-            { id: 'a_week_one', category: 'Getting Started', title: 'Week One', desc: 'Complete your first whole week of focused studying tracking matrices.', check: (state) => state.sessions.length >= 3, icon: 'calendar-days' },
-            { id: 'a_month_one', category: 'Getting Started', title: 'Month One', desc: 'Complete your first macro month of tracked studying cycles.', check: (state) => state.sessions.length >= 8, icon: 'archive' },
-            { id: 'a_time_keeper', category: 'Getting Started', title: 'Time Keeper', desc: 'Use the countdown block timer execution profile for the first time.', check: (state) => state.sessions.some(s => s.type === 'Countdown'), icon: 'watch' },
-            { id: 'a_goal_setter', category: 'Getting Started', title: 'Goal Setter', desc: 'Set a custom study time goal for any registered course domain.', check: (state) => state.courses.length > 0, icon: 'compass' },
-            { id: 'a_all_set', category: 'Getting Started', title: 'All Set', desc: 'Complete the onboarding process.', check: (state) => state.courses.length >= 4, icon: 'check-square' },
-            { id: 'a_tinkerer', category: 'Getting Started', title: 'Tinkerer', desc: 'Adjust any configuration property parameter from settings panel.', check: (state) => localStorage.getItem('aurastudy_tinkered_flag') === 'true', icon: 'sliders' },
-            { id: 'a_explorer', category: 'Getting Started', title: 'Explorer', desc: 'Visit and activate every individual navigation section view in the sidebar.', check: (state) => true, icon: 'compass' },
+            { id: 'a_first_steps', category: 'Getting Started', title: 'First Steps', desc: 'Log your first study session.', check: (state) => state.sessions.length >= 1, icon: 'footprints' },
+            { id: 'a_week_one', category: 'Getting Started', title: 'Week One', desc: 'Log study sessions across your first week.', check: (state) => state.sessions.length >= 3, icon: 'calendar-days' },
+            { id: 'a_month_one', category: 'Getting Started', title: 'Month One', desc: 'Log study sessions across your first month.', check: (state) => state.sessions.length >= 8, icon: 'archive' },
+            { id: 'a_time_keeper', category: 'Getting Started', title: 'Time Keeper', desc: 'Use the countdown timer for the first time.', check: (state) => state.sessions.some(s => s.type === 'Countdown'), icon: 'watch' },
+            { id: 'a_goal_setter', category: 'Getting Started', title: 'Goal Setter', desc: 'Add your first course.', check: (state) => state.courses.length > 0, icon: 'compass' },
+            { id: 'a_all_set', category: 'Getting Started', title: 'All Set', desc: 'Finish setting up your courses.', check: (state) => state.courses.length >= 4, icon: 'check-square' },
+            { id: 'a_tinkerer', category: 'Getting Started', title: 'Tinkerer', desc: 'Change a setting in Preferences.', check: (state) => localStorage.getItem('aurastudy_tinkered_flag') === 'true', icon: 'sliders' },
+            { id: 'a_explorer', category: 'Getting Started', title: 'Explorer', desc: 'Visit every section of the app.', check: (state) => true, icon: 'compass' },
             { id: 'a_beginner', category: 'Time Milestones', title: 'Beginner', desc: 'Study for a total of 10 hours.', check: (state) => getTotalFocusHours(state) >= 10, icon: 'sparrow', progress: true, max: 10, unit: 'hrs' },
             { id: 'a_apprentice', category: 'Time Milestones', title: 'Apprentice', desc: 'Study for a total of 50 hours.', check: (state) => getTotalFocusHours(state) >= 50, icon: 'bird', progress: true, max: 50, unit: 'hrs' },
             { id: 'a_scholar', category: 'Time Milestones', title: 'Scholar', desc: 'Study for a total of 100 hours.', check: (state) => getTotalFocusHours(state) >= 100, icon: 'glasses', progress: true, max: 100, unit: 'hrs' },
             { id: 'a_expert', category: 'Time Milestones', title: 'Expert', desc: 'Study for a total of 250 hours.', check: (state) => getTotalFocusHours(state) >= 250, icon: 'gem', progress: true, max: 250, unit: 'hrs' },
             { id: 'a_master', category: 'Time Milestones', title: 'Master', desc: 'Study for a total of 500 hours.', check: (state) => getTotalFocusHours(state) >= 500, icon: 'command', progress: true, max: 500, unit: 'hrs' },
-            { id: 'a_powerbank', category: 'Time Milestones', title: 'Powerbank', desc: 'Study for 8+ hours inside a single calendar day timeline window.', check: (state) => checkSingleDayHourThreshold(state, 8), icon: 'battery-charging' },
-            { id: 'a_grandmaster', category: 'Time Milestones', title: 'Grandmaster', desc: 'Study for an ultimate milestone tracking limit of 1,000 hours.', check: (state) => getTotalFocusHours(state) >= 1000, icon: 'crown', progress: true, max: 1000, unit: 'hrs' },
-            { id: 'a_week_warrior', category: 'Consistency', title: 'Week Warrior', desc: 'Achieve an active continuous study streak spanning 7 consecutive days.', check: (state) => state.streak >= 7, icon: 'calendar-heart' },
-            { id: 'a_fortnight', category: 'Consistency', title: 'Fortnight Fighter', desc: 'Achieve an active continuous study streak spanning 14 consecutive days.', check: (state) => state.streak >= 14, icon: 'shield-check' },
-            { id: 'a_monthly_master', category: 'Consistency', title: 'Monthly Master', desc: 'Achieve an active continuous study streak spanning 30 consecutive days.', check: (state) => state.streak >= 30, icon: 'star' },
-            { id: 'a_weekend_warrior', category: 'Consistency', title: 'Weekend Warrior', desc: 'Log study workspace blocks on 10 consecutive weekends.', check: (state) => state.sessions.length >= 4, icon: 'party-popper' },
-            { id: 'a_morning_person', category: 'Consistency', title: 'Morning Person', desc: 'Earn the Early Bird Badge automatically for 7 consecutive days in a row.', check: (state) => state.streak >= 4, icon: 'sun' },
-            { id: 'a_night_owl_week', category: 'Consistency', title: 'Night Owl Week', desc: 'Earn the Night Owl Badge automatically for 7 consecutive days in a row.', check: (state) => state.streak >= 5, icon: 'moon-star' },
-            { id: 'a_marathon_runner', category: 'Consistency', title: 'Marathon Runner', desc: 'Achieve an exceptional continuous daily study streak spanning 42 days.', check: (state) => state.streak >= 42, icon: 'zap' },
-            { id: 'a_superman', category: 'Consistency', title: 'Superman', desc: 'Study the exact same course domain topic for 30 consecutive days.', check: (state) => state.streak >= 6, icon: 'heart' },
-            { id: 'a_centurio', category: 'Consistency', title: 'Centurio', desc: 'Achieve a legendary continuous daily study streak milestone of 100 days.', check: (state) => state.streak >= 100, icon: 'shield-alert', progress: true, max: 100, unit: 'days' },
-            { id: 'a_overachiever', category: 'Dedication', title: 'Overachiever', desc: 'Exceed your assigned daily baseline intensity hours goal by 200%.', check: (state) => verifyDailyGoalExcessRatio(state, 2.0), icon: 'rocket' },
-            { id: 'a_break_even', category: 'Dedication', title: 'Break Even', desc: 'Go from a negative back up into a positive tracking baseline score parameter.', check: (state) => state.sessions.length >= 2, icon: 'trending-up' },
-            { id: 'a_stock_surge', category: 'Dedication', title: 'Stock Surge', desc: 'Reach a comprehensive surplus share price index tracking score of +10 hours.', check: (state) => state.sessions.length >= 5, icon: 'activity' },
-            { id: 'a_course_samurai', category: 'Dedication', title: 'Course Samurai', desc: 'Fulfill and complete a pre-configured course target baseline limit.', check: (state) => state.sessions.length >= 3, icon: 'swords' },
-            { id: 'a_photo_finish', category: 'Dedication', title: 'Photo Finish', desc: 'Complete your goal targets with less than 30 minutes left before midnight.', check: (state) => state.sessions.length >= 1, icon: 'camera' },
-            { id: 'a_daily_devotion', category: 'Dedication', title: 'Daily Devotion', desc: 'Maintain complete daily goal compliance targets every day of a calendar month.', check: (state) => state.streak >= 28, icon: 'calendar-check' },
-            { id: 'a_golden_legend', category: 'Dedication', title: 'Golden Legend', desc: 'Accumulate a milestone score threshold of 23 gold medals in the platform logs.', check: (state) => state.sessions.length >= 6, icon: 'award' },
-            { id: 'a_goal_crusher', category: 'Dedication', title: 'Goal Crusher', desc: 'Achieve and fulfill your total customizable tracking semester goals metrics.', check: (state) => state.sessions.length >= 4, icon: 'target' },
-            { id: 'a_phoenix', category: 'Dedication', title: 'Phoenix', desc: 'Recover from a deficit margin score back into clear positive values.', check: (state) => state.sessions.length >= 3, icon: 'sparkles' },
-            { id: 'a_study_hoplite', category: 'Dedication', title: 'Study Hoplite', desc: 'Log a grand historic operational milestone total of 300 unique study sessions.', check: (state) => state.sessions.length >= 300, icon: 'layers', progress: true, max: 300, unit: 'sessions' },
-            { id: 'a_king_wall_st', category: 'Dedication', title: 'King of Wall Street', desc: 'Reach an ultimate focus asset tracking velocity metric index of +100 hours.', check: (state) => state.sessions.length >= 12, icon: 'crown' },
-            { id: 'a_well_rounded', category: 'Variety', title: 'Well Rounded', desc: 'Track focus data nodes across 5 or more unique course domain categories.', check: (state) => new Set(state.sessions.map(s => s.course)).size >= 5, icon: 'shapes' },
-            { id: 'a_triathlete', category: 'Variety', title: 'Triathlete', desc: 'Track and store logs for 3 separate custom courses inside a single day.', check: (state) => checkTriathleteCondition(state), icon: 'medal' },
-            { id: 'a_medal_collector', category: 'Variety', title: 'Medal Collector', desc: 'Earn at least one gold, one silver, and one bronze medal within your profile.', check: (state) => state.sessions.length >= 3, icon: 'trophy' },
-            { id: 'a_polymath', category: 'Variety', title: 'Polymath', desc: 'Deploy and register tracking blocks across 10 separate activity domains.', check: (state) => state.courses.length >= 10, icon: 'cpu' },
-            { id: 'a_four_seasons', category: 'Variety', title: 'Four Seasons', desc: 'Log focused deep work sessions across each seasonal quarter phase.', check: (state) => true, icon: 'leaf', progress: true, max: 4, unit: 'seasons' },
-            { id: 'a_day_and_night', category: 'Variety', title: 'Day and Night', desc: 'Unlock both Early Bird and Night Owl badges within the same calendar day.', check: (state) => state.sessions.length >= 2, icon: 'sun-moon' },
+            { id: 'a_powerbank', category: 'Time Milestones', title: 'Powerbank', desc: 'Study for 8 or more hours in a single day.', check: (state) => checkSingleDayHourThreshold(state, 8), icon: 'battery-charging' },
+            { id: 'a_grandmaster', category: 'Time Milestones', title: 'Grandmaster', desc: 'Study for a total of 1,000 hours.', check: (state) => getTotalFocusHours(state) >= 1000, icon: 'crown', progress: true, max: 1000, unit: 'hrs' },
+            { id: 'a_week_warrior', category: 'Consistency', title: 'Week Warrior', desc: 'Study 7 days in a row.', check: (state) => state.streak >= 7, icon: 'calendar-heart' },
+            { id: 'a_fortnight', category: 'Consistency', title: 'Fortnight Fighter', desc: 'Study 14 days in a row.', check: (state) => state.streak >= 14, icon: 'shield-check' },
+            { id: 'a_monthly_master', category: 'Consistency', title: 'Monthly Master', desc: 'Study 30 days in a row.', check: (state) => state.streak >= 30, icon: 'star' },
+            { id: 'a_weekend_warrior', category: 'Consistency', title: 'Weekend Warrior', desc: 'Log study sessions on 10 consecutive weekends.', check: (state) => state.sessions.length >= 4, icon: 'party-popper' },
+            { id: 'a_morning_person', category: 'Consistency', title: 'Morning Person', desc: 'Earn the Early Bird badge 7 days in a row.', check: (state) => state.streak >= 4, icon: 'sun' },
+            { id: 'a_night_owl_week', category: 'Consistency', title: 'Night Owl Week', desc: 'Earn the Night Owl badge 7 days in a row.', check: (state) => state.streak >= 5, icon: 'moon-star' },
+            { id: 'a_marathon_runner', category: 'Consistency', title: 'Marathon Runner', desc: 'Study 42 days in a row.', check: (state) => state.streak >= 42, icon: 'zap' },
+            { id: 'a_superman', category: 'Consistency', title: 'Superman', desc: 'Study the same course for 30 days in a row.', check: (state) => state.streak >= 6, icon: 'heart' },
+            { id: 'a_centurio', category: 'Consistency', title: 'Centurio', desc: 'Study 100 days in a row.', check: (state) => state.streak >= 100, icon: 'shield-alert', progress: true, max: 100, unit: 'days' },
+            { id: 'a_overachiever', category: 'Dedication', title: 'Overachiever', desc: 'Beat your daily study goal by 200%.', check: (state) => verifyDailyGoalExcessRatio(state, 2.0), icon: 'rocket' },
+            { id: 'a_break_even', category: 'Dedication', title: 'Break Even', desc: 'Bounce back after missing a day.', check: (state) => state.sessions.length >= 2, icon: 'trending-up' },
+            { id: 'a_stock_surge', category: 'Dedication', title: 'Stock Surge', desc: 'Study 10 hours more than your goal.', check: (state) => state.sessions.length >= 5, icon: 'activity' },
+            { id: 'a_course_samurai', category: 'Dedication', title: 'Course Samurai', desc: 'Reach your study goal for a course.', check: (state) => state.sessions.length >= 3, icon: 'swords' },
+            { id: 'a_photo_finish', category: 'Dedication', title: 'Photo Finish', desc: 'Hit your daily goal with less than 30 minutes to spare.', check: (state) => state.sessions.length >= 1, icon: 'camera' },
+            { id: 'a_daily_devotion', category: 'Dedication', title: 'Daily Devotion', desc: 'Hit your daily goal every day for a month.', check: (state) => state.streak >= 28, icon: 'calendar-check' },
+            { id: 'a_golden_legend', category: 'Dedication', title: 'Golden Legend', desc: 'Earn 23 Gold Medals.', check: (state) => state.sessions.length >= 6, icon: 'award' },
+            { id: 'a_goal_crusher', category: 'Dedication', title: 'Goal Crusher', desc: 'Reach your study goal for the semester.', check: (state) => state.sessions.length >= 4, icon: 'target' },
+            { id: 'a_phoenix', category: 'Dedication', title: 'Phoenix', desc: 'Get back on track after falling behind.', check: (state) => state.sessions.length >= 3, icon: 'sparkles' },
+            { id: 'a_study_hoplite', category: 'Dedication', title: 'Study Hoplite', desc: 'Log 300 study sessions.', check: (state) => state.sessions.length >= 300, icon: 'layers', progress: true, max: 300, unit: 'sessions' },
+            { id: 'a_king_wall_st', category: 'Dedication', title: 'King of Wall Street', desc: 'Study 100 hours more than your goal.', check: (state) => state.sessions.length >= 12, icon: 'crown' },
+            { id: 'a_well_rounded', category: 'Variety', title: 'Well Rounded', desc: 'Study 5 or more different courses.', check: (state) => new Set(state.sessions.map(s => s.course)).size >= 5, icon: 'shapes' },
+            { id: 'a_triathlete', category: 'Variety', title: 'Triathlete', desc: 'Study 3 different courses in a single day.', check: (state) => checkTriathleteCondition(state), icon: 'medal' },
+            { id: 'a_medal_collector', category: 'Variety', title: 'Medal Collector', desc: 'Earn a Gold, a Silver, and a Bronze medal.', check: (state) => state.sessions.length >= 3, icon: 'trophy' },
+            { id: 'a_polymath', category: 'Variety', title: 'Polymath', desc: 'Add 10 different courses.', check: (state) => state.courses.length >= 10, icon: 'cpu' },
+            { id: 'a_four_seasons', category: 'Variety', title: 'Four Seasons', desc: 'Study in every season of the year.', check: (state) => true, icon: 'leaf', progress: true, max: 4, unit: 'seasons' },
+            { id: 'a_day_and_night', category: 'Variety', title: 'Day and Night', desc: 'Earn both the Early Bird and Night Owl badges on the same day.', check: (state) => state.sessions.length >= 2, icon: 'sun-moon' },
             { id: 'a_full_spectrum', category: 'Variety', title: 'Full Spectrum', desc: 'Study in all 6 time periods of a single day.', check: (state) => state.sessions.length >= 3, icon: 'palette' },
-            { id: 'a_detail_oriented', category: 'Organization', title: 'Detail-Oriented', desc: 'Create a session with perfect detail score.', check: (state) => state.sessions.length >= 1, icon: 'file-text' },
+            { id: 'a_detail_oriented', category: 'Organization', title: 'Detail-Oriented', desc: 'Log a session with complete details.', check: (state) => state.sessions.length >= 1, icon: 'file-text' },
             { id: 'a_novelist', category: 'Organization', title: 'Novelist', desc: 'Add notes to 50 study sessions.', check: (state) => state.sessions.length >= 50, icon: 'pen-tool', progress: true, max: 50, unit: 'notes' },
             { id: 'a_exam_ready', category: 'Organization', title: 'Exam Ready', desc: 'Create 10 exams across your courses.', check: (state) => state.courses.length >= 5, icon: 'graduation-cap' },
             { id: 'a_relax', category: 'Organization', title: 'Relax', desc: 'Log 100 breaks across your sessions.', check: (state) => state.sessions.length >= 20, icon: 'coffee' },
             { id: 'a_chapter_closed', category: 'Organization', title: 'Chapter Closed', desc: 'Complete 2 full semesters.', check: (state) => state.sessions.length >= 15, icon: 'book-open' },
-            { id: 'a_secret_1', category: 'Hidden', title: 'Hidden Achievement', desc: 'Keep studying to discover this secret tracking accomplishment badge!', check: (state) => false, icon: 'help-circle', secret: true },
-            { id: 'a_secret_2', category: 'Hidden', title: 'Hidden Achievement', desc: 'Keep studying to discover this secret tracking accomplishment badge!', check: (state) => false, icon: 'help-circle', secret: true },
-            { id: 'a_secret_3', category: 'Hidden', title: 'Hidden Achievement', desc: 'Keep studying to discover this secret tracking accomplishment badge!', check: (state) => false, icon: 'help-circle', secret: true },
-            { id: 'a_secret_4', category: 'Hidden', title: 'Hidden Achievement', desc: 'Keep studying to discover this secret tracking accomplishment badge!', check: (state) => false, icon: 'help-circle', secret: true },
-            { id: 'a_secret_5', category: 'Hidden', title: 'Hidden Achievement', desc: 'Keep studying to discover this secret tracking accomplishment badge!', check: (state) => false, icon: 'help-circle', secret: true }
+            { id: 'a_secret_1', category: 'Hidden', title: 'Hidden Achievement', desc: 'Keep studying to discover this hidden achievement!', check: (state) => false, icon: 'help-circle', secret: true },
+            { id: 'a_secret_2', category: 'Hidden', title: 'Hidden Achievement', desc: 'Keep studying to discover this hidden achievement!', check: (state) => false, icon: 'help-circle', secret: true },
+            { id: 'a_secret_3', category: 'Hidden', title: 'Hidden Achievement', desc: 'Keep studying to discover this hidden achievement!', check: (state) => false, icon: 'help-circle', secret: true },
+            { id: 'a_secret_4', category: 'Hidden', title: 'Hidden Achievement', desc: 'Keep studying to discover this hidden achievement!', check: (state) => false, icon: 'help-circle', secret: true },
+            { id: 'a_secret_5', category: 'Hidden', title: 'Hidden Achievement', desc: 'Keep studying to discover this hidden achievement!', check: (state) => false, icon: 'help-circle', secret: true }
         ];
 
         function getTotalFocusHours(state) { return Math.floor(state.sessions.reduce((acc, s) => acc + s.durationSeconds, 0) / 3600); }
@@ -1971,11 +1982,19 @@
         }
 
         function saveStateToLocalStorageRegister() {
-            localStorage.setItem('aurastudy_girly_v8', JSON.stringify(appState));
+            localStorage.setItem('aurastudy_state_v1', JSON.stringify(appState));
         }
 
         function loadStateFromLocalStorageRegister() {
-            const preserved = localStorage.getItem('aurastudy_girly_v8');
+            // Fall back to the legacy pre-rebrand key so existing local data isn't
+            // lost, then write it forward under the new key name.
+            let preserved = localStorage.getItem('aurastudy_state_v1');
+            if (!preserved) {
+                preserved = localStorage.getItem('aurastudy_girly_v8');
+                if (preserved) {
+                    try { localStorage.setItem('aurastudy_state_v1', preserved); } catch(e) {}
+                }
+            }
             if (preserved) {
                 try {
                     let parsed = JSON.parse(preserved);
@@ -2014,20 +2033,20 @@
 
             if(level === 1) {
                 petAvatarNode.innerText = "🌱";
-                petTagNode.innerText = "Level 1: Sprout Seedling";
-                headlineNode.innerText = "Your Magic Focus Plant is starting to grow!";
+                petTagNode.innerText = "Level 1: Seedling";
+                headlineNode.innerText = "Mochi is just starting to grow.";
             } else if(level === 2) {
                 petAvatarNode.innerText = "🐰";
-                petTagNode.innerText = "Level 2: Baby Bunny";
-                headlineNode.innerText = "Mochi the Bunny has hatched to support your routine! 💕";
+                petTagNode.innerText = "Level 2: Bunny";
+                headlineNode.innerText = "Mochi has grown into a bunny.";
             } else if(level === 3) {
                 petAvatarNode.innerText = "🐱";
-                petTagNode.innerText = "Level 3: Scholar Kitten";
-                headlineNode.innerText = "Mochi evolved into a cozy Scholar Cat! Smartiepants mode! 🐾";
+                petTagNode.innerText = "Level 3: Scholar Cat";
+                headlineNode.innerText = "Mochi evolved into a scholar cat.";
             } else {
                 petAvatarNode.innerText = "🦄";
-                petTagNode.innerText = `Level ${level}: Cosmic Unicorn`;
-                headlineNode.innerText = "Absolute Legendary Focus Aura! You are unstoppable! ✨";
+                petTagNode.innerText = `Level ${level}: Unicorn`;
+                headlineNode.innerText = "Mochi reached unicorn status. Impressive focus.";
             }
         }
 
@@ -2044,7 +2063,7 @@
                     containerNode.webkitRequestFullscreen();
                 }
                 iconNode.setAttribute('data-lucide', 'minimize-2');
-                triggerAlertToast("Fullscreen Activated ✨", "Ambient study space optimized.", true);
+                triggerAlertToast("Fullscreen On", "Distraction-free view enabled.", true);
             } else {
                 // Exit current screen projection allocation context mapping
                 if (document.exitFullscreen) {
@@ -2057,14 +2076,14 @@
             setTimeout(() => { lucide.createIcons(); }, 100);
         }
 
-        // Cute Pastel To-Do Task Management System
+        // To-Do Task Management System
         function refreshTodoListViewLayout() {
             const bin = document.getElementById('todo-list-node-housing-bin');
             const hideCompletedChecked = document.getElementById('todo-filter-hide-completed').checked;
             bin.innerHTML = "";
 
             if(appState.todoItems.length === 0) {
-                bin.innerHTML = `<div style="text-align:center; padding:16px; font-size:13px; color:var(--text-muted); font-weight:600;">All clear! Add a task above to map out your study flow. 🍰</div>`;
+                bin.innerHTML = `<div style="text-align:center; padding:16px; font-size:13px; color:var(--text-muted); font-weight:600;">No tasks yet. Add one above to plan your study session.</div>`;
                 return;
             }
 
@@ -2076,7 +2095,7 @@
                 taskRow.innerHTML = `
                     <div class="todo-item-left">
                         <input type="checkbox" class="todo-toggle-checkbox" ${item.completed ? 'checked' : ''} onchange="toggleTodoListItemState(${item.id})">
-                        <span class="todo-text-span">${item.text}</span>
+                        <span class="todo-text-span">${escapeHtml(item.text)}</span>
                     </div>
                     <button class="todo-delete-btn" onclick="removeTodoListItemEntry(${item.id})" title="Delete task">
                         <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
@@ -2101,7 +2120,7 @@
             field.value = "";
             saveStateToLocalStorageRegister();
             refreshTodoListViewLayout();
-            triggerAlertToast("Task Added! ✨", "Task compiled into your active list parameters.", true);
+            triggerAlertToast("Task Added", "Added to your task list.", true);
         }
 
         function toggleTodoListItemState(taskId) {
@@ -2152,7 +2171,7 @@
                 clickedAnchorRef.classList.add('active');
             }
             const headerTitle = targetPanelKey.charAt(0).toUpperCase() + targetPanelKey.slice(1);
-            document.getElementById('page-title').innerText = headerTitle === 'Trophies' ? 'Trophies Cabinet' : headerTitle;
+            document.getElementById('page-title').innerText = headerTitle === 'Trophies' ? 'Achievements' : headerTitle;
 
             if (targetPanelKey === 'dashboard') {
                 initDashboardMetricsAndCharts();
@@ -2242,7 +2261,7 @@
                     }
                     bankedElapsedSeconds = 0;
                     initialBlockTimestampString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    document.getElementById('timer-start-timestamp').innerText = `Running block initialized at: ${initialBlockTimestampString}`;
+                    document.getElementById('timer-start-timestamp').innerText = `Started at: ${initialBlockTimestampString}`;
                 }
 
                 engineAnchorMs = Date.now();
@@ -2275,7 +2294,7 @@
             countdownSecondsRemainingRegister = countdownTotalSeconds;
             updateEngineDisplayString();
             document.getElementById('timer-start-btn').innerHTML = '<i data-lucide="play-circle"></i> Start Block';
-            document.getElementById('timer-start-timestamp').innerText = "Timer state reset completely.";
+            document.getElementById('timer-start-timestamp').innerText = "Timer reset.";
             lucide.createIcons();
         }
 
@@ -2302,9 +2321,9 @@
                 updatePetEvolutionState();
 
                 if (finalDuration >= 15 * 60) {
-                    triggerAlertToast("Well done smartiepants, keep it up <3", `Amazing! Logged ${Math.round(finalDuration/60)}m into [${appState.selectedCourse}].`, true);
+                    triggerAlertToast("Session Logged", `Nice work! Logged ${Math.round(finalDuration/60)}m into ${appState.selectedCourse}.`, true);
                 } else {
-                    triggerAlertToast("Issok momentum banao, restart soon", "Every single second adds up to big results! Try again soon.", false);
+                    triggerAlertToast("Keep Going", "Every minute adds up to big results! Try again soon.", false);
                 }
             } else {
                 triggerAlertToast("Too Short!", "Session was too short to archive. Keep going next time!", false);
@@ -2343,15 +2362,19 @@
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                         <div>
-                            <div style="font-weight:800; font-size:16px; color:var(--neon-pink);">${c}</div>
-                            <div style="font-size:12px; color:var(--text-muted); font-weight:700; margin-top:4px;">Cumulative Focus Tracker</div>
+                            <div style="font-weight:800; font-size:16px; color:var(--neon-pink);">${escapeHtml(c)}</div>
+                            <div style="font-size:12px; color:var(--text-muted); font-weight:700; margin-top:4px;">Time Studied</div>
                         </div>
-                        <button class="course-delete-trigger-btn" onclick="deleteExistingCourseTargetDomain('${c}')">
+                        <button class="course-delete-trigger-btn">
                             <i data-lucide="trash-2" style="width:16px; height:16px;"></i>
                         </button>
                     </div>
                     <div style="font-size:24px; font-weight:900; color:var(--text-main);">${Math.round(cumulativeSeconds/60)} <span style="font-size:13px; color:var(--text-muted);">mins total</span></div>
                 `;
+                // Bound directly to the closure's own `c` (never round-tripped through
+                // an HTML/JS-string attribute) so a course name containing quotes or
+                // markup can't break out of the onclick handler it would otherwise sit in.
+                card.querySelector('.course-delete-trigger-btn').addEventListener('click', () => deleteExistingCourseTargetDomain(c));
                 grid.appendChild(card);
             });
             lucide.createIcons();
@@ -2366,7 +2389,7 @@
                 saveStateToLocalStorageRegister();
                 renderCoursesView();
                 renderTimerSubjectPills();
-                triggerAlertToast("Subject Added ✨", `Created track for ${name}.`);
+                triggerAlertToast("Course Added", `Added ${name} to your courses.`);
             }
         }
 
@@ -2377,7 +2400,7 @@
             saveStateToLocalStorageRegister();
             renderCoursesView();
             renderTimerSubjectPills();
-            triggerAlertToast("Subject Removed", "Course entry deleted.", false);
+            triggerAlertToast("Course Removed", "Removed from your courses.", false);
         }
 
         // Dashboard Metrics and Chart Logic
@@ -2411,7 +2434,7 @@
                 if (daySecs > 0) { currentStreak++; checkDate.setDate(checkDate.getDate() - 1); }
                 else { if (sStr === today.toISOString().split('T')[0]) { checkDate.setDate(checkDate.getDate() - 1); continue; } break; }
             }
-            appState.streak = currentStreak; document.getElementById('streak-count-label').innerHTML = `💖 Continuous Active Aura: <strong>${currentStreak} days</strong>`;
+            appState.streak = currentStreak; document.getElementById('streak-count-label').innerHTML = `Current Streak: <strong>${currentStreak} days</strong>`;
         }
 
         function buildAnalyticsChartCanvasComponent() {
@@ -2439,12 +2462,12 @@
             if(appState.sessions.length === 0) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:32px; color:var(--text-muted); font-weight:700;">No historic sessions loaded.</td></tr>`; return; }
             appState.sessions.forEach(s => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td><strong>${s.date}</strong></td><td><span style="background:var(--bg-main); padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; border:1px solid var(--border-color); color:var(--neon-pink);">${s.course}</span></td><td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--neon-purple);">${s.type}</span></td><td><strong>${Math.round(s.durationSeconds / 60)} mins</strong></td><td class="text-muted" style="font-size:13px;">${s.timestamp}</td>`;
+                tr.innerHTML = `<td><strong>${escapeHtml(s.date)}</strong></td><td><span style="background:var(--bg-main); padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; border:1px solid var(--border-color); color:var(--neon-pink);">${escapeHtml(s.course)}</span></td><td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--neon-purple);">${escapeHtml(s.type)}</span></td><td><strong>${Math.round(s.durationSeconds / 60)} mins</strong></td><td class="text-muted" style="font-size:13px;">${escapeHtml(s.timestamp)}</td>`;
                 tbody.appendChild(tr);
             });
         }
 
-        function clearAllLogs() { if(!confirm("Wipe study database history?")) return; appState.sessions = []; saveStateToLocalStorageRegister(); renderSessionsTable(); updatePetEvolutionState(); triggerAlertToast("Database Cleared", "Logs wiped clean.", false); }
+        function clearAllLogs() { if(!confirm("Clear all session history? This can't be undone.")) return; appState.sessions = []; saveStateToLocalStorageRegister(); renderSessionsTable(); updatePetEvolutionState(); triggerAlertToast("History Cleared", "Your session logs have been cleared.", false); }
         function switchTrophySubView(key) { document.querySelectorAll('.trophy-tab-trigger').forEach(t => t.classList.remove('active')); if(key === 'badges') { document.getElementById('trophy-tab-badges').classList.add('active'); document.getElementById('subview-badges').style.display = 'grid'; document.getElementById('subview-achievements').style.display = 'none'; } else { document.getElementById('trophy-tab-achievements').classList.add('active'); document.getElementById('subview-badges').style.display = 'none'; document.getElementById('subview-achievements').style.display = 'grid'; } }
 
         function evaluateCabinetTrophyMetrics() {
@@ -2484,7 +2507,7 @@
             lucide.createIcons();
         }
 
-        function triggerManualSaveNotification() { updateProfileSettings(); triggerAlertToast("Settings Updated", "Profile parameter changes applied successfully.", true); }
+        function triggerManualSaveNotification() { updateProfileSettings(); triggerAlertToast("Settings Updated", "Your changes have been saved.", true); }
         function updateProfileSettings() { appState.profile.dailyGoalHours = parseFloat(document.getElementById('settings-daily-goal').value) || 3; appState.profile.defaultTimerMinutes = parseInt(document.getElementById('settings-timer-duration').value) || 25; localStorage.setItem('aurastudy_tinkered_flag', 'true'); saveStateToLocalStorageRegister(); }
 
         // Account password change -- posts to the auth API added in server/auth.py.

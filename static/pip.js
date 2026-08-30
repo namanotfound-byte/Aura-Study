@@ -189,8 +189,8 @@
     var timeText = currentDisplayText();
     var course = appState.selectedCourse || "your session";
     return appState.selectedMode === "countdown"
-      ? timeText + " left on " + course + " ✨"
-      : timeText + " elapsed on " + course + " ✨";
+      ? timeText + " left on " + course
+      : timeText + " elapsed on " + course;
   }
 
   function requestNotificationPermissionIfNeeded() {
@@ -227,7 +227,7 @@
     if (Notification.permission !== "granted") return;
     if (STATE.activeNotification) return;
     try {
-      var n = new Notification("AuraStudy ✨", {
+      var n = new Notification("AuraStudy", {
         body: buildNotificationBody(),
         tag: "aurastudy-timer",
         silent: true,
@@ -616,7 +616,7 @@
 
     ctx.fillStyle = mutedColor;
     ctx.font = "600 11px 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText("AuraStudy ✨", cx, H - 12);
+    ctx.fillText("AuraStudy", cx, H - 12);
   }
 
   function paintVideoCanvasCompletion() {

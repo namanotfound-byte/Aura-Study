@@ -27,7 +27,7 @@
  *      loadStateFromLocalStorageRegister() synchronously, first thing. That
  *      call must instead wait on AuraSync.bootstrap() so that, if the server
  *      has a copy of this user's state, it gets written into
- *      localStorage["aurastudy_girly_v8"] BEFORE the app hydrates from it:
+ *      localStorage["aurastudy_state_v1"] BEFORE the app hydrates from it:
  *
  *          window.addEventListener('DOMContentLoaded', () => {
  *            AuraSync.bootstrap().finally(() => {
@@ -76,7 +76,8 @@
 (function () {
   "use strict";
 
-  var STORAGE_KEY = "aurastudy_girly_v8";
+  var STORAGE_KEY = "aurastudy_state_v1";
+  var LEGACY_STORAGE_KEY = "aurastudy_girly_v8"; // pre-rebrand key name; fall back to it on read so existing local data isn't lost
   var DEBOUNCE_MS = 2000;
 
   var state = {
@@ -88,6 +89,16 @@
 
   function readLocalPayload() {
     var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      // Fall back to the legacy pre-rebrand key so existing local data isn't
+      // lost, then write it forward under the new key name.
+      raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (raw) {
+        try {
+          localStorage.setItem(STORAGE_KEY, raw);
+        } catch (e) {}
+      }
+    }
     if (!raw) return null;
     try {
       return JSON.parse(raw);
@@ -196,7 +207,7 @@
           return putServerState(local, 0).then(function (putResult) {
             if (putResult.res.ok) {
               state.version = putResult.data.version;
-              toast("Synced ✨", "Your local study data is now saved to your account.");
+              toast("Synced", "Your local study data is now saved to your account.");
             }
             return user;
           });
@@ -277,6 +288,7 @@
         // localStorage (shared per-origin) for whoever logs in next.
         try {
           localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(LEGACY_STORAGE_KEY);
         } catch (e) {}
         window.location.href = "/login";
       });
