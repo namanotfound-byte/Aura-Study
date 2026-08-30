@@ -8,3 +8,11 @@ __pycache__/
 server/dev_outbox/
 .DS_Store
 .pytest_cache/
+
+# Agent tooling (vendored skills + local agent state; skills-lock.json IS tracked)
+.agents/
+.claude/
+
+# Neon CLI local state and pulled env vars
+.neon
+.env.local
