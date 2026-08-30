@@ -1,0 +1,99 @@
+# Render Blueprint for AuraStudy. See README.md "Deployment" for the full,
+# numbered walkthrough of turning this into a live app (Neon, Brevo, Render,
+# Spotify, DNS) -- this file only describes the *service*, not how to get
+# the account credentials it references.
+#
+# Every secret below is declared with `sync: false`, which tells Render
+# "this env var exists and must be set, but never read or write its value
+# from this file" -- you paste the real value into the Render dashboard
+# after the service is created, and it is never committed to git. Render
+# will visibly flag any `sync: false` var that's still unset.
+#
+# Deploy: push this repo to GitHub, then in the Render dashboard choose
+# New -> Blueprint and point it at the repo. Render reads this file and
+# proposes the service below for you to confirm.
+
+services:
+  - type: web
+    name: aurastudy
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -c gunicorn.conf.py "server.app:create_app()"
+    healthCheckPath: /healthz
+    envVars:
+      # --- Python version -----------------------------------------------
+      # Belt-and-braces with runtime.txt (which pins the same version):
+      # Render's Python-native runtime honours PYTHON_VERSION directly, and
+      # runtime.txt is the fallback some Render build images still read.
+      # Local dev runs 3.9.6 (see SPEC.md); production must not run 3.9 --
+      # several dependency CVEs in requirements.txt are only fixed on 3.10+,
+      # and 3.9 reaches end-of-life in October 2025.
+      - key: PYTHON_VERSION
+        value: 3.12.14
+
+      # --- Database (Neon Postgres) ---------------------------------------
+      # The full connection string from Neon, e.g.
+      #   postgresql://user:password@ep-xxxx.region.aws.neon.tech/aurastudy
+      # server/config.py appends ?sslmode=require automatically if the
+      # string you paste doesn't already have it -- Neon requires TLS.
+      - key: DATABASE_URL
+        sync: false
+
+      # --- Secrets: Flask session signing + Spotify token encryption -----
+      # Generate both with the commands in README.md "Deployment" step 4.
+      # Required in production -- server/config.py refuses to boot without
+      # a real (non-empty, non-placeholder) value for either.
+      - key: SECRET_KEY
+        sync: false
+      - key: TOKEN_ENC_KEY
+        sync: false
+
+      # --- App identity ----------------------------------------------------
+      # The public HTTPS URL this service is reachable at. Used to build
+      # email verification/reset links and the Spotify OAuth redirect, and
+      # gates the `Secure` cookie flag + HSTS header. Set this to your
+      # Render *.onrender.com URL first, then update it to the custom
+      # domain (https://aurastudy.is-a.dev) once that's live -- see README.
+      - key: APP_BASE_URL
+        sync: false
+      # Also forces "production" behaviour (refuse-to-boot checks, forced
+      # REQUIRE_EMAIL_VERIFICATION, etc.) even though DATABASE_URL being set
+      # already implies it -- see server/config.py's is_production. Kept as
+      # its own var so it's explicit in the dashboard, not just implied.
+      - key: ENVIRONMENT
+        value: production
+
+      # --- Email (Brevo SMTP) --------------------------------------------
+      # From your Brevo account's SMTP & API page. In production, an unset
+      # SMTP_HOST makes the app refuse to boot rather than silently writing
+      # verification emails to a file nobody reads -- see README step 3.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        value: "AuraStudy <no-reply@aurastudy.is-a.dev>"
+      - key: SMTP_USE_TLS
+        value: "true"
+
+      # --- Spotify OAuth ---------------------------------------------------
+      # From your Spotify developer dashboard app. Leaving these unset is
+      # fine -- the app just shows "Spotify not configured" -- but the
+      # redirect URI registered on the Spotify app must match APP_BASE_URL
+      # exactly (see README step 6) once you do set them.
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false
+
+      # --- Everything else has a safe default in server/config.py --------
+      # (REQUIRE_EMAIL_VERIFICATION is forced to "true" in production
+      # regardless of this value; set explicitly here just to be visible
+      # in the dashboard rather than only implied.)
+      - key: REQUIRE_EMAIL_VERIFICATION
+        value: "true"
