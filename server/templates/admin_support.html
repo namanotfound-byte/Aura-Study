@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Support inbox - AuraStudy admin</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f1115;
+      color: #e6e6e6;
+      margin: 0;
+      padding: 2rem;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; }
+    nav.crumbs { margin-bottom: 1rem; font-size: 0.82rem; }
+    nav.crumbs a { color: #9aa0a6; text-decoration: none; }
+    nav.crumbs a:hover { color: #e6e6e6; }
+    h1 { font-size: 1.35rem; margin: 0 0 0.25rem; }
+    p.sub { color: #9aa0a6; margin: 0 0 1.5rem; font-size: 0.9rem; }
+    .layout { display: grid; grid-template-columns: 320px 1fr; gap: 1.25rem; align-items: start; }
+    .conv-list { border: 1px solid #262a31; border-radius: 10px; overflow: hidden; }
+    .conv-item {
+      display: block; padding: 0.7rem 0.9rem; border-bottom: 1px solid #262a31;
+      text-decoration: none; color: #e6e6e6;
+    }
+    .conv-item:last-child { border-bottom: none; }
+    .conv-item:hover { background: #171a20; }
+    .conv-item.active { background: #1c2530; }
+    .conv-item .who { font-size: 0.88rem; font-weight: 600; display: flex; justify-content: space-between; gap: 0.5rem; }
+    .conv-item .snippet { font-size: 0.78rem; color: #9aa0a6; margin-top: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .badge-unanswered {
+      display: inline-block; background: rgba(224, 82, 82, 0.18); color: #ff8080;
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+      padding: 0.1rem 0.4rem; border-radius: 999px;
+    }
+    .thread-pane { border: 1px solid #262a31; border-radius: 10px; padding: 1rem; min-height: 200px; }
+    .thread-pane .empty { color: #9aa0a6; text-align: center; padding: 3rem 0; }
+    .msg { max-width: 80%; margin-bottom: 0.6rem; padding: 0.55rem 0.75rem; border-radius: 10px; font-size: 0.88rem; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
+    .msg.user { background: #1c2029; margin-right: auto; }
+    .msg.admin { background: #4a1f38; margin-left: auto; }
+    .msg .meta { display: block; font-size: 0.68rem; color: #9aa0a6; margin-top: 0.3rem; }
+    .reply-form { margin-top: 1rem; display: flex; gap: 0.5rem; }
+    .reply-form textarea {
+      flex: 1; min-height: 2.4rem; resize: vertical; background: #0f1115; border: 1px solid #262a31;
+      border-radius: 8px; color: #e6e6e6; padding: 0.5rem 0.7rem; font-size: 0.88rem; font-family: inherit;
+    }
+    .reply-form button {
+      background: #ff66b2; border: none; color: #1a0a12; font-weight: 700;
+      padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem;
+    }
+    .reply-form button:disabled { opacity: 0.55; cursor: default; }
+    .reply-error { color: #e05252; font-size: 0.8rem; margin-top: 0.4rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav class="crumbs"><a href="/admin">Admin</a> / Support inbox</nav>
+    <h1>Support inbox</h1>
+    <p class="sub">Unanswered conversations are listed first.</p>
+
+    <div class="layout">
+      <div class="conv-list">
+        {% if conversations %}
+          {% for c in conversations %}
+          <a class="conv-item {{ 'active' if selected_user_id == c.user_id else '' }}" href="/admin/support?user_id={{ c.user_id }}">
+            <div class="who">
+              <span>{{ c.name or c.email }}</span>
+              {% if c.unanswered %}<span class="badge-unanswered">Unanswered</span>{% endif %}
+            </div>
+            <div class="snippet">{{ c.last_body }}</div>
+          </a>
+          {% endfor %}
+        {% else %}
+        <div style="padding: 1.5rem; color: #9aa0a6; font-size: 0.85rem;">No conversations yet.</div>
+        {% endif %}
+      </div>
+
+      <div class="thread-pane">
+        {% if selected_user_id is none %}
+        <p class="empty">Pick a conversation on the left.</p>
+        {% elif selected_user is none %}
+        <p class="empty">That user no longer exists.</p>
+        {% else %}
+        <div id="thread-messages">
+          {% for m in thread %}
+          <div class="msg {{ 'admin' if m.from_admin else 'user' }}">
+            {{ m.body }}
+            <span class="meta">{{ 'You' if m.from_admin else (selected_user.public_name or selected_user.display_name or selected_user.email) }} · {{ m.created_at }}</span>
+          </div>
+          {% else %}
+          <p class="empty">No messages yet.</p>
+          {% endfor %}
+        </div>
+        <form class="reply-form" id="reply-form" data-user-id="{{ selected_user_id }}">
+          <textarea name="body" maxlength="2000" placeholder="Write a reply..." required></textarea>
+          <button type="submit">Send</button>
+        </form>
+        <div class="reply-error" id="reply-error" hidden></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+      var form = document.getElementById("reply-form");
+      if (!form) return;
+      form.addEventListener("submit", function (evt) {
+        evt.preventDefault();
+        var userId = form.getAttribute("data-user-id");
+        var textarea = form.querySelector("textarea");
+        var btn = form.querySelector("button");
+        var errBox = document.getElementById("reply-error");
+        errBox.hidden = true;
+        btn.disabled = true;
+
+        fetch("/admin/support/" + encodeURIComponent(userId) + "/reply", {
+          method: "POST",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "Content-Type": "application/json"
+          },
+          credentials: "same-origin",
+          body: JSON.stringify({ body: textarea.value })
+        }).then(function (resp) {
+          return resp.json().catch(function () { return {}; }).then(function (data) {
+            if (!resp.ok) throw new Error(data.message || "Could not send reply.");
+            window.location.reload();
+          });
+        }).catch(function (err) {
+          errBox.textContent = err.message || "Could not send reply. Please try again.";
+          errBox.hidden = false;
+          btn.disabled = false;
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

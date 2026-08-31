@@ -117,11 +117,15 @@ services:
         sync: false
 
       # --- Owner-only admin page -------------------------------------------
-      # Gates GET /admin/spotify-requests: a list of users' submitted
-      # Spotify account emails, for you to add by hand to the Spotify app's
-      # Development Mode User Management allowlist (max 25 accounts). Must
-      # match your own AuraStudy account email exactly (case-insensitive).
-      # Leave unset and the page is unreachable for everyone, including you
+      # Gates every /admin/* page: GET /admin (index), GET
+      # /admin/spotify-requests (a list of users' submitted Spotify account
+      # emails, for you to add by hand to the Spotify app's Development Mode
+      # User Management allowlist -- max 25 accounts), GET /admin/users
+      # (per-user weekly totals + the study-time correction form), GET
+      # /admin/support (the doubts/support inbox), and GET /admin/actions
+      # (the audit log of every correction made). Must match your own
+      # AuraStudy account email exactly (case-insensitive). Leave unset and
+      # every one of those pages is unreachable for everyone, including you
       # -- it never falls open just because this is unset.
       - key: OWNER_EMAIL
         sync: false

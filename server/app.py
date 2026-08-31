@@ -14,6 +14,9 @@ from .state import bp as state_bp
 from .spotify import bp as spotify_bp
 from .spotify_requests import bp as spotify_requests_bp, list_all_requests, mark_request_added
 from .leaderboard import bp as leaderboard_bp
+from .support import bp as support_bp
+from . import admin as admin_module
+from . import support as support_module
 from .config import get_config
 from .db import init_db, get_db
 from .hardening import init_hardening
@@ -58,6 +61,7 @@ def create_app() -> flask.Flask:
     app.register_blueprint(spotify_bp, url_prefix="/api/spotify")
     app.register_blueprint(spotify_requests_bp, url_prefix="/api/spotify")
     app.register_blueprint(leaderboard_bp, url_prefix="/api")
+    app.register_blueprint(support_bp, url_prefix="/api/support")
 
     # Under gunicorn, Flask's app.logger has no handler attached to
     # gunicorn's error stream, so anything it logs -- including the
@@ -275,6 +279,117 @@ def _register_page_routes(app: flask.Flask) -> None:
         db = get_db()
         mark_request_added(db, request_id)
         return flask.jsonify({"ok": True})
+
+    # -----------------------------------------------------------------
+    # Owner-only admin: index, study-time correction, support inbox, audit
+    # log. Gated by the exact same `_is_owner` check as the Spotify-requests
+    # page above -- non-owner (or anyone at all when OWNER_EMAIL isn't set)
+    # gets a plain 404, never a 403 or a redirect that would confirm the
+    # route exists. Query/write logic lives in server/admin.py and
+    # server/support.py; these routes only make the access-control decision
+    # and glue request <-> response.
+    # -----------------------------------------------------------------
+
+    @app.route("/admin")
+    @login_required
+    def admin_index():
+        cfg = get_config()
+        if not _is_owner(current_user(), cfg):
+            flask.abort(404)
+        return flask.render_template("admin_index.html")
+
+    @app.route("/admin/users")
+    @login_required
+    def admin_users():
+        cfg = get_config()
+        if not _is_owner(current_user(), cfg):
+            flask.abort(404)
+        db = get_db()
+        users = admin_module.list_users_overview(db)
+        return flask.render_template("admin_users.html", users=users, today=utcnow().date().isoformat())
+
+    @app.route("/admin/users/<int:user_id>/add-time", methods=["POST"])
+    @login_required
+    def admin_add_time(user_id):
+        cfg = get_config()
+        if not _is_owner(current_user(), cfg):
+            flask.abort(404)
+        require_csrf()
+        db = get_db()
+
+        target = admin_module.get_user_row(db, user_id)
+        if target is None:
+            flask.abort(404)
+
+        form = flask.request.form
+        minutes, err = admin_module.validate_minutes(form.get("minutes"))
+        if err is None:
+            date_str, err = admin_module.validate_date(form.get("date"))
+        if err is None:
+            course, err = admin_module.validate_course(form.get("course"))
+        if err is None:
+            reason, err = admin_module.validate_reason(form.get("reason"))
+        if err:
+            return json_error("validation_error", err, 400)
+
+        entry = admin_module.inject_time_correction(
+            db, current_user()["id"], user_id, minutes, date_str, course, reason
+        )
+        return flask.jsonify({"ok": True, "session": entry})
+
+    @app.route("/admin/support")
+    @login_required
+    def admin_support():
+        cfg = get_config()
+        if not _is_owner(current_user(), cfg):
+            flask.abort(404)
+        db = get_db()
+        conversations = support_module.list_conversations(db)
+        selected_user_id = flask.request.args.get("user_id", type=int)
+        thread = None
+        selected_user = None
+        if selected_user_id is not None:
+            selected_user = admin_module.get_user_row(db, selected_user_id)
+            if selected_user is not None:
+                thread = support_module.list_messages_for_user(db, selected_user_id)
+        return flask.render_template(
+            "admin_support.html",
+            conversations=conversations,
+            thread=thread,
+            selected_user=selected_user,
+            selected_user_id=selected_user_id,
+        )
+
+    @app.route("/admin/support/<int:user_id>/reply", methods=["POST"])
+    @login_required
+    def admin_support_reply(user_id):
+        cfg = get_config()
+        if not _is_owner(current_user(), cfg):
+            flask.abort(404)
+        require_csrf()
+        db = get_db()
+
+        target = admin_module.get_user_row(db, user_id)
+        if target is None:
+            flask.abort(404)
+
+        body = flask.request.get_json(silent=True) or {}
+        text, err = support_module.validate_body(body.get("body"))
+        if err:
+            return json_error("validation_error", err, 400)
+
+        support_module.post_admin_reply(db, user_id, text)
+        return flask.jsonify({"ok": True})
+
+    @app.route("/admin/actions")
+    @login_required
+    def admin_actions():
+        cfg = get_config()
+        if not _is_owner(current_user(), cfg):
+            flask.abort(404)
+        db = get_db()
+        actions = admin_module.list_admin_actions(db)
+        return flask.render_template("admin_actions.html", actions=actions)
 
 
 if __name__ == "__main__":

@@ -175,6 +175,42 @@ CREATE TABLE IF NOT EXISTS leaderboard_weeks (
   PRIMARY KEY (user_id, week_start)
 );
 CREATE INDEX IF NOT EXISTS idx_leaderboard_week ON leaderboard_weeks(week_start, seconds DESC);
+
+-- Owner-only audit trail for admin.py's study-time corrections (see
+-- server/admin.py:inject_time_correction). One row per correction: who did
+-- it, whose data it touched, and the full detail (minutes/date/course/
+-- reason) as a JSON blob -- mirrors user_state.payload's TEXT-column-of-JSON
+-- pattern rather than adding more typed columns, since `detail` is
+-- action-specific and only ever read back for display, never queried on.
+-- Generic enough to record other admin action *types* later, though only
+-- "add_time" is written today.
+CREATE TABLE IF NOT EXISTS admin_actions (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  admin_user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  action            TEXT NOT NULL,
+  detail            TEXT NOT NULL,
+  created_at        TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_admin_actions_target ON admin_actions(target_user_id);
+CREATE INDEX IF NOT EXISTS idx_admin_actions_created ON admin_actions(created_at DESC);
+
+-- Doubts/support inbox (server/support.py). One conversation per user --
+-- no threading, no subjects -- so a single flat table ordered by
+-- created_at is the whole schema. `from_admin` distinguishes the user's
+-- own messages from the owner's replies; `read_at` tracks only the user's
+-- side (has this user seen this admin reply yet) -- there is deliberately
+-- no equivalent for the admin side, since the admin's own /admin/support
+-- page always shows the full thread rather than an unread count.
+CREATE TABLE IF NOT EXISTS support_messages (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body              TEXT NOT NULL,
+  from_admin        INTEGER NOT NULL DEFAULT 0,
+  created_at        TEXT NOT NULL,
+  read_at           TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_support_messages_user ON support_messages(user_id, created_at);
 """
 
 # Postgres (production, Neon): IDENTITY primary keys, TIMESTAMPTZ throughout,
@@ -281,6 +317,31 @@ CREATE TABLE IF NOT EXISTS leaderboard_weeks (
   PRIMARY KEY (user_id, week_start)
 );
 CREATE INDEX IF NOT EXISTS idx_leaderboard_week ON leaderboard_weeks(week_start, seconds DESC);
+
+-- See the matching comment on SQLITE_SCHEMA's admin_actions above -- same
+-- shape, TIMESTAMPTZ instead of TEXT for created_at.
+CREATE TABLE IF NOT EXISTS admin_actions (
+  id                INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  admin_user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  action            TEXT NOT NULL,
+  detail            TEXT NOT NULL,
+  created_at        TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_admin_actions_target ON admin_actions(target_user_id);
+CREATE INDEX IF NOT EXISTS idx_admin_actions_created ON admin_actions(created_at DESC);
+
+-- See the matching comment on SQLITE_SCHEMA's support_messages above -- same
+-- shape, TIMESTAMPTZ instead of TEXT and a real BOOLEAN for from_admin.
+CREATE TABLE IF NOT EXISTS support_messages (
+  id                INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body              TEXT NOT NULL,
+  from_admin        BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at        TIMESTAMPTZ NOT NULL,
+  read_at           TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_support_messages_user ON support_messages(user_id, created_at);
 """
 
 

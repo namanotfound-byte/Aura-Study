@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audit log - AuraStudy admin</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f1115;
+      color: #e6e6e6;
+      margin: 0;
+      padding: 2rem;
+    }
+    .wrap { max-width: 1000px; margin: 0 auto; }
+    nav.crumbs { margin-bottom: 1rem; font-size: 0.82rem; }
+    nav.crumbs a { color: #9aa0a6; text-decoration: none; }
+    nav.crumbs a:hover { color: #e6e6e6; }
+    h1 { font-size: 1.35rem; margin: 0 0 0.25rem; }
+    p.sub { color: #9aa0a6; margin: 0 0 1.5rem; font-size: 0.9rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 0.65rem 0.8rem; border-bottom: 1px solid #262a31; font-size: 0.88rem; vertical-align: top; }
+    th { color: #9aa0a6; font-weight: 600; text-transform: uppercase; font-size: 0.68rem; letter-spacing: 0.05em; }
+    td.email { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .action-tag {
+      display: inline-block; padding: 0.12rem 0.5rem; border-radius: 999px; font-size: 0.72rem;
+      font-weight: 600; background: rgba(255, 102, 178, 0.15); color: #ff8fc7;
+    }
+    .detail { color: #9aa0a6; font-size: 0.82rem; }
+    .empty { color: #9aa0a6; padding: 3rem 0; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav class="crumbs"><a href="/admin">Admin</a> / Audit log</nav>
+    <h1>Audit log</h1>
+    <p class="sub">Every study-time correction made through the admin panel, most recent first.</p>
+
+    {% if actions %}
+    <table>
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Admin</th>
+          <th>Action</th>
+          <th>Target user</th>
+          <th>Detail</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in actions %}
+        <tr>
+          <td>{{ a.created_at }}</td>
+          <td class="email">{{ a.admin_email }}</td>
+          <td><span class="action-tag">{{ a.action }}</span></td>
+          <td class="email">{{ a.target_email }}</td>
+          <td class="detail">
+            {% if a.action == 'add_time' %}
+              +{{ a.detail.minutes }}m on {{ a.detail.date }} ({{ a.detail.course }}) — {{ a.detail.reason }}
+            {% else %}
+              {{ a.detail }}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No admin actions logged yet.</p>
+    {% endif %}
+  </div>
+</body>
+</html>

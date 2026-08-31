@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Users - AuraStudy admin</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f1115;
+      color: #e6e6e6;
+      margin: 0;
+      padding: 2rem;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; }
+    nav.crumbs { margin-bottom: 1rem; font-size: 0.82rem; }
+    nav.crumbs a { color: #9aa0a6; text-decoration: none; }
+    nav.crumbs a:hover { color: #e6e6e6; }
+    h1 { font-size: 1.35rem; margin: 0 0 0.25rem; }
+    p.sub { color: #9aa0a6; margin: 0 0 1.5rem; font-size: 0.9rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 0.65rem 0.8rem; border-bottom: 1px solid #262a31; font-size: 0.9rem; vertical-align: top; }
+    th { color: #9aa0a6; font-weight: 600; text-transform: uppercase; font-size: 0.68rem; letter-spacing: 0.05em; }
+    td.email { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .muted { color: #9aa0a6; }
+    details.add-time { margin-top: 0.4rem; }
+    details.add-time summary {
+      cursor: pointer; color: #ff8fc7; font-size: 0.82rem; font-weight: 600; list-style: none;
+    }
+    details.add-time summary::-webkit-details-marker { display: none; }
+    .add-time-form {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem;
+      margin-top: 0.6rem; padding: 0.75rem; background: #171a20; border: 1px solid #262a31; border-radius: 8px;
+    }
+    .add-time-form label { display: block; font-size: 0.72rem; color: #9aa0a6; margin-bottom: 0.2rem; }
+    .add-time-form input {
+      width: 100%; background: #0f1115; border: 1px solid #262a31; border-radius: 6px;
+      color: #e6e6e6; padding: 0.4rem 0.5rem; font-size: 0.85rem;
+    }
+    .add-time-form .full { grid-column: 1 / -1; }
+    .add-time-form button {
+      grid-column: 1 / -1; background: #ff66b2; border: none; color: #1a0a12; font-weight: 700;
+      padding: 0.5rem 0.85rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-top: 0.2rem;
+    }
+    .add-time-form button:disabled { opacity: 0.55; cursor: default; }
+    .row-msg { grid-column: 1 / -1; font-size: 0.8rem; }
+    .row-msg.error { color: #e05252; }
+    .row-msg.success { color: #4caf7d; }
+    .empty { color: #9aa0a6; padding: 3rem 0; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav class="crumbs"><a href="/admin">Admin</a> / Users</nav>
+    <h1>Users</h1>
+    <p class="sub">{{ users|length }} account{{ "s" if users|length != 1 else "" }}. Adding time writes a real, flagged session into that user's own log -- it survives their next sync and appears in the audit log.</p>
+
+    {% if users %}
+    <table>
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Name</th>
+          <th>This week</th>
+          <th>Total sessions</th>
+          <th style="width: 320px;">Correct study time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td class="email">{{ u.email }}</td>
+          <td>{{ u.name or '—' }}</td>
+          <td>{{ (u.weekly_seconds // 3600) }}h {{ ((u.weekly_seconds % 3600) // 60) }}m</td>
+          <td>{{ u.total_sessions }}</td>
+          <td>
+            <details class="add-time">
+              <summary>+ Add time</summary>
+              <form class="add-time-form" data-user-id="{{ u.id }}">
+                <div>
+                  <label>Minutes</label>
+                  <input type="number" name="minutes" min="1" max="1440" required>
+                </div>
+                <div>
+                  <label>Date</label>
+                  <input type="date" name="date" max="{{ today }}" value="{{ today }}" required>
+                </div>
+                <div class="full">
+                  <label>Course</label>
+                  <input type="text" name="course" maxlength="100" required>
+                </div>
+                <div class="full">
+                  <label>Reason</label>
+                  <input type="text" name="reason" maxlength="500" placeholder="e.g. timer crashed mid-session, confirmed with user" required>
+                </div>
+                <button type="submit">Add time</button>
+                <div class="row-msg" hidden></div>
+              </form>
+            </details>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No users yet.</p>
+    {% endif %}
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+      document.addEventListener("submit", function (evt) {
+        var form = evt.target.closest(".add-time-form");
+        if (!form) return;
+        evt.preventDefault();
+
+        var userId = form.getAttribute("data-user-id");
+        var msg = form.querySelector(".row-msg");
+        var btn = form.querySelector("button[type=submit]");
+        msg.hidden = true;
+        msg.className = "row-msg";
+        btn.disabled = true;
+
+        var params = new URLSearchParams();
+        ["minutes", "date", "course", "reason"].forEach(function (name) {
+          params.set(name, form.elements[name].value);
+        });
+
+        fetch("/admin/users/" + encodeURIComponent(userId) + "/add-time", {
+          method: "POST",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          credentials: "same-origin",
+          body: params.toString()
+        }).then(function (resp) {
+          return resp.json().catch(function () { return {}; }).then(function (data) {
+            if (!resp.ok) throw new Error(data.message || "Request failed");
+            msg.textContent = "Added. Reloading...";
+            msg.className = "row-msg success";
+            msg.hidden = false;
+            setTimeout(function () { window.location.reload(); }, 600);
+          });
+        }).catch(function (err) {
+          msg.textContent = err.message || "Could not add time. Please try again.";
+          msg.className = "row-msg error";
+          msg.hidden = false;
+          btn.disabled = false;
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
