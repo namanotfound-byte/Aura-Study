@@ -603,6 +603,61 @@
     };
   }
 
+  // resetEngineDisplayState() in index.html shows a window.confirm() when
+  // there's a minute or more on the clock -- but that dialog is spawned on
+  // the MAIN window's `window` object. The floating window is a separate
+  // top-level browsing context (Document Picture-in-Picture), typically
+  // sitting ON TOP of the main window precisely because the user has
+  // switched away from it, so the main window's confirm() either appears
+  // behind the floating window (invisible, easy to miss entirely) or steals
+  // focus in a confusing way. Either way, clicking Reset in the floating
+  // window can look like it did nothing.
+  //
+  // Fix: do the same "is there something to lose" check here, and if so,
+  // show the confirm INSIDE the floating window (STATE.pipWindow.confirm),
+  // where the user is actually looking. Only call resetEngineDisplayState()
+  // with skipConfirm once we already have an answer, so the main window
+  // never shows a second, redundant (and possibly hidden) prompt. If nothing
+  // is at stake, or the floating window can't produce its own dialog for some
+  // reason, fall through to the normal call -- never silently discard time
+  // that was never confirmed away.
+  function handlePipResetClick() {
+    var elapsedOnClock = Math.floor(runningAccumulatedSeconds || 0);
+    if (elapsedOnClock >= 60 && STATE.pipWindow) {
+      var mins = Math.floor(elapsedOnClock / 60);
+      var confirmFn = null;
+      try {
+        if (typeof STATE.pipWindow.confirm === "function") confirmFn = STATE.pipWindow.confirm;
+      } catch (e) {
+        confirmFn = null;
+      }
+      if (confirmFn) {
+        var ok;
+        try {
+          ok = confirmFn.call(
+            STATE.pipWindow,
+            "Reset the timer and discard " + mins + " minute" + (mins === 1 ? "" : "s") +
+              " already on the clock?\n\nTo keep the time instead, cancel and choose Log Focus in the main AuraStudy window."
+          );
+        } catch (e) {
+          // Some Document PiP implementations may not support confirm() in
+          // the floating window -- fall back to the main-window path below
+          // rather than assume an answer either way.
+          confirmFn = null;
+        }
+        if (confirmFn) {
+          if (!ok) return; // user cancelled inside the floating window -- nothing discarded
+          resetEngineDisplayState(true); // already confirmed here; skip the (possibly hidden) main-window prompt
+          return;
+        }
+      }
+    }
+    // Nothing at stake yet, or no floating-window dialog surface available --
+    // the normal path (main-window confirm when there's something to lose,
+    // silent when there isn't) is still safe, just not guaranteed visible.
+    resetEngineDisplayState();
+  }
+
   function wirePipEvents() {
     var els = STATE.pipEls;
     if (!els) return;
@@ -610,9 +665,7 @@
     // window can possibly be open have already been replaced by this file's
     // own wraps below -- so a click in the floating window drives the exact
     // same start/pause/reset path a click in the main page would.
-    els.resetBtn.addEventListener("click", function () {
-      resetEngineDisplayState();
-    });
+    els.resetBtn.addEventListener("click", handlePipResetClick);
     els.toggleBtn.addEventListener("click", function () {
       toggleEngineExecutionLoop();
     });

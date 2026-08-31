@@ -2278,6 +2278,27 @@
         const MAX_PLAUSIBLE_RECOVERY_SECONDS = 4 * 60 * 60; // beyond this a *recovered* (post-reload) session is capped and confirmed with the user rather than trusted silently -- see attemptRunningTimerRecovery
         let lastTimerPersistMs = 0;
         let lastSyncClockMs = null; // wall-clock time of the previous syncEngineRegistersFromClock() call -- the gap guard's reference point
+
+        // ---- Whole-seconds invariant --------------------------------------
+        // The five timer registers (runningAccumulatedSeconds,
+        // bankedElapsedSeconds, countdownSecondsRemainingRegister,
+        // countdownTotalSeconds, and everything the gap guard derives from
+        // engineAnchorMs) must always hold a whole, non-negative, finite
+        // number of seconds -- never NaN, never Infinity, never a fraction.
+        // Millisecond clock arithmetic (`msDelta / 1000`, as in the gap
+        // guard's `priorElapsed` below) and values read back out of
+        // localStorage (which may be stale, hand-edited, or written by a
+        // buggy earlier version of this file) are exactly the two ways a bad
+        // value creeps in. Every WRITE to these registers is routed through
+        // this so the invariant holds by construction, not because every
+        // call site remembered to floor its own math -- that's exactly how
+        // "0.5030000000000001" reached the display after a sleep/wake.
+        function wholeSeconds(value, fallback) {
+            const fb = (typeof fallback === 'number' && isFinite(fallback) && fallback >= 0) ? Math.floor(fallback) : 0;
+            if (typeof value !== 'number' || !isFinite(value)) return fb;
+            return Math.max(0, Math.floor(value));
+        }
+
         let operationalBarChartInstance = null;
         let leaderboardChartInstance = null;
         let leaderboardPollTimer = null;
@@ -2550,7 +2571,12 @@
             document.getElementById('settings-daily-goal').value = appState.profile.dailyGoalHours;
             document.getElementById('settings-timer-duration').value = appState.profile.defaultTimerMinutes;
             document.getElementById('user-email-display').innerText = appState.profile.email;
-            countdownTotalSeconds = appState.profile.defaultTimerMinutes * 60;
+            // appState.profile was just overwritten wholesale from whatever
+            // JSON was in localStorage/synced from the server above -- it may
+            // be stale, hand-edited, or from an older/buggier build, so
+            // defaultTimerMinutes is not trustworthy as-is. wholeSeconds()
+            // floors/validates it before it becomes a timer register.
+            countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
             countdownSecondsRemainingRegister = countdownTotalSeconds;
             updateEngineDisplayString();
         }
@@ -2755,7 +2781,7 @@
 
             if(modeKey === 'countdown') {
                 document.getElementById('mode-tab-countdown').classList.add('active');
-                countdownTotalSeconds = appState.profile.defaultTimerMinutes * 60;
+                countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
                 countdownSecondsRemainingRegister = countdownTotalSeconds;
             } else {
                 document.getElementById('mode-tab-stopwatch').classList.add('active');
@@ -2798,10 +2824,22 @@
             // the user, see toggleEngineExecutionLoop) skips this check so a
             // deliberate pause-then-resume is never mistaken for a sleep gap.
             if (lastSyncClockMs !== null && (nowMs - lastSyncClockMs) / 1000 > MAX_UNOBSERVED_GAP_SECONDS) {
+                // THIS is the line that actually produced the production bug:
+                // (lastSyncClockMs - engineAnchorMs) / 1000 is millisecond
+                // division and is fractional almost every time, because
+                // engineAnchorMs is a Date.now() timestamp that essentially
+                // never lands on an exact second boundary. Banking that
+                // straight into bankedElapsedSeconds poisons every register
+                // that reads it afterwards -- this function's own `elapsed`
+                // a few lines down, the pause path in
+                // toggleEngineExecutionLoop, and ultimately durationSeconds
+                // on a logged session -- with a fraction, silently, long
+                // before the display (which now defends itself) ever sees
+                // it. wholeSeconds() floors it here, at the source, instead.
                 const priorElapsed = bankedElapsedSeconds + Math.max(0, (lastSyncClockMs - engineAnchorMs) / 1000);
-                bankedElapsedSeconds = (appState.selectedMode === "countdown")
+                bankedElapsedSeconds = wholeSeconds((appState.selectedMode === "countdown")
                     ? Math.min(priorElapsed, countdownTotalSeconds)
-                    : priorElapsed;
+                    : priorElapsed);
                 const gapMs = nowMs - lastSyncClockMs;
                 engineAnchorMs = nowMs;
                 const gapMins = Math.round(gapMs / 60000);
@@ -2810,12 +2848,16 @@
                 }
             }
             lastSyncClockMs = nowMs;
-            const elapsed = bankedElapsedSeconds + Math.floor((nowMs - engineAnchorMs) / 1000);
+            // bankedElapsedSeconds is whole by construction (see above and
+            // every other assignment site), and Math.floor(msDelta / 1000) is
+            // always an integer, so `elapsed` is whole too -- wholeSeconds()
+            // here is belt-and-braces, not the primary fix.
+            const elapsed = wholeSeconds(bankedElapsedSeconds + Math.floor((nowMs - engineAnchorMs) / 1000));
             if (appState.selectedMode === "countdown") {
-                runningAccumulatedSeconds = Math.min(elapsed, countdownTotalSeconds);
-                countdownSecondsRemainingRegister = Math.max(0, countdownTotalSeconds - elapsed);
+                runningAccumulatedSeconds = wholeSeconds(Math.min(elapsed, countdownTotalSeconds));
+                countdownSecondsRemainingRegister = wholeSeconds(Math.max(0, countdownTotalSeconds - elapsed));
             } else {
-                runningAccumulatedSeconds = elapsed;
+                runningAccumulatedSeconds = wholeSeconds(elapsed);
             }
         }
 
@@ -2882,7 +2924,7 @@
             const startBtn = document.getElementById('timer-start-btn');
             if (isEngineActivelyRunning) {
                 syncEngineRegistersFromClock();
-                bankedElapsedSeconds = runningAccumulatedSeconds;
+                bankedElapsedSeconds = wholeSeconds(runningAccumulatedSeconds);
                 engineAnchorMs = null;
                 lastSyncClockMs = null;
                 clearInterval(engineIntervalRegister);
@@ -2894,7 +2936,7 @@
             } else {
                 if (runningAccumulatedSeconds === 0) {
                     if (appState.selectedMode === "countdown") {
-                        countdownTotalSeconds = appState.profile.defaultTimerMinutes * 60;
+                        countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
                         countdownSecondsRemainingRegister = countdownTotalSeconds;
                     }
                     bankedElapsedSeconds = 0;
@@ -2943,7 +2985,7 @@
             lastSyncClockMs = null;
             bankedElapsedSeconds = 0;
             runningAccumulatedSeconds = 0;
-            countdownTotalSeconds = appState.profile.defaultTimerMinutes * 60;
+            countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
             countdownSecondsRemainingRegister = countdownTotalSeconds;
             updateEngineDisplayString();
             document.getElementById('timer-start-btn').innerHTML = '<i data-lucide="play-circle"></i> Start Block';
@@ -3034,7 +3076,11 @@
             isEngineActivelyRunning = false;
             engineAnchorMs = null;
             lastSyncClockMs = null;
-            const finalDuration = runningAccumulatedSeconds;
+            // Last line of defence before a duration is written into a
+            // session and propagates into the leaderboard, the charts and
+            // the pet: never trust runningAccumulatedSeconds to already be a
+            // whole number, no matter how many upstream writers floor it.
+            const finalDuration = wholeSeconds(runningAccumulatedSeconds);
 
             if (finalDuration >= 5) {
                 const logDataNode = {
@@ -3102,15 +3148,24 @@
             } catch (e) {
                 snapshot = null;
             }
-            if (!snapshot || typeof snapshot.savedAtMs !== 'number') {
+            // A snapshot is untrusted input: it's whatever JSON happened to be
+            // under this key in localStorage, which could be from a much
+            // older/buggier build, hand-edited, truncated by a quota error
+            // mid-write, or simply missing fields. Number.isFinite (not
+            // typeof === 'number', which NaN also satisfies) is what actually
+            // rejects NaN/Infinity here.
+            if (!snapshot || !Number.isFinite(snapshot.savedAtMs)) {
                 clearRunningTimerSnapshot();
                 return;
             }
 
             const anchor = snapshot.engineAnchorMs;
-            const banked = typeof snapshot.bankedElapsedSeconds === 'number' ? snapshot.bankedElapsedSeconds : 0;
+            // wholeSeconds() rejects non-numbers, NaN, Infinity and negative
+            // values in one place, and floors anything else -- a corrupt or
+            // hand-edited snapshot's bankedElapsedSeconds can be any of those.
+            const banked = wholeSeconds(snapshot.bankedElapsedSeconds);
             let confirmedElapsed = banked;
-            if (snapshot.isRunning && typeof anchor === 'number') {
+            if (snapshot.isRunning && Number.isFinite(anchor)) {
                 // Floored, matching syncEngineRegistersFromClock's own
                 // Math.floor -- otherwise a fractional-second gap produces a
                 // non-integer `secs` value downstream, and
@@ -3119,9 +3174,12 @@
                 confirmedElapsed = banked + Math.floor(Math.max(0, (snapshot.savedAtMs - anchor) / 1000));
             }
             const snapshotMode = snapshot.mode === 'countdown' ? 'countdown' : 'stopwatch';
-            const countdownTotal = typeof snapshot.countdownTotalSeconds === 'number' && snapshot.countdownTotalSeconds > 0
-                ? snapshot.countdownTotalSeconds
-                : countdownTotalSeconds;
+            // Same reasoning as the countdownTotalSeconds fix in
+            // loadStateFromLocalStorageRegister: this value came straight out
+            // of a persisted snapshot and must be floored and validated
+            // before it can become a register, not just range-checked.
+            const countdownTotalFromSnapshot = wholeSeconds(snapshot.countdownTotalSeconds);
+            const countdownTotal = countdownTotalFromSnapshot > 0 ? countdownTotalFromSnapshot : countdownTotalSeconds;
             if (snapshotMode === 'countdown') {
                 confirmedElapsed = Math.min(confirmedElapsed, countdownTotal);
             }
@@ -3150,10 +3208,10 @@
                 countdownTotalSeconds = countdownTotal;
                 // Whole seconds only -- confirmedElapsed is derived from
                 // millisecond clock arithmetic and can be fractional.
-                confirmedElapsed = Math.floor(confirmedElapsed);
+                confirmedElapsed = wholeSeconds(confirmedElapsed);
                 bankedElapsedSeconds = confirmedElapsed;
                 runningAccumulatedSeconds = confirmedElapsed;
-                countdownSecondsRemainingRegister = Math.max(0, countdownTotal - confirmedElapsed);
+                countdownSecondsRemainingRegister = wholeSeconds(Math.max(0, countdownTotal - confirmedElapsed));
                 engineAnchorMs = null;
                 lastSyncClockMs = null;
                 isEngineActivelyRunning = false;
