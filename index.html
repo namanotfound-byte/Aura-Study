@@ -2213,6 +2213,31 @@
             });
         }
 
+        // Returns a YYYY-MM-DD string for `d`'s LOCAL calendar date (`d`
+        // defaults to right now). Every `session.date` this app writes, and
+        // every place "today"/"this day" is later compared against one, MUST
+        // go through this -- never `d.toISOString().split('T')[0]`, which is
+        // the UTC date. For any user not on UTC that silently misfiles a
+        // session studied late at night (or early morning, depending on the
+        // offset's sign) under the wrong calendar day: daily totals, streaks,
+        // the pet's XP, badges/achievements, and the 7-day chart all read
+        // session.date, so a UTC/local mismatch there corrupts all of them at
+        // once, not just the log entry itself.
+        //
+        // Existing sessions logged before this fix already have a
+        // UTC-derived date string baked in -- this deliberately does NOT
+        // reinterpret or migrate those (there's no time-of-day stored to
+        // recover their true local date from). It only changes what NEW
+        // sessions record and what "today" means for every comparison made
+        // from here on.
+        function getLocalDateStr(d) {
+            d = d || new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
         // Core State Engine Allocation
         let appState = {
             profile: { email: "you@example.com", dailyGoalHours: 3, defaultTimerMinutes: 25 },
@@ -2239,6 +2264,20 @@
         let engineAnchorMs = null;            // Date.now() when the current run segment started
         let bankedElapsedSeconds = 0;         // elapsed seconds banked from earlier segments (before a pause)
         let countdownTotalSeconds = 25 * 60;  // length of the current countdown block
+
+        // ---- Running-timer durability (never lose an in-flight session) ------
+        // The timer engine above only ever lived in JS variables: closing the
+        // tab, a crash, or the OS reclaiming a backgrounded tab wiped out
+        // whatever hadn't been explicitly logged. RUNNING_TIMER_STORAGE_KEY
+        // persists a periodic snapshot of the wall-clock anchor + banked
+        // seconds so a reload can reconstruct (not silently invent) elapsed
+        // time -- see persistRunningTimerSnapshot / attemptRunningTimerRecovery.
+        const RUNNING_TIMER_STORAGE_KEY = 'aurastudy_running_timer_v1';
+        const TIMER_PERSIST_THROTTLE_MS = 5000;        // how often the live heartbeat snapshot is rewritten while running
+        const MAX_UNOBSERVED_GAP_SECONDS = 90;          // a gap longer than this between two live ticks means the device was asleep/suspended, not just a slow tick -- see syncEngineRegistersFromClock
+        const MAX_PLAUSIBLE_RECOVERY_SECONDS = 4 * 60 * 60; // beyond this a *recovered* (post-reload) session is capped and confirmed with the user rather than trusted silently -- see attemptRunningTimerRecovery
+        let lastTimerPersistMs = 0;
+        let lastSyncClockMs = null; // wall-clock time of the previous syncEngineRegistersFromClock() call -- the gap guard's reference point
         let operationalBarChartInstance = null;
         let leaderboardChartInstance = null;
         let leaderboardPollTimer = null;
@@ -2353,6 +2392,10 @@
                 initDashboardMetricsAndCharts();
                 renderCoursesView();
                 renderTimerSubjectPills();
+                // Must run after state has loaded (needs appState.courses/
+                // selectedCourse as fallbacks) but before the user can start a
+                // NEW timer block over an unrecovered one.
+                attemptRunningTimerRecovery();
                 renderSessionsTable();
                 evaluateCabinetTrophyMetrics();
                 updatePetEvolutionState();
@@ -2701,10 +2744,12 @@
             engineIntervalRegister = null;
             isEngineActivelyRunning = false;
             engineAnchorMs = null;
+            lastSyncClockMs = null;
             bankedElapsedSeconds = 0;
             runningAccumulatedSeconds = 0;
             appState.selectedMode = modeKey;
             saveStateToLocalStorageRegister();
+            clearRunningTimerSnapshot();
             document.querySelectorAll('.mode-tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('timer-start-btn').innerHTML = '<i data-lucide="play-circle"></i> Start Block';
 
@@ -2730,7 +2775,34 @@
         // Safe to call at any moment, however late or early the interval fires.
         function syncEngineRegistersFromClock() {
             if (engineAnchorMs === null) return;
-            const elapsed = bankedElapsedSeconds + Math.floor((Date.now() - engineAnchorMs) / 1000);
+            const nowMs = Date.now();
+            // Gap guard: if real wall-clock time jumped by more than
+            // MAX_UNOBSERVED_GAP_SECONDS since the last time this ran, the
+            // device was very likely asleep/suspended (or the tab was
+            // frozen) for that whole interval rather than actively ticking
+            // -- e.g. a laptop lid closed overnight with the timer left
+            // running. Rolling the anchor forward through a gap that large
+            // would silently credit the user with hours they never studied.
+            // Instead, bank only up to the last confirmed-alive moment and
+            // resume counting fresh from now, excluding the gap entirely --
+            // never inventing time, but never discarding real progress
+            // either. `lastSyncClockMs === null` (freshly started/resumed by
+            // the user, see toggleEngineExecutionLoop) skips this check so a
+            // deliberate pause-then-resume is never mistaken for a sleep gap.
+            if (lastSyncClockMs !== null && (nowMs - lastSyncClockMs) / 1000 > MAX_UNOBSERVED_GAP_SECONDS) {
+                const priorElapsed = bankedElapsedSeconds + Math.max(0, (lastSyncClockMs - engineAnchorMs) / 1000);
+                bankedElapsedSeconds = (appState.selectedMode === "countdown")
+                    ? Math.min(priorElapsed, countdownTotalSeconds)
+                    : priorElapsed;
+                const gapMs = nowMs - lastSyncClockMs;
+                engineAnchorMs = nowMs;
+                const gapMins = Math.round(gapMs / 60000);
+                if (gapMins >= 1) {
+                    triggerAlertToast("Timer Resumed", `This device seems to have been asleep for about ${gapMins} min -- that gap wasn't counted.`, false);
+                }
+            }
+            lastSyncClockMs = nowMs;
+            const elapsed = bankedElapsedSeconds + Math.floor((nowMs - engineAnchorMs) / 1000);
             if (appState.selectedMode === "countdown") {
                 runningAccumulatedSeconds = Math.min(elapsed, countdownTotalSeconds);
                 countdownSecondsRemainingRegister = Math.max(0, countdownTotalSeconds - elapsed);
@@ -2743,6 +2815,9 @@
             if (!isEngineActivelyRunning) return;
             syncEngineRegistersFromClock();
             updateEngineDisplayString();
+            if (Date.now() - lastTimerPersistMs >= TIMER_PERSIST_THROTTLE_MS) {
+                persistRunningTimerSnapshot();
+            }
             if (appState.selectedMode === "countdown" && countdownSecondsRemainingRegister <= 0) {
                 clearInterval(engineIntervalRegister);
                 engineIntervalRegister = null;
@@ -2753,17 +2828,61 @@
             }
         }
 
+        // Persists enough of the running timer's state to reconstruct elapsed
+        // time after a reload/crash: the wall-clock anchor, banked seconds,
+        // and which course/mode it belongs to. `savedAtMs` is the important
+        // field for recovery -- it's the last moment we know for certain this
+        // tab was alive, so attemptRunningTimerRecovery() below can compute
+        // elapsed-as-of-that-heartbeat instead of elapsed-as-of-now, which
+        // would otherwise silently count all the time the tab was closed as
+        // if it had kept running. Called on every start/pause/mode-change
+        // (state transitions), throttled to every TIMER_PERSIST_THROTTLE_MS
+        // while actively running (engineTickHandler), and unconditionally
+        // from the pagehide/visibilitychange-hidden flush (see AuraSync wiring
+        // below) so a closed tab's snapshot is current to the moment it closed.
+        function persistRunningTimerSnapshot() {
+            try {
+                if (engineAnchorMs === null && !isEngineActivelyRunning && bankedElapsedSeconds < 5) {
+                    // Nothing worth recovering (idle/freshly-reset timer) -- don't
+                    // leave a stale snapshot around to be "recovered" later.
+                    localStorage.removeItem(RUNNING_TIMER_STORAGE_KEY);
+                    return;
+                }
+                localStorage.setItem(RUNNING_TIMER_STORAGE_KEY, JSON.stringify({
+                    engineAnchorMs: engineAnchorMs,
+                    bankedElapsedSeconds: bankedElapsedSeconds,
+                    isRunning: isEngineActivelyRunning,
+                    mode: appState.selectedMode,
+                    course: appState.selectedCourse,
+                    countdownTotalSeconds: countdownTotalSeconds,
+                    initialBlockTimestampString: initialBlockTimestampString,
+                    savedAtMs: Date.now()
+                }));
+                lastTimerPersistMs = Date.now();
+            } catch (e) {
+                // localStorage unavailable (private mode / quota full) --
+                // recovery just won't be possible if this tab goes away now.
+            }
+        }
+
+        function clearRunningTimerSnapshot() {
+            try { localStorage.removeItem(RUNNING_TIMER_STORAGE_KEY); } catch (e) {}
+            lastTimerPersistMs = 0;
+        }
+
         function toggleEngineExecutionLoop() {
             const startBtn = document.getElementById('timer-start-btn');
             if (isEngineActivelyRunning) {
                 syncEngineRegistersFromClock();
                 bankedElapsedSeconds = runningAccumulatedSeconds;
                 engineAnchorMs = null;
+                lastSyncClockMs = null;
                 clearInterval(engineIntervalRegister);
                 engineIntervalRegister = null;
                 isEngineActivelyRunning = false;
                 updateEngineDisplayString();
                 startBtn.innerHTML = '<i data-lucide="play-circle"></i> Resume Block';
+                persistRunningTimerSnapshot();
             } else {
                 if (runningAccumulatedSeconds === 0) {
                     if (appState.selectedMode === "countdown") {
@@ -2776,12 +2895,14 @@
                 }
 
                 engineAnchorMs = Date.now();
+                lastSyncClockMs = null; // fresh start/resume -- the next sync must not compare against a stale pre-pause timestamp (see syncEngineRegistersFromClock's gap guard)
                 isEngineActivelyRunning = true;
                 startBtn.innerHTML = '<i data-lucide="pause-circle"></i> Pause Cycle';
 
                 clearInterval(engineIntervalRegister);
                 engineIntervalRegister = setInterval(engineTickHandler, 250);
                 engineTickHandler();
+                persistRunningTimerSnapshot();
             }
             lucide.createIcons();
         }
@@ -2799,6 +2920,7 @@
             engineIntervalRegister = null;
             isEngineActivelyRunning = false;
             engineAnchorMs = null;
+            lastSyncClockMs = null;
             bankedElapsedSeconds = 0;
             runningAccumulatedSeconds = 0;
             countdownTotalSeconds = appState.profile.defaultTimerMinutes * 60;
@@ -2806,8 +2928,84 @@
             updateEngineDisplayString();
             document.getElementById('timer-start-btn').innerHTML = '<i data-lucide="play-circle"></i> Start Block';
             document.getElementById('timer-start-timestamp').innerText = "Timer reset.";
+            clearRunningTimerSnapshot();
             lucide.createIcons();
         }
+
+        function sessionSignature(s) {
+            if (!s) return '';
+            return [s.date, s.course, s.type, s.durationSeconds, s.timestamp, s.addedByAdmin ? 1 : 0].join('|');
+        }
+
+        function sessionMergeKey(s) {
+            return s && s.clientId ? ('id:' + s.clientId) : ('sig:' + sessionSignature(s));
+        }
+
+        // Unions `otherSessions` into appState.sessions, adding only the ones
+        // not already present (matched by the stable `clientId` sessions get
+        // at creation -- see saveEngineWorkspaceBlockData -- or, for legacy
+        // sessions logged before that field existed, by full content).
+        // Returns true iff anything was actually added. Never removes a
+        // session -- this is strictly additive, so it's safe to call before
+        // any save, or whenever another source (another tab's localStorage,
+        // or the server's copy after a 409 conflict) might know about
+        // sessions this tab doesn't yet.
+        function unionMissingSessions(otherSessions) {
+            if (!Array.isArray(otherSessions) || otherSessions.length === 0) return false;
+            const seen = new Set(appState.sessions.map(sessionMergeKey));
+            const missing = otherSessions.filter(s => {
+                const key = sessionMergeKey(s);
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+            if (missing.length === 0) return false;
+            // Appended, not re-sorted: appState.sessions is otherwise always
+            // newest-first via unshift, but exact chronological interleaving
+            // of a rare merge isn't worth the risk of reordering (or losing
+            // the relative order of) the rest of a user's real session
+            // history. Correctness of the totals and the sessions existing
+            // at all matters far more here than their exact list position.
+            appState.sessions = appState.sessions.concat(missing);
+            return true;
+        }
+
+        // Merges any sessions another browser tab has already written to
+        // localStorage into appState.sessions before we add our own and save.
+        // localStorage is one shared bucket per browser origin, not per tab:
+        // if two tabs are open and each holds its own in-memory appState,
+        // whichever tab calls saveStateToLocalStorageRegister() last would
+        // otherwise overwrite the whole blob wholesale, silently erasing a
+        // session the OTHER tab logged (and possibly already synced to the
+        // server) in between.
+        function mergeSessionsFromOtherTabs() {
+            let stored;
+            try {
+                const raw = localStorage.getItem('aurastudy_state_v1');
+                stored = raw ? JSON.parse(raw) : null;
+            } catch (e) { return; }
+            if (stored && Array.isArray(stored.sessions)) unionMissingSessions(stored.sessions);
+        }
+
+        // Called by static/sync.js after it resolves a 409 version conflict
+        // with the server by merging session lists (see that file's
+        // mergePayloads/handleConflictAndRetry). sync.js only ever touches
+        // localStorage directly -- it doesn't know about appState -- so
+        // without this hook a mid-session conflict merge would sit correctly
+        // in localStorage and on the server, but the CURRENTLY OPEN tab's own
+        // in-memory view (and everything rendered from it) would silently
+        // fall behind until the next full reload. Exposed on window since
+        // sync.js is a separate, non-module script file.
+        window.applyMergedSyncPayloadToAppState = function (mergedPayload) {
+            if (!mergedPayload || !Array.isArray(mergedPayload.sessions)) return;
+            if (unionMissingSessions(mergedPayload.sessions)) {
+                saveStateToLocalStorageRegister();
+                renderSessionsTable();
+                updatePetEvolutionState();
+                initDashboardMetricsAndCharts();
+                evaluateCabinetTrophyMetrics();
+            }
+        };
 
         function saveEngineWorkspaceBlockData() {
             syncEngineRegistersFromClock();
@@ -2815,11 +3013,18 @@
             engineIntervalRegister = null;
             isEngineActivelyRunning = false;
             engineAnchorMs = null;
+            lastSyncClockMs = null;
             const finalDuration = runningAccumulatedSeconds;
 
             if (finalDuration >= 5) {
                 const logDataNode = {
-                    date: new Date().toISOString().split('T')[0],
+                    // Client-generated unique id, not the server's -- lets
+                    // mergeSessionsFromOtherTabs() and the 409-conflict merge
+                    // in static/sync.js dedupe this exact session reliably
+                    // instead of relying on its fields never coincidentally
+                    // matching another entry.
+                    clientId: 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10),
+                    date: getLocalDateStr(),
                     course: appState.selectedCourse,
                     type: appState.selectedMode === "countdown" ? "Countdown" : "Stopwatch",
                     durationSeconds: finalDuration,
@@ -2827,9 +3032,16 @@
                     hourOfDayExecuted: new Date().getHours()
                 };
 
+                // A completed session is exactly the moment durability matters
+                // most -- merge in whatever another tab already logged first,
+                // so neither tab's work is lost to a last-write-wins overwrite.
+                mergeSessionsFromOtherTabs();
                 appState.sessions.unshift(logDataNode);
                 saveStateToLocalStorageRegister();
                 updatePetEvolutionState();
+                // Flush to the server immediately rather than waiting out
+                // sync.js's debounce -- see static/sync.js's flush().
+                if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
 
                 if (finalDuration >= 15 * 60) {
                     triggerAlertToast("Session Logged", `Nice work! Logged ${Math.round(finalDuration/60)}m into ${appState.selectedCourse}.`, true);
@@ -2840,6 +3052,144 @@
                 triggerAlertToast("Too Short!", "Session was too short to archive. Keep going next time!", false);
             }
             resetEngineDisplayState();
+        }
+
+        // Runs once on boot (see DOMContentLoaded below), after the app's own
+        // state has loaded: looks for a running-timer snapshot left behind by
+        // persistRunningTimerSnapshot() and, if one exists, reconstructs what
+        // happened to it rather than silently losing it.
+        //
+        // The load-bearing decision is which timestamp "now" means for the
+        // recovered elapsed time. `snapshot.savedAtMs` is the last moment
+        // this app is CERTAIN the tab was alive (updated on every heartbeat,
+        // every pause/mode-change, and on pagehide/visibilitychange-hidden --
+        // see the AuraSync wiring). Using that instead of Date.now() means a
+        // tab that was simply closed for an hour reconstructs correctly as
+        // "however many seconds had accrued at the moment it closed", not as
+        // "an hour of study". A snapshot whose reconstructed elapsed time is
+        // still implausibly large despite that (the tab genuinely stayed open
+        // and ticking for many hours -- e.g. a stopwatch left running and
+        // forgotten) is capped and confirmed with the user rather than
+        // trusted outright; see MAX_PLAUSIBLE_RECOVERY_SECONDS above.
+        function attemptRunningTimerRecovery() {
+            let snapshot;
+            try {
+                const raw = localStorage.getItem(RUNNING_TIMER_STORAGE_KEY);
+                snapshot = raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                snapshot = null;
+            }
+            if (!snapshot || typeof snapshot.savedAtMs !== 'number') {
+                clearRunningTimerSnapshot();
+                return;
+            }
+
+            const anchor = snapshot.engineAnchorMs;
+            const banked = typeof snapshot.bankedElapsedSeconds === 'number' ? snapshot.bankedElapsedSeconds : 0;
+            let confirmedElapsed = banked;
+            if (snapshot.isRunning && typeof anchor === 'number') {
+                // Floored, matching syncEngineRegistersFromClock's own
+                // Math.floor -- otherwise a fractional-second gap produces a
+                // non-integer `secs` value downstream, and
+                // updateEngineDisplayString renders it verbatim (e.g.
+                // "00:10.775" instead of "00:10").
+                confirmedElapsed = banked + Math.floor(Math.max(0, (snapshot.savedAtMs - anchor) / 1000));
+            }
+            const snapshotMode = snapshot.mode === 'countdown' ? 'countdown' : 'stopwatch';
+            const countdownTotal = typeof snapshot.countdownTotalSeconds === 'number' && snapshot.countdownTotalSeconds > 0
+                ? snapshot.countdownTotalSeconds
+                : countdownTotalSeconds;
+            if (snapshotMode === 'countdown') {
+                confirmedElapsed = Math.min(confirmedElapsed, countdownTotal);
+            }
+
+            if (confirmedElapsed < 5) {
+                // Matches the 5s floor saveEngineWorkspaceBlockData already
+                // applies to a manually-logged session -- not enough to
+                // matter, just drop the stale snapshot.
+                clearRunningTimerSnapshot();
+                return;
+            }
+
+            const courseLabel = (typeof snapshot.course === 'string' && snapshot.course) ? snapshot.course : appState.selectedCourse;
+
+            if (confirmedElapsed <= MAX_PLAUSIBLE_RECOVERY_SECONDS) {
+                // Plausible -- restore the timer PAUSED (never silently
+                // resumed running, and never auto-logged as a session).
+                // Nothing is written to appState.sessions here: only the
+                // live timer is rehydrated, exactly like a manual pause
+                // already works, so the recovery is visible on screen (the
+                // display shows the recovered time, the button reads
+                // "Resume Block") and the user decides whether to keep going
+                // or hit "Log Focus" immediately.
+                appState.selectedCourse = courseLabel;
+                appState.selectedMode = snapshotMode;
+                countdownTotalSeconds = countdownTotal;
+                bankedElapsedSeconds = confirmedElapsed;
+                runningAccumulatedSeconds = confirmedElapsed;
+                countdownSecondsRemainingRegister = Math.max(0, countdownTotal - confirmedElapsed);
+                engineAnchorMs = null;
+                lastSyncClockMs = null;
+                isEngineActivelyRunning = false;
+                initialBlockTimestampString = snapshot.initialBlockTimestampString || '';
+
+                document.querySelectorAll('.mode-tab-btn').forEach(b => b.classList.remove('active'));
+                const tabEl = document.getElementById(snapshotMode === 'countdown' ? 'mode-tab-countdown' : 'mode-tab-stopwatch');
+                if (tabEl) tabEl.classList.add('active');
+                const subjectLabel = document.getElementById('timer-current-subject');
+                if (subjectLabel) subjectLabel.innerText = courseLabel;
+                renderTimerSubjectPills();
+                updateEngineDisplayString();
+                const startBtn = document.getElementById('timer-start-btn');
+                if (startBtn) startBtn.innerHTML = '<i data-lucide="play-circle"></i> Resume Block';
+                const tsEl = document.getElementById('timer-start-timestamp');
+                if (tsEl) {
+                    tsEl.innerText = initialBlockTimestampString
+                        ? `Started at: ${initialBlockTimestampString} (recovered)`
+                        : 'Recovered an interrupted session -- resume or log it.';
+                }
+                if (window.lucide) lucide.createIcons();
+                persistRunningTimerSnapshot();
+
+                const mins = Math.floor(confirmedElapsed / 60);
+                triggerAlertToast("Session Recovered", `Found an interrupted session -- ${mins} min recovered in ${courseLabel}. Resume or log it now.`, true);
+            } else {
+                // Implausible: silently trusting this would credit the user
+                // with hours they almost certainly didn't study (device
+                // asleep, tab left open and forgotten overnight, etc). Cap it
+                // and ask, rather than either discard it outright or log the
+                // full amount -- "a sane cap and a prompt rather than a
+                // silent N-hour log."
+                const cappedSeconds = MAX_PLAUSIBLE_RECOVERY_SECONDS;
+                const cappedMins = Math.floor(cappedSeconds / 60);
+                const hrs = Math.floor(confirmedElapsed / 3600);
+                const wantsLog = window.confirm(
+                    `AuraStudy found an interrupted ${snapshotMode} session in "${courseLabel}" that ran for about ${hrs}+ ` +
+                    `hours -- longer than a real study block, most likely because this device was asleep or the tab stayed ` +
+                    `closed for a while.\n\nClick OK to log the first ${cappedMins} minutes (a safe cap) now, or Cancel to ` +
+                    `discard it and start fresh.`
+                );
+                if (wantsLog) {
+                    const logDataNode = {
+                        clientId: 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10),
+                        date: getLocalDateStr(),
+                        course: courseLabel,
+                        type: snapshotMode === 'countdown' ? 'Countdown' : 'Stopwatch',
+                        durationSeconds: cappedSeconds,
+                        timestamp: snapshot.initialBlockTimestampString || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        hourOfDayExecuted: new Date().getHours()
+                    };
+                    mergeSessionsFromOtherTabs();
+                    appState.sessions.unshift(logDataNode);
+                    saveStateToLocalStorageRegister();
+                    updatePetEvolutionState();
+                    if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
+                    triggerAlertToast("Session Logged", `Logged a capped ${cappedMins} min for the interrupted session.`, true);
+                } else {
+                    triggerAlertToast("Discarded", "The interrupted session was discarded.", false);
+                }
+                clearRunningTimerSnapshot();
+            }
         }
 
         function renderTimerSubjectPills() {
@@ -2916,7 +3266,7 @@
 
         // Dashboard Metrics and Chart Logic
         function initDashboardMetricsAndCharts() {
-            const today = new Date().toISOString().split('T')[0];
+            const today = getLocalDateStr();
             let todaySecs = 0; appState.sessions.forEach(s => { if(s.date === today) todaySecs += s.durationSeconds; });
             const hours = Math.floor(todaySecs / 3600); const mins = Math.floor((todaySecs % 3600) / 60);
             document.getElementById('dash-today-time').innerText = `${hours}h ${mins.toString().padStart(2, '0')}m`;
@@ -2934,16 +3284,16 @@
             const today = new Date(); const currentDayIdx = (today.getDay() + 6) % 7; let currentStreak = 0;
             for (let i = 0; i < 7; i++) {
                 const el = document.getElementById(`streak-${i}`); if (!el) continue;
-                const diff = i - currentDayIdx; const d = new Date(); d.setDate(today.getDate() + diff); const checkStr = d.toISOString().split('T')[0];
+                const diff = i - currentDayIdx; const d = new Date(); d.setDate(today.getDate() + diff); const checkStr = getLocalDateStr(d);
                 let matchSecs = 0; appState.sessions.forEach(s => { if(s.date === checkStr) matchSecs += s.durationSeconds; });
                 if (matchSecs > 0) { el.className = "streak-dot completed"; el.innerHTML = "✓"; }
                 else { if (i < currentDayIdx) { el.className = "streak-dot failed"; el.innerHTML = "✕"; } else { el.className = "streak-dot"; el.innerHTML = "-"; } }
             }
             let checkDate = new Date();
             while(true) {
-                const sStr = checkDate.toISOString().split('T')[0]; let daySecs = 0; appState.sessions.forEach(s => { if(s.date === sStr) daySecs += s.durationSeconds; });
+                const sStr = getLocalDateStr(checkDate); let daySecs = 0; appState.sessions.forEach(s => { if(s.date === sStr) daySecs += s.durationSeconds; });
                 if (daySecs > 0) { currentStreak++; checkDate.setDate(checkDate.getDate() - 1); }
-                else { if (sStr === today.toISOString().split('T')[0]) { checkDate.setDate(checkDate.getDate() - 1); continue; } break; }
+                else { if (sStr === getLocalDateStr(today)) { checkDate.setDate(checkDate.getDate() - 1); continue; } break; }
             }
             appState.streak = currentStreak; document.getElementById('streak-count-label').innerHTML = `Current Streak: <strong>${currentStreak} days</strong>`;
         }
@@ -3014,7 +3364,11 @@
             if (leaderboardRequestInFlight) return;
             leaderboardRequestInFlight = true;
             if (!leaderboardHasLoadedOnce) showLeaderboardState('loading', 'Loading the leaderboard...');
-            fetch('/api/leaderboard', {
+            // local_date: this client's own local calendar date (see
+            // getLocalDateStr) -- keeps "this week" here agreeing with the
+            // week PUT /api/state's sync just wrote this user's total into.
+            // See server/leaderboard.py:current_week_start's docstring.
+            fetch('/api/leaderboard?local_date=' + encodeURIComponent(getLocalDateStr()), {
                 method: 'GET',
                 credentials: 'same-origin',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -3275,7 +3629,7 @@
                 method: 'PUT',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                body: JSON.stringify({ opted_in: nextVal })
+                body: JSON.stringify({ opted_in: nextVal, local_date: getLocalDateStr() })
             })
                 .then(res => {
                     if (res.status === 401) { window.location.replace('/login'); return null; }
@@ -3300,7 +3654,7 @@
             const labels = []; const datasets = [];
             for (let i = 6; i >= 0; i--) {
                 const d = new Date(); d.setDate(d.getDate() - i); labels.push(d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }));
-                const checkStr = d.toISOString().split('T')[0]; let mSum = 0; appState.sessions.forEach(s => { if(s.date === checkStr) mSum += s.durationSeconds; });
+                const checkStr = getLocalDateStr(d); let mSum = 0; appState.sessions.forEach(s => { if(s.date === checkStr) mSum += s.durationSeconds; });
                 datasets.push(Math.round(mSum / 60));
             }
             // Canvas cannot read CSS variables, so resolve the active theme tokens first
@@ -3586,13 +3940,22 @@
             saveStateToLocalStorageRegister();
             renderSessionsTable();
             updatePetEvolutionState();
+            // Flush immediately rather than the normal 2s debounce: this is a
+            // deliberate delete, and the 409-conflict merge in static/sync.js
+            // unions back in any session the server knows about that local
+            // doesn't -- which, for the brief debounce window right after a
+            // clear, can't yet tell "never seen" apart from "just deleted".
+            // Pushing right away shrinks that window as far as it can go
+            // without a full tombstone system (a known residual gap -- see
+            // the fix report).
+            if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
             triggerAlertToast("History Cleared", "Your session logs have been cleared.", false);
         }
         function switchTrophySubView(key) { document.querySelectorAll('.trophy-tab-trigger').forEach(t => t.classList.remove('active')); if(key === 'badges') { document.getElementById('trophy-tab-badges').classList.add('active'); document.getElementById('subview-badges').style.display = 'grid'; document.getElementById('subview-achievements').style.display = 'none'; } else { document.getElementById('trophy-tab-achievements').classList.add('active'); document.getElementById('subview-badges').style.display = 'none'; document.getElementById('subview-achievements').style.display = 'grid'; } }
 
         function evaluateCabinetTrophyMetrics() {
             const badgesContainer = document.getElementById('subview-badges'); const achContainer = document.getElementById('subview-achievements'); badgesContainer.innerHTML = ""; achContainer.innerHTML = "";
-            let unlockedCount = 0; const todayStr = new Date().toISOString().split('T')[0];
+            let unlockedCount = 0; const todayStr = getLocalDateStr();
             let todaySecs = 0; appState.sessions.forEach(s => { if(s.date === todayStr) todaySecs += s.durationSeconds; });
 
             const badgeStatus = {

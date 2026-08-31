@@ -327,6 +327,111 @@ class TestAdminGate:
         assert stale_resp.status_code == 409
         assert stale_resp.get_json()["version"] == 2
 
+    def test_add_time_does_not_lose_a_concurrent_user_state_write(self, client, app, outbox, monkeypatch):
+        """Regression: inject_time_correction did the same unguarded
+        read-then-write against user_state as the old PUT /api/state --
+        SELECT current_version, then an UPDATE with no version guard. If the
+        target user's own PUT /api/state happened to commit in the gap
+        between this admin action's read and its write, the loser's data
+        would silently vanish with no error to either side: the admin
+        thinks the correction landed, or the user thinks their session
+        synced, and one of the two is simply gone.
+
+        Simulated deterministically by intercepting inject_time_correction's
+        own first `db.execute()` call (its SELECT of current_version) and,
+        as a side effect right after it captures that result, committing an
+        independent user PUT /api/state through a real second request --
+        modelling "the user's own sync landed in the gap between this
+        correction's read and its write" exactly.
+        """
+        target = app.test_client()
+        target_id = register_and_login(target, email="target-race@example.com")
+        r0 = put_state(target, {"sessions": [{"n": 1}]}, 0)  # version -> 1
+        assert r0.status_code == 200
+
+        register_and_login(client, email="owner@example.com")
+
+        from server import app as app_module
+        from server.config import get_config
+        from server.db import get_db as real_get_db
+
+        raced_payload = {"sessions": [{"n": 2, "raced": True}]}
+
+        class _RaceInjectingConnWrapper:
+            """Same technique as test_state.py's own lost-update regression
+            test: a raw, independent second connection commits a write to
+            the SAME row right after this request's own first read of it --
+            modelling "the target user's own PUT /api/state landed in the
+            gap between this correction's read and its write". A second
+            Flask test-client request can't be used for that side effect:
+            nesting a `target.put(...)` call inside `client.post(...)`'s own
+            in-flight dispatch (same underlying `app` object) hits Flask's
+            context-reuse optimisation and ends up sharing the OUTER
+            request's `flask.g` (so `flask.g.user` resolves to the *admin*,
+            not the target) -- a real second connection sidesteps that
+            entirely, exactly like the driving bug it's modelling."""
+
+            def __init__(self, real_conn):
+                self._real = real_conn
+                self._call_count = 0
+
+            def execute(self, sql, params=()):
+                self._call_count += 1
+                cur = self._real.execute(sql, params)
+                # Call #1 in this route is admin_module.get_user_row()'s own
+                # SELECT (users table); call #2 is
+                # inject_time_correction()'s first SELECT of user_state's
+                # current_version -- that's the read whose gap we need to
+                # race into.
+                if self._call_count == 2:
+                    cfg = get_config()
+                    if cfg.database_url:
+                        import psycopg
+
+                        other = psycopg.connect(cfg.database_url, autocommit=True)
+                        other.execute(
+                            "UPDATE user_state SET version = version + 1, payload = %s WHERE user_id = %s",
+                            (json.dumps(raced_payload), target_id),
+                        )
+                    else:
+                        import sqlite3
+
+                        other = sqlite3.connect(cfg.database_path)
+                        other.execute(
+                            "UPDATE user_state SET version = version + 1, payload = ? WHERE user_id = ?",
+                            (json.dumps(raced_payload), target_id),
+                        )
+                        other.commit()
+                    other.close()
+                return cur
+
+            def commit(self):
+                self._real.commit()
+
+            def rollback(self):
+                self._real.rollback()
+
+            def close(self):
+                self._real.close()
+
+        def sneaky_get_db():
+            return _RaceInjectingConnWrapper(real_get_db())
+
+        monkeypatch.setattr(app_module, "get_db", sneaky_get_db)
+
+        resp = add_time(client, target_id, minutes=45)
+        monkeypatch.undo()
+
+        # The retry loop in inject_time_correction must have picked up the
+        # raced-in write and layered the correction on top of it -- not
+        # silently discarded it.
+        assert resp.status_code == 200
+        final = get_state(target)
+        sessions = [s for s in final["payload"]["sessions"] if isinstance(s, dict)]
+        assert any(s.get("n") == 2 and s.get("raced") for s in sessions)  # the raced-in write survived
+        assert any(s.get("addedByAdmin") for s in sessions)  # the correction still landed too
+        assert final["version"] == 3  # 1 (user's first write) -> 2 (raced write) -> 3 (correction)
+
     def test_add_time_updates_leaderboard_immediately(self, client, app, outbox):
         target = app.test_client()
         target_id = register_and_login(target, email="target9@example.com")

@@ -612,3 +612,144 @@ def test_validate_public_name_unit():
     assert cleaned is None and err
     cleaned, err = validate_public_name(None)
     assert cleaned is None and err
+
+
+# ------------------------------------------------------ local-date week bug
+#
+# Sessions are stored with the CLIENT's local calendar date (see index.html's
+# getLocalDateStr), but a naive "current week" is whatever the SERVER's own
+# UTC clock says. For a user meaningfully ahead of UTC (e.g. IST, UTC+5:30),
+# their local calendar date rolls over to a new day -- and sometimes a new
+# ISO week -- while the server's UTC clock is still on the previous one, so a
+# session dated by their own "today" can land outside the week window the
+# server thinks is "current" and silently vanish from the weekly total until
+# the server's UTC date catches up. These tests pin that fix: a client-
+# reported `local_date` (bounded to +-1 day of the server's own UTC date,
+# the maximum any real IANA timezone offset could ever cause) determines
+# which week is "current" instead of blindly trusting server-side UTC "now".
+
+def _sunday_and_monday():
+    """A real (Sunday, Monday) pair -- computed, not hardcoded, so the test
+    doesn't depend on which day some fixed date happens to fall on."""
+    base = datetime.date(2024, 6, 1)
+    sunday = base + datetime.timedelta(days=(6 - base.weekday()) % 7)
+    monday = sunday + datetime.timedelta(days=1)
+    return sunday, monday
+
+
+def test_parse_client_local_date_bounds(monkeypatch):
+    from server import leaderboard
+
+    fake_now = datetime.datetime(2024, 6, 5, 12, 0, tzinfo=datetime.timezone.utc)
+    monkeypatch.setattr(leaderboard, "utcnow", lambda: fake_now)
+
+    # Within the +-1 day window a real timezone offset could cause: trusted.
+    assert leaderboard._parse_client_local_date("2024-06-04") == datetime.date(2024, 6, 4)
+    assert leaderboard._parse_client_local_date("2024-06-06") == datetime.date(2024, 6, 6)
+    assert leaderboard._parse_client_local_date("2024-06-05") == datetime.date(2024, 6, 5)
+
+    # Further than any real timezone offset could explain: ignored, not trusted
+    # (guards against a client steering its own total into a friendlier week).
+    assert leaderboard._parse_client_local_date("2024-06-03") is None
+    assert leaderboard._parse_client_local_date("2024-06-07") is None
+
+    # Malformed/missing input never raises -- just falls back.
+    assert leaderboard._parse_client_local_date(None) is None
+    assert leaderboard._parse_client_local_date(123) is None
+    assert leaderboard._parse_client_local_date("") is None
+    assert leaderboard._parse_client_local_date("not-a-date") is None
+
+
+def test_current_week_start_uses_client_local_date_near_week_boundary(monkeypatch):
+    from server import leaderboard
+
+    sunday, monday = _sunday_and_monday()
+    fake_now = datetime.datetime(sunday.year, sunday.month, sunday.day, 23, 0, tzinfo=datetime.timezone.utc)
+    monkeypatch.setattr(leaderboard, "utcnow", lambda: fake_now)
+
+    # No local_date -> falls back to the server's own UTC "today" (still
+    # Sunday), so "this week" is the week containing that Sunday.
+    assert leaderboard.current_week_start() == leaderboard.week_start_for(sunday)
+
+    # The client's local calendar date has already rolled over to Monday
+    # (e.g. a user in UTC+5:30 just after their local midnight) -- "this
+    # week" must be the NEW week starting that Monday, not the old one.
+    assert leaderboard.current_week_start(monday.isoformat()) == monday
+
+
+def test_current_week_start_ignores_implausible_local_date(monkeypatch):
+    from server import leaderboard
+
+    fake_now = datetime.datetime(2024, 6, 5, 12, 0, tzinfo=datetime.timezone.utc)
+    monkeypatch.setattr(leaderboard, "utcnow", lambda: fake_now)
+    far_future = "2024-07-01"
+    assert leaderboard.current_week_start(far_future) == leaderboard.current_week_start(None)
+
+
+def test_state_put_and_leaderboard_agree_on_local_date_near_week_boundary(client, outbox, monkeypatch):
+    """End-to-end: a session timestamped with the client's local "Monday"
+    while the server's own UTC clock still reads "Sunday night" must be
+    counted in the Monday-anchored week when the client consistently reports
+    its local date on both the write (PUT /api/state) and the read (GET
+    /api/leaderboard) -- this is the exact bug the owner reported as "logged
+    but missing from the leaderboard" for anyone not on UTC."""
+    from server import leaderboard
+
+    register_verify(client, outbox, "boundary@example.com")
+    set_name(client, "BoundaryUser")
+
+    sunday, monday = _sunday_and_monday()
+    fake_now = datetime.datetime(sunday.year, sunday.month, sunday.day, 23, 0, tzinfo=datetime.timezone.utc)
+    monkeypatch.setattr(leaderboard, "utcnow", lambda: fake_now)
+
+    session = {
+        "date": monday.isoformat(),
+        "course": "Math",
+        "type": "Stopwatch",
+        "durationSeconds": 600,
+        "timestamp": "11:00 PM",
+        "hourOfDayExecuted": 23,
+    }
+    put_resp = client.put(
+        "/api/state",
+        data=json.dumps({"payload": {"sessions": [session]}, "version": 0, "local_date": monday.isoformat()}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert put_resp.status_code == 200
+
+    lb_local = client.get(
+        "/api/leaderboard?local_date={}".format(monday.isoformat()), headers=JSON_HEADERS
+    )
+    assert lb_local.get_json()["you"]["seconds"] == 600
+
+    # Reading with no local_date falls back to the server's raw UTC "today"
+    # (still Sunday) -- a different, also-legitimate week bucket that this
+    # Monday-dated session correctly does not belong to.
+    lb_utc = client.get("/api/leaderboard", headers=JSON_HEADERS)
+    assert lb_utc.get_json()["you"]["seconds"] == 0
+
+
+def test_opt_uses_local_date_for_week_bucket(client, outbox, monkeypatch):
+    """PUT /api/leaderboard/opt must bucket the opt-in choice into the SAME
+    week a same-local-date state sync / leaderboard read would use -- else a
+    user near a week boundary could opt out of the week their session totals
+    are actually landing in, and see their choice silently not take effect."""
+    from server import leaderboard
+
+    register_verify(client, outbox, "optlocal@example.com")
+
+    sunday, monday = _sunday_and_monday()
+    fake_now = datetime.datetime(sunday.year, sunday.month, sunday.day, 23, 30, tzinfo=datetime.timezone.utc)
+    monkeypatch.setattr(leaderboard, "utcnow", lambda: fake_now)
+
+    resp = client.put(
+        "/api/leaderboard/opt",
+        data=json.dumps({"opted_in": False, "local_date": monday.isoformat()}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert resp.status_code == 200
+
+    lb = client.get("/api/leaderboard?local_date={}".format(monday.isoformat()), headers=JSON_HEADERS)
+    assert lb.get_json()["you"]["opted_in"] is False

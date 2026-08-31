@@ -22,6 +22,7 @@ import json
 
 from .db import get_db, iso_or_none, utcnow, utcnow_iso
 from .leaderboard import upsert_week_seconds
+from .security import INTEGRITY_ERRORS
 
 # ---------------------------------------------------------------------------
 # Validation -- deliberately strict. A malformed session entry written into
@@ -136,6 +137,9 @@ def build_session_entry(minutes: int, date_str: str, course: str, reason: str) -
     }
 
 
+MAX_CORRECTION_RACE_ATTEMPTS = 5
+
+
 def inject_time_correction(db, admin_user_id: int, target_user_id: int,
                             minutes: int, date_str: str, course: str, reason: str) -> dict:
     """Writes the correction into the target user's state payload as a real
@@ -147,74 +151,109 @@ def inject_time_correction(db, admin_user_id: int, target_user_id: int,
     everything above lands, or (on an exception before the commit at the
     bottom) none of it does.
 
+    Read-modify-write against `user_state`, guarded the same way
+    server/state.py:put_state's own write is: the target user could be
+    actively syncing (PUT /api/state) at the same moment this correction is
+    added -- both operations read-then-write the same row, and without a
+    version-guarded write, whichever commits second would silently overwrite
+    whichever committed first (Postgres's default READ COMMITTED isolation
+    does not prevent this -- see put_state's own comment for the full
+    mechanics). For a normal user sync that's a 409 the client's own retry
+    logic already handles; for this owner-only, comparatively rare action
+    there's no client to retry, so the read-modify-write is retried here
+    instead, bounded by MAX_CORRECTION_RACE_ATTEMPTS so a pathological,
+    continuous stream of writes from the target user can't hang this call
+    forever.
+
     Returns the injected session entry (as a plain dict) for the caller to
     report back, e.g. in a flash message or JSON response.
     """
-    row = db.execute(
-        "SELECT payload, version FROM user_state WHERE user_id = %s", (target_user_id,)
-    ).fetchone()
-
-    if row is None:
-        payload = {}
-        current_version = 0
-    else:
-        try:
-            payload = json.loads(row["payload"])
-        except (TypeError, ValueError):
-            payload = {}
-        if not isinstance(payload, dict):
-            payload = {}
-        current_version = row["version"]
-
-    sessions = payload.get("sessions")
-    if not isinstance(sessions, list):
-        sessions = []
-
     entry = build_session_entry(minutes, date_str, course, reason)
-    # unshift, matching appState.sessions.unshift(logDataNode) in index.html
-    # -- newest session first, same order a genuine log entry would land in.
-    sessions.insert(0, entry)
-    payload["sessions"] = sessions
 
-    new_version = current_version + 1
-    now_iso = utcnow_iso()
-    raw = json.dumps(payload)
+    for attempt in range(MAX_CORRECTION_RACE_ATTEMPTS):
+        row = db.execute(
+            "SELECT payload, version FROM user_state WHERE user_id = %s", (target_user_id,)
+        ).fetchone()
 
-    if row is None:
+        if row is None:
+            payload = {}
+            current_version = 0
+        else:
+            try:
+                payload = json.loads(row["payload"])
+            except (TypeError, ValueError):
+                payload = {}
+            if not isinstance(payload, dict):
+                payload = {}
+            current_version = row["version"]
+
+        sessions = payload.get("sessions")
+        if not isinstance(sessions, list):
+            sessions = []
+        # unshift, matching appState.sessions.unshift(logDataNode) in
+        # index.html -- newest session first, same order a genuine log entry
+        # would land in.
+        sessions.insert(0, entry)
+        payload["sessions"] = sessions
+
+        new_version = current_version + 1
+        now_iso = utcnow_iso()
+        raw = json.dumps(payload)
+
+        try:
+            if row is None:
+                cursor = db.execute(
+                    "INSERT INTO user_state (user_id, payload, version, updated_at) VALUES (%s, %s, %s, %s)",
+                    (target_user_id, raw, new_version, now_iso),
+                )
+            else:
+                cursor = db.execute(
+                    "UPDATE user_state SET payload = %s, version = %s, updated_at = %s "
+                    "WHERE user_id = %s AND version = %s",
+                    (raw, new_version, now_iso, target_user_id, current_version),
+                )
+        except INTEGRITY_ERRORS:
+            cursor = None
+
+        if cursor is None or cursor.rowcount == 0:
+            # Lost the race -- someone else's write (almost always the
+            # target user's own PUT /api/state) landed in between our SELECT
+            # and this write. Roll back and retry against the now-current
+            # row rather than silently overwriting it.
+            db.rollback()
+            continue
+
+        # Same recompute PUT /api/state performs, on the same connection/
+        # transaction, so the leaderboard reflects the correction immediately
+        # rather than waiting for the user's next sync.
+        upsert_week_seconds(db, target_user_id, payload)
+
         db.execute(
-            "INSERT INTO user_state (user_id, payload, version, updated_at) VALUES (%s, %s, %s, %s)",
-            (target_user_id, raw, new_version, now_iso),
-        )
-    else:
-        db.execute(
-            "UPDATE user_state SET payload = %s, version = %s, updated_at = %s WHERE user_id = %s",
-            (raw, new_version, now_iso, target_user_id),
+            "INSERT INTO admin_actions (admin_user_id, target_user_id, action, detail, created_at) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (
+                admin_user_id,
+                target_user_id,
+                "add_time",
+                json.dumps({
+                    "minutes": minutes,
+                    "date": date_str,
+                    "course": course,
+                    "reason": reason,
+                }),
+                now_iso,
+            ),
         )
 
-    # Same recompute PUT /api/state performs, on the same connection/
-    # transaction, so the leaderboard reflects the correction immediately
-    # rather than waiting for the user's next sync.
-    upsert_week_seconds(db, target_user_id, payload)
+        db.commit()
+        return entry
 
-    db.execute(
-        "INSERT INTO admin_actions (admin_user_id, target_user_id, action, detail, created_at) "
-        "VALUES (%s, %s, %s, %s, %s)",
-        (
-            admin_user_id,
-            target_user_id,
-            "add_time",
-            json.dumps({
-                "minutes": minutes,
-                "date": date_str,
-                "course": course,
-                "reason": reason,
-            }),
-            now_iso,
-        ),
+    raise RuntimeError(
+        "Could not save this time correction after {} attempts -- the target "
+        "user's own data kept changing concurrently. Please try again.".format(
+            MAX_CORRECTION_RACE_ATTEMPTS
+        )
     )
-
-    db.commit()
-    return entry
 
 
 # ---------------------------------------------------------------------------

@@ -11,7 +11,7 @@ import flask
 
 from .db import get_db, iso_or_none, utcnow_iso
 from .leaderboard import upsert_week_seconds
-from .security import json_error, login_required, require_csrf
+from .security import INTEGRITY_ERRORS, json_error, login_required, require_csrf
 
 bp = flask.Blueprint("state", __name__)
 
@@ -80,23 +80,72 @@ def put_state():
 
     new_version = current_version + 1
     now = utcnow_iso()
-    if row is None:
-        db.execute(
-            "INSERT INTO user_state (user_id, payload, version, updated_at) VALUES (%s, %s, %s, %s)",
-            (user_id, raw, new_version, now),
-        )
-    else:
-        db.execute(
-            "UPDATE user_state SET payload = %s, version = %s, updated_at = %s WHERE user_id = %s",
-            (raw, new_version, now, user_id),
-        )
+
+    # Guarded write: re-checks "the row is still at `current_version`" (or,
+    # for a first-ever write, "the row still doesn't exist") at the moment
+    # of the actual write, not just at the SELECT above. Without this, two
+    # concurrent PUTs for the same user that both read the same
+    # current_version -- a real possibility: a session log's immediate
+    # flush, the regular debounce, and the pagehide/visibilitychange
+    # teardown flush (static/sync.js) can all fire close together, or two
+    # browser tabs push around the same moment -- would both pass the
+    # equality check above, and Postgres's default READ COMMITTED isolation
+    # does NOT stop the second write from silently overwriting the first's
+    # already-committed row: the second transaction blocks on the row lock,
+    # then proceeds once the first commits, using its own STALE
+    # current_version to compute its new_version -- a classic lost update,
+    # with no 409 and no error surfaced to either caller. One write simply
+    # vanishes with nothing to show for it: the exact "logged but missing"
+    # symptom this whole fix pass is about, just caused server-side instead
+    # of client-side. Checking `cursor.rowcount` after a version-guarded
+    # UPDATE (or a plain INSERT, guarded by the table's own user_id PRIMARY
+    # KEY) turns that silent loss into the same 409-conflict response an
+    # already-stale `client_version` gets above, with the row's actual
+    # current data -- so static/sync.js's existing merge-and-retry handling
+    # (see that file's handleConflict) recovers it the same way.
+    try:
+        if row is None:
+            cursor = db.execute(
+                "INSERT INTO user_state (user_id, payload, version, updated_at) VALUES (%s, %s, %s, %s)",
+                (user_id, raw, new_version, now),
+            )
+        else:
+            cursor = db.execute(
+                "UPDATE user_state SET payload = %s, version = %s, updated_at = %s "
+                "WHERE user_id = %s AND version = %s",
+                (raw, new_version, now, user_id, current_version),
+            )
+    except INTEGRITY_ERRORS:
+        # Two "first ever write" requests raced the INSERT itself (both saw
+        # row is None) -- same outcome as rowcount == 0 below.
+        cursor = None
+
+    if cursor is None or cursor.rowcount == 0:
+        db.rollback()
+        fresh = db.execute(
+            "SELECT payload, version FROM user_state WHERE user_id = %s", (user_id,)
+        ).fetchone()
+        conflict_payload = json.loads(fresh["payload"]) if fresh is not None else None
+        conflict_version = fresh["version"] if fresh is not None else 0
+        return flask.jsonify({
+            "error": "conflict",
+            "payload": conflict_payload,
+            "version": conflict_version,
+        }), 409
 
     # Recomputed wholesale from this payload's sessions on every successful
     # write (not incrementally), on the same connection/transaction as the
     # state save above -- see leaderboard.upsert_week_seconds. A failure here
     # must not silently save state while leaving the leaderboard stale, and
     # vice versa; both go out on the single db.commit() below.
-    upsert_week_seconds(db, user_id, payload)
+    #
+    # `local_date` (optional): the client's own local calendar date at sync
+    # time (static/sync.js always sends it). Keeps the week this recompute
+    # writes into aligned with the week the just-synced session.date strings
+    # (also local dates -- see index.html's getLocalDateStr) actually fall
+    # in; see leaderboard.current_week_start's docstring for why the two can
+    # otherwise disagree near a week boundary.
+    upsert_week_seconds(db, user_id, payload, local_date=body.get("local_date"))
 
     db.commit()
 

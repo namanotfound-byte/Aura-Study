@@ -113,8 +113,53 @@ def week_start_for(value) -> datetime.date:
     return d - datetime.timedelta(days=d.weekday())
 
 
-def current_week_start() -> datetime.date:
-    return week_start_for(utcnow())
+# A real IANA timezone offset never puts a client's local calendar date more
+# than one day away from the server's own UTC date (offsets run from UTC-12
+# to UTC+14). Bounding client-reported dates to that window is what makes
+# `_parse_client_local_date` safe to trust: it can only shift which week a
+# sync lands in by the same single day a genuine timezone difference would
+# already cause, never further -- so a client can't steer its own total into
+# an arbitrary, less-competitive week by lying about the date.
+_MAX_LOCAL_DATE_SKEW_DAYS = 1
+
+
+def _parse_client_local_date(raw) -> "datetime.date | None":
+    """Parses an optional client-reported LOCAL calendar date (YYYY-MM-DD),
+    e.g. from PUT /api/state's `local_date` body field or GET
+    /api/leaderboard's `?local_date=` query param. Returns None (never
+    raises) if `raw` is missing, malformed, or implausibly far from the
+    server's own UTC date -- callers must fall back to the server's UTC date
+    in that case, exactly as if the client hadn't sent one."""
+    if not isinstance(raw, str) or not raw:
+        return None
+    try:
+        d = datetime.date.fromisoformat(raw[:10])
+    except ValueError:
+        return None
+    if abs((d - utcnow().date()).days) > _MAX_LOCAL_DATE_SKEW_DAYS:
+        return None
+    return d
+
+
+def current_week_start(local_date=None) -> datetime.date:
+    """The Monday of "this" week.
+
+    Sessions are stored with the user's LOCAL calendar date (see
+    index.html's getLocalDateStr -- this used to be the UTC date, which
+    silently misfiled anything studied late at night, or early in the
+    morning depending on the offset's sign, under the wrong day; see the
+    sync/date-bug fix notes). The "current week" bucket that a state sync
+    writes into (upsert_week_seconds) and the one a leaderboard read is
+    served from (get_leaderboard) must agree with that same local date, not
+    the server's UTC one, or a session dated by the client's local "today"
+    can land outside the week window the server thinks is "current" --
+    silently dropping it from the weekly total until the server's own UTC
+    date catches up. `local_date`, when given (already validated by
+    `_parse_client_local_date`), is that client-reported local date; falls
+    back to the server's UTC date when absent or implausible.
+    """
+    basis = _parse_client_local_date(local_date) or utcnow().date()
+    return week_start_for(basis)
 
 
 def _date_str(value) -> str:
@@ -181,11 +226,15 @@ def compute_week_seconds(payload, week_start: datetime.date) -> int:
     return min(int(total), MAX_WEEK_SECONDS)
 
 
-def upsert_week_seconds(db, user_id: int, payload) -> None:
+def upsert_week_seconds(db, user_id: int, payload, local_date=None) -> None:
     """Recompute and store the caller's current-week total. Called from
     server/state.py:put_state on every successful PUT /api/state, using the
     same connection/transaction as that write so the state save and the
     leaderboard recompute commit (or roll back) together.
+
+    `local_date`: the client's reported local calendar date (see
+    current_week_start), so the week this total is written into agrees with
+    the week the just-synced session.date strings actually fall in.
 
     Does NOT touch `opted_in` on an existing row -- a returning user's
     opt-out choice for the week must survive every subsequent state sync,
@@ -193,7 +242,7 @@ def upsert_week_seconds(db, user_id: int, payload) -> None:
     the spec ("Anonymity rules": opt-out is a deliberate action, not the
     default).
     """
-    week_start = current_week_start()
+    week_start = current_week_start(local_date)
     seconds = compute_week_seconds(payload, week_start)
     now = utcnow_iso()
     db.execute(
@@ -217,7 +266,10 @@ def get_leaderboard():
     user = flask.g.user
     user_id = user["id"]
     my_public_name = user["public_name"]
-    week_start = current_week_start()
+    # See current_week_start's docstring: `local_date` (the client's own
+    # local "today") keeps this read landing on the same week the client's
+    # own state syncs are writing into.
+    week_start = current_week_start(flask.request.args.get("local_date"))
     week_start_str = week_start.isoformat()
 
     my_row = db.execute(
@@ -307,7 +359,7 @@ def put_opt():
 
     opted_in = body["opted_in"]
     user_id = flask.g.user["id"]
-    week_start_str = current_week_start().isoformat()
+    week_start_str = current_week_start(body.get("local_date")).isoformat()
     now = utcnow_iso()
 
     db = get_db()
