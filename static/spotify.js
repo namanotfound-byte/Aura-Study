@@ -4,10 +4,10 @@
  * Exposes a single global: window.AuraSpotify
  *   AuraSpotify.init()                 - call once, after `GET /api/auth/me`
  *                                         succeeds (same place sync.js boots).
- *                                         Builds the Spotify panel and the
- *                                         Timer-view now-playing strip, and
- *                                         handles the ?spotify=connected /
- *                                         ?spotify=error redirect params.
+ *                                         Builds the Spotify panel and wires
+ *                                         up the Timer-view Music popover,
+ *                                         and handles the ?spotify=connected
+ *                                         / ?spotify=error redirect params.
  *   AuraSpotify.onViewShown()          - call when the Spotify nav view
  *                                         becomes active. Starts a 5s
  *                                         now-playing poll.
@@ -33,26 +33,24 @@
  *        </div>
  *      (mirror whatever wrapper markup the other .nav-item entries use).
  *
- *   2. #timer-now-playing
- *      An empty anchor div placed inside #view-timer, away from the timer
- *      controls (e.g. a top corner):
- *        <div id="timer-now-playing"></div>
- *      This strip auto-detects its own visibility with IntersectionObserver
- *      and polls on its own — no extra JS calls needed for it.
- *
- *   3. #timer-music-trigger-btn + #timer-music-popover
- *      A trigger button and an empty popover container, replacing the old
- *      manual "Pop out timer" button in #view-timer's top-actions row:
+ *   2. #timer-music-trigger-btn + #timer-music-popover
+ *      A trigger button and an empty popover container, the ONLY Spotify UI
+ *      visible in the Timer view. Nothing renders until the button is
+ *      clicked -- no persistent now-playing strip:
  *        <button id="timer-music-trigger-btn" aria-haspopup="true"
  *                aria-expanded="false" aria-controls="timer-music-popover">…</button>
  *        <div id="timer-music-popover" role="menu" hidden></div>
- *      Playback-only popover (previous / play-pause / next) — no playlist
- *      browsing, no library. Opens/closes/dismisses itself entirely from
- *      this file (outside click, Escape, honest not-configured / not-
- *      connected / Premium-required / no-active-device copy); index.html
- *      only needs to call AuraSpotify.closeMusicPopover() when navigating
- *      away from the Timer view (see switchView()) since the popover is
- *      anchored inside that panel.
+ *      A single self-contained player popover: current track (art, title,
+ *      artist) above previous / play-pause / next -- no playlist browsing,
+ *      no library. Opens/closes/dismisses itself entirely from this file
+ *      (outside click, Escape, honest not-configured / not-connected /
+ *      Premium-required / no-active-device copy). While open, the popover's
+ *      track + play state stay live off the same poll that drives the Music
+ *      tab; the poll stops the instant the popover closes so nothing polls
+ *      in the background. index.html only needs to call
+ *      AuraSpotify.closeMusicPopover() when navigating away from the Timer
+ *      view (see switchView()) since the popover is anchored inside that
+ *      panel.
  *
  * FUNCTION CALLS Agent C must add:
  *   - Once on boot (after the auth gate's `/api/auth/me` succeeds):
@@ -83,7 +81,6 @@
     inited: false,
     status: null,
     viewEl: null,
-    stripEl: null,
     pollTimer: null,
     sdkPromise: null,
     player: null,
@@ -91,12 +88,13 @@
     selectedPlaylistId: null,
     isPlaying: false,
     accessRequest: null,
-    // Timer-view "Music" popover (transport controls only -- see initTimerMusicPopover).
+    // Timer-view "Music" popover -- see initTimerMusicPopover.
     musicPopoverEl: null,
     musicPopoverTriggerEl: null,
     musicPopoverOpen: false,
     musicPopoverOutsideHandler: null,
     musicPopoverKeyHandler: null,
+    musicPopoverPollTimer: null,
   };
 
   // -- fetch helpers ---------------------------------------------------
@@ -162,7 +160,12 @@
       '.as-icon-btn:hover{border-color:var(--neon-pink);transform:translateY(-1px)}' +
       '.as-icon-btn:focus-visible{outline:2px solid var(--neon-pink);outline-offset:2px}' +
       '.as-icon-btn.as-play{background:var(--neon-pink);border-color:var(--neon-pink);color:#fff;width:48px;height:48px}' +
-      /* -- Timer-view Music popover (transport controls only, no browsing) -- */
+      /* -- Timer-view Music popover: compact self-contained player, no browsing -- */
+      '.tmp-now-playing{display:flex;align-items:center;gap:10px;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--border-color);text-align:left}' +
+      '.tmp-art{width:44px;height:44px;border-radius:10px;object-fit:cover;background:var(--bg-card-hover);flex-shrink:0}' +
+      '.tmp-track-meta{min-width:0;flex:1}' +
+      '.tmp-track-name{font-weight:800;color:var(--text-main);font-size:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.tmp-track-artist{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.tmp-controls{display:flex;align-items:center;justify-content:center;gap:10px}' +
       '.tmp-note{margin:0;font-size:12px;line-height:1.5;color:var(--text-muted);text-align:center;max-width:200px}' +
       '.tmp-note+.tmp-note{margin-top:8px}' +
@@ -179,36 +182,19 @@
       '.as-playlist-meta .as-pl-name{font-size:12px;font-weight:700;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.as-playlist-meta .as-pl-count{font-size:10px;color:var(--text-muted)}' +
       '.as-embed-wrap{margin-top:16px;border-radius:16px;overflow:hidden}' +
-      '.as-strip{position:absolute;top:18px;right:24px;z-index:5;display:flex;align-items:center;gap:10px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:999px;padding:6px 8px 6px 6px;box-shadow:0 6px 18px rgba(var(--accent-rgb),0.12);max-width:280px}' +
-      '.as-strip img{width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0}' +
-      '.as-strip-text{overflow:hidden;min-width:0}' +
-      '.as-strip-title{font-size:11px;font-weight:800;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-      '.as-strip-artist{font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-      '.as-strip.as-hidden{display:none}' +
-      '.as-strip-btn{flex-shrink:0;width:28px;height:28px;border-radius:50%;border:none;background:var(--accent-solid);color:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;position:relative}' +
-      '.as-strip-btn i{width:13px;height:13px}' +
-      '.as-strip-btn:hover{filter:brightness(1.08)}' +
-      /* Invisible hit-slop so the visual dot can stay small while the tap target still
-         reaches something close to the 44px guideline, without inflating the strip. */
-      '.as-strip-btn::after{content:"";position:absolute;inset:-8px}' +
-      /* -- mobile: keep the Music panel and the timer now-playing strip usable down to 320px -- */
+      /* -- mobile: keep the Music panel and Timer-view popover usable down to 320px -- */
       '@media (max-width:768px){' +
       '.as-row{flex-wrap:wrap}' +
       '.as-art{width:56px;height:56px}' +
       '.as-controls{justify-content:center}' +
-      '.as-strip{max-width:min(240px,calc(100vw - 32px));top:12px;right:12px;padding:5px 6px 5px 5px}' +
-      '.as-strip img{width:26px;height:26px}' +
       '}' +
       '@media (max-width:480px){' +
       '.as-playlist-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}' +
-      '.as-strip{max-width:min(200px,calc(100vw - 24px))}' +
       '}' +
       '@media (pointer:coarse){' +
       '.as-icon-btn{width:44px;height:44px}' +
       '.as-icon-btn.as-play{width:52px;height:52px}' +
       '.as-volume input{min-height:24px}' +
-      '.as-strip-btn{width:32px;height:32px}' +
-      '.as-strip-btn::after{inset:-6px}' +
       '}' +
       /* -- access-request form (Music tab, always visible) -- */
       '.as-access-note{font-size:12px;color:var(--text-muted);line-height:1.6;margin:0 0 14px}' +
@@ -642,7 +628,6 @@
     }
     setPlayPauseIcon('as-playpause', STATE.isPlaying);
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
-    updateStrip(data);
   }
 
   // -- Web Playback SDK (Premium) ------------------------------------------
@@ -702,17 +687,25 @@
     STATE.deviceId = null;
   }
 
-  // -- Timer-view "Music" popover (transport controls only) ----------------
+  // -- Timer-view "Music" popover -------------------------------------------
   //
   // Replaces the old manual "Pop out timer" button (removed in index.html --
   // that automatic floating-timer behaviour lives entirely in static/pip.js
-  // and is untouched by this). Deliberately playback-only: previous /
-  // play-pause / next, no playlist browsing, no library, no "add" anything --
-  // that's what the full Music tab (#view-spotify) is for.
+  // and is untouched by this) AND the always-visible now-playing strip that
+  // used to sit on the Timer view. Nothing renders until this button is
+  // clicked: one click reveals a single compact self-contained player --
+  // current track (art, title, artist) above previous / play-pause / next --
+  // no playlist browsing, no library, no "add" anything, that's what the
+  // full Music tab (#view-spotify) is for.
 
   function closeMusicPopover() {
     if (!STATE.musicPopoverOpen) return;
     STATE.musicPopoverOpen = false;
+    // Stop the instant the popover closes so nothing polls in the background.
+    if (STATE.musicPopoverPollTimer) {
+      clearInterval(STATE.musicPopoverPollTimer);
+      STATE.musicPopoverPollTimer = null;
+    }
     if (STATE.musicPopoverEl) {
       STATE.musicPopoverEl.hidden = true;
       STATE.musicPopoverEl.classList.remove('is-opening');
@@ -740,30 +733,58 @@
       el.innerHTML = '<p class="tmp-note">Not connected. Open the <strong>Music</strong> tab to connect Spotify.</p>';
       return;
     }
-    if (!s.premium) {
-      el.innerHTML = '<p class="tmp-note">Playback control needs Spotify Premium.</p>';
-      return;
-    }
     el.innerHTML =
-      '<div class="tmp-controls">' +
-      '<button class="as-icon-btn" type="button" role="menuitem" data-action="prev" title="Previous track" aria-label="Previous track"><i data-lucide="skip-back"></i></button>' +
-      '<button class="as-icon-btn as-play" type="button" role="menuitem" id="tmp-playpause" data-action="playpause" title="Play or pause" aria-label="Play or pause"><i data-lucide="play"></i></button>' +
-      '<button class="as-icon-btn" type="button" role="menuitem" data-action="next" title="Next track" aria-label="Next track"><i data-lucide="skip-forward"></i></button>' +
+      '<div class="tmp-now-playing">' +
+      '<img class="tmp-art" id="tmp-art" alt="" style="display:none;">' +
+      '<div class="tmp-track-meta">' +
+      '<div class="tmp-track-name" id="tmp-track-name">Nothing playing right now</div>' +
+      '<div class="tmp-track-artist" id="tmp-track-artist"></div>' +
       '</div>' +
-      '<p class="tmp-note" id="tmp-device-note" hidden>No active device — open Spotify on a device to control playback.</p>';
-    setPlayPauseIcon('tmp-playpause', STATE.isPlaying);
+      '</div>' +
+      (s.premium
+        ? '<div class="tmp-controls">' +
+          '<button class="as-icon-btn" type="button" role="menuitem" data-action="prev" title="Previous track" aria-label="Previous track"><i data-lucide="skip-back"></i></button>' +
+          '<button class="as-icon-btn as-play" type="button" role="menuitem" id="tmp-playpause" data-action="playpause" title="Play or pause" aria-label="Play or pause"><i data-lucide="play"></i></button>' +
+          '<button class="as-icon-btn" type="button" role="menuitem" data-action="next" title="Next track" aria-label="Next track"><i data-lucide="skip-forward"></i></button>' +
+          '</div>' +
+          '<p class="tmp-note" id="tmp-device-note" hidden>No active device — open Spotify on a device to control playback.</p>'
+        : '<p class="tmp-note">Playback control needs Spotify Premium.</p>');
+    if (s.premium) setPlayPauseIcon('tmp-playpause', STATE.isPlaying);
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
   }
 
-  // Keeps the popover's play/pause icon and "no active device" note honest,
-  // fed by the same /now-playing responses that already drive the main panel
-  // and the Timer-view strip -- see applyNowPlaying(). No separate poll.
+  // Keeps the popover's track info, art, play/pause icon and "no active
+  // device" note honest, fed by the same /now-playing responses that already
+  // drive the main Music-tab panel -- see applyNowPlaying(). No separate
+  // fetch of its own; the interval that calls pollNowPlaying() while the
+  // popover is open lives in openMusicPopover()/closeMusicPopover() below.
   function updateMusicPopoverFromNowPlaying(data) {
     if (!STATE.musicPopoverOpen) return;
+    var nameEl = document.getElementById('tmp-track-name');
+    if (!nameEl) return; // popover open but not showing the player (e.g. a status note)
+    var artistEl = document.getElementById('tmp-track-artist');
+    var art = document.getElementById('tmp-art');
+    if (data.track) {
+      nameEl.textContent = data.track.name || '';
+      if (artistEl) artistEl.textContent = data.track.artists || '';
+      if (art) {
+        if (data.track.image) {
+          art.src = data.track.image;
+          art.style.display = '';
+        } else {
+          art.style.display = 'none';
+        }
+      }
+    } else {
+      nameEl.textContent = 'Nothing playing right now';
+      if (artistEl) artistEl.textContent = '';
+      if (art) art.style.display = 'none';
+    }
     var playBtn = document.getElementById('tmp-playpause');
-    if (!playBtn) return; // popover open but not showing the controls state (e.g. a status note)
-    setPlayPauseIcon('tmp-playpause', STATE.isPlaying);
-    if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+    if (playBtn) {
+      setPlayPauseIcon('tmp-playpause', STATE.isPlaying);
+      if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+    }
     var note = document.getElementById('tmp-device-note');
     if (note) note.hidden = !!(data.device && data.device.is_active);
   }
@@ -791,7 +812,15 @@
     ensureStatusLoaded().then(function () {
       if (!STATE.musicPopoverOpen) return; // closed again before the fetch resolved
       renderMusicPopoverContent();
-      if (STATE.status && STATE.status.connected) pollNowPlaying();
+      if (STATE.status && STATE.status.connected) {
+        pollNowPlaying();
+        // Keep the track + play state live while the popover is open, and
+        // ONLY while it's open -- closeMusicPopover() clears this so nothing
+        // polls in the background once it's dismissed.
+        if (!STATE.musicPopoverPollTimer) {
+          STATE.musicPopoverPollTimer = setInterval(pollNowPlaying, POLL_MS);
+        }
+      }
     });
 
     STATE.musicPopoverOutsideHandler = function (e) {
@@ -833,81 +862,6 @@
     popover.addEventListener('click', onMusicPopoverClick);
   }
 
-  // -- Timer-view now-playing strip -----------------------------------------
-
-  function renderStripSkeleton(el) {
-    el.className = 'as-strip as-hidden';
-    el.innerHTML =
-      '<img id="as-strip-art" alt="" style="display:none;">' +
-      '<div class="as-strip-text">' +
-      '<div class="as-strip-title" id="as-strip-title">Not playing</div>' +
-      '<div class="as-strip-artist" id="as-strip-artist"></div>' +
-      '</div>' +
-      '<button class="as-strip-btn" id="as-strip-playpause" type="button" data-action="playpause" ' +
-      'title="Play or pause" aria-label="Play or pause"><i data-lucide="play"></i></button>';
-    el.addEventListener('click', onStripClick);
-  }
-
-  function onStripClick(e) {
-    var btn = e.target.closest('[data-action="playpause"]');
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    togglePlayPause();
-  }
-
-  function updateStrip(data) {
-    if (!STATE.stripEl) return;
-    var titleEl = document.getElementById('as-strip-title');
-    var artistEl = document.getElementById('as-strip-artist');
-    var art = document.getElementById('as-strip-art');
-    if (!titleEl) return;
-    if (data.track) {
-      STATE.stripEl.classList.remove('as-hidden');
-      titleEl.textContent = data.track.name || '';
-      artistEl.textContent = data.track.artists || '';
-      if (data.track.image && art) {
-        art.src = data.track.image;
-        art.style.display = '';
-      }
-      STATE.isPlaying = !!data.is_playing;
-      setPlayPauseIcon('as-strip-playpause', STATE.isPlaying);
-      if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
-    } else {
-      STATE.stripEl.classList.add('as-hidden');
-    }
-  }
-
-  function refreshStrip() {
-    if (!STATE.status || !STATE.status.connected) return;
-    api('/api/spotify/now-playing').then(function (r) {
-      if (r.ok) updateStrip(r.data);
-    });
-  }
-
-  function setupStripObserver(stripEl) {
-    if (!('IntersectionObserver' in window)) {
-      refreshStrip();
-      return;
-    }
-    var stripPoll = null;
-    var observer = new IntersectionObserver(
-      function (entries) {
-        entries.forEach(function (entry) {
-          if (entry.isIntersecting) {
-            refreshStrip();
-            if (!stripPoll) stripPoll = setInterval(refreshStrip, POLL_MS);
-          } else if (stripPoll) {
-            clearInterval(stripPoll);
-            stripPoll = null;
-          }
-        });
-      },
-      { threshold: 0.01 }
-    );
-    observer.observe(stripEl);
-  }
-
   // -- view show/hide poll control ------------------------------------------
 
   function onViewShown() {
@@ -945,15 +899,6 @@
 
     var panel = document.getElementById('view-spotify');
     if (panel) renderInto(panel);
-
-    var strip = document.getElementById('timer-now-playing');
-    if (strip) {
-      STATE.stripEl = strip;
-      renderStripSkeleton(strip);
-      ensureStatusLoaded().then(function () {
-        setupStripObserver(strip);
-      });
-    }
 
     initTimerMusicPopover();
   }

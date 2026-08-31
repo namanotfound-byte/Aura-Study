@@ -654,14 +654,6 @@
             line-height: 1.5;
         }
 
-        /* Reposition the Spotify now-playing strip (injected by static/spotify.js as
-           #timer-now-playing.as-strip) so it clears the top-actions-row buttons above it.
-           ID+class beats spotify.js's own .as-strip rule without editing that file. */
-        #timer-now-playing.as-strip {
-            top: 82px;
-            right: 24px;
-        }
-
         /* Top Bar Floating Control actions inside the timer workspace view context */
         .timer-view-top-actions-row {
             position: absolute;
@@ -717,7 +709,11 @@
         /* Music popover trigger + panel (content built by static/spotify.js).
            Positioning context for the popover, which anchors to this wrapper
            rather than the button itself so it stays put if the button's own
-           size changes (e.g. the touch-target bump at (pointer:coarse)). */
+           size changes (e.g. the touch-target bump at (pointer:coarse)).
+           This is the ONLY Spotify UI in the Timer view -- nothing renders
+           until the trigger is clicked. Kept compact and anchored to the
+           top-right corner so it never reaches down over the countdown or
+           its controls, even on short/narrow viewports. */
         .timer-music-control-wrap {
             position: relative;
             pointer-events: auto;
@@ -727,11 +723,19 @@
             top: calc(100% + 8px);
             right: 0;
             z-index: 700;
-            min-width: 176px;
+            min-width: 200px;
+            /* This popover anchors to the Music button, which itself sits left of the
+               Fullscreen button inside the top-actions row -- NOT flush against the
+               viewport edge. So "100vw" alone overstates the room available before the
+               popover's left edge would run off-screen; the extra 88px accounts for the
+               row's own inset plus the Fullscreen button + gap it anchors past (worst
+               case at the (pointer:coarse) 44px touch-target size -- see that query
+               below). Verified not to clip at 320px viewport width. */
+            max-width: min(240px, calc(100vw - 88px));
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 16px;
-            padding: 10px;
+            padding: 12px;
             box-shadow: 0 10px 28px rgba(0,0,0,0.12);
             transform-origin: top right;
             transition: opacity 0.15s ease, transform 0.15s ease;
@@ -1223,9 +1227,6 @@
             }
             #view-timer.view-panel { overflow-y: auto; }
             .timer-view-top-actions-row { top: 16px; left: 16px; right: 16px; flex-wrap: wrap; row-gap: 8px; }
-            /* Beats spotify.js's own .as-strip mobile rule (ID+class specificity) so the
-               now-playing strip still clears the top-actions-row buttons on small screens. */
-            #timer-now-playing.as-strip { top: 64px; right: 12px; max-width: min(220px, calc(100vw - 24px)); }
             .timer-floating-interactive-trigger-btn { padding: 10px 14px; }
             .ambient-selector-bar { flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 24px; }
             .ambient-preset-dot { width: 28px; height: 28px; }
@@ -1290,7 +1291,6 @@
         @media (max-height: 460px) and (orientation: landscape) {
             .timer-fullscreen-view { padding: 12px; justify-content: flex-start; overflow-y: auto; }
             .timer-view-top-actions-row { position: static; margin-bottom: 8px; display: flex; }
-            #timer-now-playing.as-strip { position: static !important; margin: 0 auto 8px; }
             .ambient-selector-bar { margin-top: 0; margin-bottom: 12px; padding: 6px 12px; }
             .engine-mode-tabs { margin-bottom: 10px; }
             .timer-header-badge { margin-bottom: 10px; }
@@ -1768,9 +1768,6 @@
                     <textarea class="timer-braindump-textarea" id="sticky-scratchpad-input" placeholder="Jot down thoughts or distractions here to keep your mind clear..." oninput="saveStickyScratchpadContent()"></textarea>
                 </div>
 
-                <!-- Compact Spotify now-playing strip, filled/positioned entirely by static/spotify.js -->
-                <div id="timer-now-playing"></div>
-
                 <div class="ambient-selector-bar">
                     <div class="ambient-preset-dot active" style="background: var(--ambient-grad-cottoncandy);" title="Cotton Candy Dream" onclick="selectAmbientEnvironmentPreset('cottoncandy', false, this)"></div>
                     <div class="ambient-preset-dot" style="background: var(--ambient-grad-sunsetglow);" title="Sunset Lavender Glow" onclick="selectAmbientEnvironmentPreset('sunsetglow', false, this)"></div>
@@ -1895,7 +1892,7 @@
                 <div class="lb-header-row">
                     <div>
                         <h3 style="font-weight: 800; font-size: 18px; color: var(--text-main);">This Week's Leaderboard</h3>
-                        <p class="lb-copy">Total study hours logged this week, across everyone who's opted in and set a public name. Your name is shown to everyone on the leaderboard -- choose something you're comfortable sharing publicly.</p>
+                        <p class="lb-copy">Total study hours logged this week, across everyone who's opted in and set a public name -- resets every Monday at 00:00 UTC. Your name is shown to everyone on the leaderboard -- choose something you're comfortable sharing publicly.</p>
                     </div>
                     <label class="lb-opt-row" for="leaderboard-opt-toggle">
                         <span>Show me on the board</span>
