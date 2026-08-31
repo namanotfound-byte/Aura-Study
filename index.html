@@ -1321,6 +1321,10 @@
             .ambient-preset-dot { width: 30px; height: 30px; }
             .form-control { min-height: 44px; }
             .mobile-nav-toggle { width: 44px; height: 44px; }
+            /* Supplementary info chip inside a dense table cell -- not a
+               primary action, so a smaller bump than the full 44px rather
+               than breaking the Sessions table layout. */
+            .admin-added-chip { min-height: 32px; }
         }
 
         /* ---- Reduced motion: respect the OS-level preference everywhere ---- */
@@ -1537,6 +1541,108 @@
             .lb-name-edit-btn { min-height: 44px; }
             .lb-name-form .btn { min-height: 44px; }
         }
+
+        /* ---- Help / doubts panel (nav badge, conversation, composer) ---- */
+        .nav-unread-badge {
+            margin-left: auto;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: var(--neon-pink);
+            color: #FFFFFF;
+            font-size: 10px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        /* The class selector above beats the UA stylesheet's [hidden]{display:none}
+           on specificity alone, so without this the badge stays visible (showing
+           a stale "0") even while its `hidden` attribute is set. */
+        .nav-unread-badge[hidden] { display: none; }
+
+        .help-copy { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-top: 6px; max-width: 640px; }
+
+        .help-thread-card { margin-bottom: 20px; }
+        .help-thread-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 460px;
+            overflow-y: auto;
+            padding: 4px 2px;
+        }
+        .help-empty-note { text-align: center; color: var(--text-muted); font-weight: 700; font-size: 13px; padding: 32px 12px; }
+
+        .help-msg-row { display: flex; }
+        .help-msg-row.from-user { justify-content: flex-end; }
+        .help-msg-row.from-admin { justify-content: flex-start; }
+
+        .help-msg-bubble {
+            max-width: 78%;
+            padding: 10px 14px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+        }
+        .help-msg-row.from-user .help-msg-bubble {
+            background: var(--neon-pink);
+            color: #FFFFFF;
+            border-color: var(--neon-pink);
+            border-bottom-right-radius: 4px;
+        }
+        .help-msg-row.from-admin .help-msg-bubble {
+            background: var(--bg-card-hover);
+            color: var(--text-main);
+            border-bottom-left-radius: 4px;
+        }
+        .help-msg-meta {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            opacity: 0.75;
+            margin-bottom: 4px;
+        }
+        .help-msg-body { font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+
+        .help-composer-label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; color: var(--text-muted); }
+        .help-textarea { min-height: 100px; resize: vertical; font-weight: 500; }
+        .help-composer-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+        .help-char-hint { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+        .help-char-hint-danger { color: #FF4D6D; }
+        .help-send-error { margin-top: 10px; font-size: 12px; font-weight: 700; color: #FF4D6D; }
+
+        /* "Added by AuraStudy" marker on a session the owner logged on the user's
+           behalf (a time correction) -- see renderSessionsTable(). Deliberately
+           not a delete/edit control: correction rows are read-only from the client. */
+        .admin-added-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 6px;
+            padding: 3px 9px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card-hover);
+            color: var(--neon-purple);
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .admin-added-chip:hover { border-color: var(--neon-purple); }
+        .admin-added-chip i { width: 11px; height: 11px; }
+
+        @media (max-width: 600px) {
+            .help-msg-bubble { max-width: 88%; }
+            .help-thread-list { max-height: 360px; }
+            .help-composer-footer { justify-content: flex-end; }
+        }
     </style>
 </head>
 <body>
@@ -1582,6 +1688,11 @@
                 <div class="nav-item" onclick="switchView('leaderboard', this); closeMobileNav();">
                     <i data-lucide="bar-chart-3"></i>
                     <span>Leaderboard</span>
+                </div>
+                <div class="nav-item" id="nav-item-help-toggle" onclick="switchView('help', this); closeMobileNav();">
+                    <i data-lucide="life-buoy"></i>
+                    <span>Help</span>
+                    <span class="nav-unread-badge" id="help-unread-badge" hidden>0</span>
                 </div>
             </div>
         </div>
@@ -1942,6 +2053,39 @@
             </div>
         </div>
 
+        <!-- VIEW: HELP -->
+        <div id="view-help" class="view-panel">
+            <div class="card" style="margin-bottom: 24px;">
+                <h3 style="font-weight: 800; font-size: 18px; color: var(--text-main);">Help &amp; Doubts</h3>
+                <p class="help-copy">Ask a question here and it goes straight to the person who runs AuraStudy. This
+                    is one person reading and replying when they're next online, not a support desk with a queue --
+                    there's no fixed response time, so please be patient.</p>
+            </div>
+
+            <div id="help-state-panel" class="card lb-state-panel" style="display: none;">
+                <i data-lucide="loader-circle"></i>
+                <span id="help-state-text">Loading your conversation...</span>
+                <div><button type="button" class="lb-state-retry" id="help-retry-btn" onclick="loadHelpMessages(true)" style="display: none;">Try Again</button></div>
+            </div>
+
+            <div id="help-content" style="display: none;">
+                <div class="card help-thread-card">
+                    <div class="card-title"><span>Your Conversation</span></div>
+                    <div id="help-thread-list" class="help-thread-list"></div>
+                </div>
+
+                <div class="card help-composer-card">
+                    <label for="help-message-input" class="help-composer-label">Send a message</label>
+                    <textarea id="help-message-input" class="form-control help-textarea" maxlength="2000" placeholder="What's your question?" oninput="onHelpInputChange()"></textarea>
+                    <div class="help-composer-footer">
+                        <span id="help-char-hint" class="help-char-hint"></span>
+                        <button type="button" class="btn btn-neon-pink" id="help-send-btn" onclick="sendHelpMessage()" disabled>Send</button>
+                    </div>
+                    <div class="help-send-error" id="help-send-error" hidden></div>
+                </div>
+            </div>
+        </div>
+
         <!-- VIEW: SETTINGS -->
         <div id="view-settings" class="view-panel">
             <div class="card" style="max-width: 600px;">
@@ -2099,6 +2243,11 @@
         let leaderboardChartInstance = null;
         let leaderboardPollTimer = null;
         let leaderboardRequestInFlight = false;
+        let helpRequestInFlight = false;
+        let helpHasLoadedOnce = false;
+        let helpSlowHintTimer = null;
+        let helpSendInFlight = false;
+        let helpSendSlowTimer = null;
 
         const fullBadgesDatabase = [
             { id: 'b_active_day', category: 'Daily', title: 'Active Day Badge', desc: 'Log at least one study session today.', icon: 'flame' },
@@ -2209,6 +2358,11 @@
                 updatePetEvolutionState();
                 loadStickyScratchpadContent();
                 refreshTodoListViewLayout();
+                // Fetch the unread-replies count on load so the Help nav badge can
+                // appear without the user ever opening the panel -- this is a single
+                // fetch, not a poll; it only refreshes again when the panel is open
+                // (see onHelpViewShown / switchView).
+                loadHelpMessages();
                 if (typeof AuraSpotify !== 'undefined') AuraSpotify.init();
                 if (typeof AuraFocus !== 'undefined') AuraFocus.init();
             });
@@ -2539,6 +2693,7 @@
             else if (targetPanelKey === 'spotify' && typeof AuraSpotify !== 'undefined') AuraSpotify.onViewShown();
             else if (targetPanelKey === 'settings') refreshSettingsSpotifyStatus();
             else if (targetPanelKey === 'leaderboard') startLeaderboardPolling();
+            else if (targetPanelKey === 'help') onHelpViewShown();
         }
 
         function changeEngineMode(modeKey) {
@@ -3160,17 +3315,279 @@
             operationalBarChartInstance = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ data: datasets, backgroundColor: gradient, borderColor: accentSolid, borderWidth: 2, borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: gridColour }, ticks: { color: tickColour } }, x: { grid: { display: false }, ticks: { color: tickColour } } } } });
         }
 
+        // -- Help / doubts panel -----------------------------------------------
+        // One simple conversation between this user and the app owner -- no
+        // threads, no subjects. GET /api/support/messages returns every message
+        // plus how many of the owner's replies are still unread; POST sends a new
+        // message; POST /api/support/read marks replies read (called only while
+        // this panel is open, see onHelpViewShown / switchView). No background
+        // polling -- refreshed on app load (badge only) and whenever the panel
+        // is opened.
+        function formatHelpTimestamp(iso) {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '';
+            const now = new Date();
+            const timePart = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            if (d.toDateString() === now.toDateString()) return timePart;
+            return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + timePart;
+        }
+
+        function updateHelpUnreadBadge(count) {
+            const badge = document.getElementById('help-unread-badge');
+            if (!badge) return;
+            const n = (typeof count === 'number' && count > 0) ? count : 0;
+            if (n > 0) {
+                badge.textContent = n > 9 ? '9+' : String(n);
+                badge.hidden = false;
+            } else {
+                badge.hidden = true;
+            }
+        }
+
+        // Renders each message with textContent (never innerHTML) -- message
+        // bodies are free text written by the user AND by the app owner, so
+        // this is the app's XSS-sink pattern from the security review, same as
+        // escapeHtml() above. A raw <script>/<img onerror> payload must render
+        // as inert text here, not execute.
+        function renderHelpThread(messages) {
+            const list = document.getElementById('help-thread-list');
+            list.innerHTML = '';
+            if (!messages.length) {
+                list.innerHTML = '<div class="help-empty-note">No messages yet -- ask your first question below.</div>';
+                return;
+            }
+            const sorted = messages.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            sorted.forEach(m => {
+                const row = document.createElement('div');
+                row.className = 'help-msg-row ' + (m.from_admin ? 'from-admin' : 'from-user');
+
+                const bubble = document.createElement('div');
+                bubble.className = 'help-msg-bubble';
+
+                const meta = document.createElement('div');
+                meta.className = 'help-msg-meta';
+                meta.textContent = (m.from_admin ? 'AuraStudy' : 'You') + ' · ' + formatHelpTimestamp(m.created_at);
+
+                const body = document.createElement('div');
+                body.className = 'help-msg-body';
+                body.textContent = typeof m.body === 'string' ? m.body : '';
+
+                bubble.appendChild(meta);
+                bubble.appendChild(body);
+                row.appendChild(bubble);
+                list.appendChild(row);
+            });
+            list.scrollTop = list.scrollHeight;
+        }
+
+        function showHelpState(kind, message) {
+            const panel = document.getElementById('help-state-panel');
+            const text = document.getElementById('help-state-text');
+            const retryBtn = document.getElementById('help-retry-btn');
+            const content = document.getElementById('help-content');
+            panel.style.display = 'block';
+            panel.classList.toggle('lb-spin-icon', kind === 'loading');
+            text.textContent = message;
+            retryBtn.style.display = (kind === 'error') ? 'inline-block' : 'none';
+            const iconEl = panel.querySelector('[data-lucide]');
+            if (iconEl) iconEl.setAttribute('data-lucide', kind === 'error' ? 'wifi-off' : 'loader-circle');
+            content.style.display = 'none';
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function hideHelpState() {
+            document.getElementById('help-state-panel').style.display = 'none';
+            document.getElementById('help-content').style.display = 'block';
+        }
+
+        // Returns a Promise<boolean> (true only on a real, rendered success) so
+        // callers like onHelpViewShown() know whether it's safe to mark replies
+        // read. forceShowLoading re-shows the loading state even on a retry
+        // after the thread has already loaded once (used by the Try Again button).
+        function loadHelpMessages(forceShowLoading) {
+            if (helpRequestInFlight) return Promise.resolve(false);
+            helpRequestInFlight = true;
+            if (!helpHasLoadedOnce || forceShowLoading) showHelpState('loading', 'Loading your conversation...');
+            clearTimeout(helpSlowHintTimer);
+            helpSlowHintTimer = setTimeout(() => {
+                const panel = document.getElementById('help-state-panel');
+                const text = document.getElementById('help-state-text');
+                if (text && panel && panel.style.display !== 'none') {
+                    text.textContent = "Still loading -- the free server can take up to a minute to wake up on its first request.";
+                }
+            }, 6000);
+
+            return fetch('/api/support/messages', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(res => {
+                    if (res.status === 401) { window.location.replace('/login'); return null; }
+                    if (!res.ok) throw new Error('help_http_' + res.status);
+                    return res.json();
+                })
+                .then(data => {
+                    helpRequestInFlight = false;
+                    clearTimeout(helpSlowHintTimer);
+                    if (!data) return false; // 401 -- already navigating away
+                    helpHasLoadedOnce = true;
+                    const messages = Array.isArray(data.messages) ? data.messages : [];
+                    renderHelpThread(messages);
+                    hideHelpState();
+                    updateHelpUnreadBadge(data.unread_replies);
+                    return true;
+                })
+                .catch(() => {
+                    helpRequestInFlight = false;
+                    clearTimeout(helpSlowHintTimer);
+                    // A background/boot-time load failing quietly just leaves the
+                    // badge as it was; only show an error state if the panel is
+                    // actually open and nothing has ever loaded yet.
+                    if (!helpHasLoadedOnce) {
+                        showHelpState('error', "Couldn't load your conversation. Check your connection and try again.");
+                    }
+                    return false;
+                });
+        }
+
+        // Marks the owner's replies read -- called only when the Help panel is
+        // opened (never on the app-load badge refresh), and only after a
+        // successful load, so a failed fetch never silently clears the badge.
+        function markHelpMessagesRead() {
+            return fetch('/api/support/read', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' },
+                body: '{}'
+            })
+                .then(res => {
+                    if (res.status === 401) { window.location.replace('/login'); return; }
+                    if (res.ok) updateHelpUnreadBadge(0);
+                })
+                .catch(() => { /* next panel open retries */ });
+        }
+
+        function onHelpViewShown() {
+            loadHelpMessages().then(success => { if (success) markHelpMessagesRead(); });
+        }
+
+        function onHelpInputChange() {
+            const input = document.getElementById('help-message-input');
+            const hint = document.getElementById('help-char-hint');
+            const sendBtn = document.getElementById('help-send-btn');
+            if (!input || !hint || !sendBtn) return;
+            const len = input.value.length;
+            const remaining = 2000 - len;
+            if (len > 0 && remaining <= 200) {
+                hint.textContent = remaining >= 0
+                    ? (remaining + ' character' + (remaining === 1 ? '' : 's') + ' left')
+                    : ((-remaining) + ' character' + (-remaining === 1 ? '' : 's') + ' over the limit');
+                hint.classList.toggle('help-char-hint-danger', remaining < 0);
+            } else {
+                hint.textContent = '';
+                hint.classList.remove('help-char-hint-danger');
+            }
+            sendBtn.disabled = (input.value.trim().length === 0) || len > 2000;
+        }
+
+        function sendHelpMessage() {
+            if (helpSendInFlight) return;
+            const input = document.getElementById('help-message-input');
+            const sendBtn = document.getElementById('help-send-btn');
+            const errEl = document.getElementById('help-send-error');
+            if (!input || !sendBtn) return;
+            const body = input.value.trim();
+            if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
+            if (!body || body.length > 2000) return;
+
+            helpSendInFlight = true;
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sending...';
+            clearTimeout(helpSendSlowTimer);
+            helpSendSlowTimer = setTimeout(() => { sendBtn.textContent = 'Still sending...'; }, 6000);
+
+            fetch('/api/support/messages', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ body: body })
+            })
+                .then(res => res.json().catch(() => ({})).then(data => ({ res: res, data: data })))
+                .then(({ res, data }) => {
+                    if (res.status === 401) { window.location.replace('/login'); return; }
+                    if (res.ok) {
+                        input.value = '';
+                        onHelpInputChange();
+                        triggerAlertToast("Message Sent", "Your question is on its way -- you'll see a reply here once it's answered.", true);
+                        loadHelpMessages(); // refresh the thread with the new message
+                    } else if (res.status === 429) {
+                        if (errEl) { errEl.hidden = false; errEl.textContent = (data && data.message) || "You're sending messages too quickly. Please wait a bit and try again."; }
+                    } else if (res.status === 400) {
+                        if (errEl) { errEl.hidden = false; errEl.textContent = (data && data.message) || "That message couldn't be sent -- please check it and try again."; }
+                    } else {
+                        if (errEl) { errEl.hidden = false; errEl.textContent = (data && data.message) || "Couldn't send your message. Please try again."; }
+                    }
+                })
+                .catch(() => {
+                    if (errEl) { errEl.hidden = false; errEl.textContent = "Network error -- please check your connection and try again."; }
+                })
+                .finally(() => {
+                    clearTimeout(helpSendSlowTimer);
+                    helpSendInFlight = false;
+                    sendBtn.textContent = 'Send';
+                    onHelpInputChange();
+                });
+        }
+
         function renderSessionsTable() {
             const tbody = document.getElementById('sessions-table-rows'); tbody.innerHTML = "";
             if(appState.sessions.length === 0) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:32px; color:var(--text-muted); font-weight:700;">No historic sessions loaded.</td></tr>`; return; }
+            let anyAdminAdded = false;
             appState.sessions.forEach(s => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `<td><strong>${escapeHtml(s.date)}</strong></td><td><span style="background:var(--bg-main); padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; border:1px solid var(--border-color); color:var(--neon-pink);">${escapeHtml(s.course)}</span></td><td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--neon-purple);">${escapeHtml(s.type)}</span></td><td><strong>${Math.round(s.durationSeconds / 60)} mins</strong></td><td class="text-muted" style="font-size:13px;">${escapeHtml(s.timestamp)}</td>`;
+                // Sessions the owner logged on this user's behalf (a time
+                // correction) carry addedByAdmin + adminReason from the server
+                // (see server/admin.py build_session_entry) -- mark them
+                // clearly so an unmarked correction is never mistaken for
+                // tampering on a competitive leaderboard. The reason is set
+                // via the .title/.textContent DOM properties (never
+                // innerHTML), so it can't inject markup either.
+                if (s && s.addedByAdmin) {
+                    anyAdminAdded = true;
+                    const dateCell = tr.firstElementChild;
+                    const reason = (typeof s.adminReason === 'string' && s.adminReason.trim()) ? s.adminReason.trim() : 'No reason given.';
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'admin-added-chip';
+                    chip.innerHTML = '<i data-lucide="shield-check"></i> Added by AuraStudy'; // static markup only, no user data
+                    chip.title = reason;
+                    chip.setAttribute('aria-label', 'Added by AuraStudy. Reason: ' + reason);
+                    chip.addEventListener('click', () => triggerAlertToast('Added by AuraStudy', reason, true));
+                    dateCell.appendChild(document.createElement('br'));
+                    dateCell.appendChild(chip);
+                }
                 tbody.appendChild(tr);
             });
+            if (anyAdminAdded && window.lucide) lucide.createIcons();
         }
 
-        function clearAllLogs() { if(!confirm("Clear all session history? This can't be undone.")) return; appState.sessions = []; saveStateToLocalStorageRegister(); renderSessionsTable(); updatePetEvolutionState(); triggerAlertToast("History Cleared", "Your session logs have been cleared.", false); }
+        function clearAllLogs() {
+            // Corrections the owner added on this user's behalf must not be
+            // editable or deletable from the client (spec) -- "Clear History"
+            // only wipes sessions the user logged themselves.
+            const adminCount = appState.sessions.filter(s => s && s.addedByAdmin).length;
+            const confirmMsg = adminCount > 0
+                ? ("Clear your own session history? This can't be undone. " + adminCount + (adminCount === 1 ? " correction" : " corrections") + " added by AuraStudy will stay.")
+                : "Clear all session history? This can't be undone.";
+            if (!confirm(confirmMsg)) return;
+            appState.sessions = appState.sessions.filter(s => s && s.addedByAdmin);
+            saveStateToLocalStorageRegister();
+            renderSessionsTable();
+            updatePetEvolutionState();
+            triggerAlertToast("History Cleared", "Your session logs have been cleared.", false);
+        }
         function switchTrophySubView(key) { document.querySelectorAll('.trophy-tab-trigger').forEach(t => t.classList.remove('active')); if(key === 'badges') { document.getElementById('trophy-tab-badges').classList.add('active'); document.getElementById('subview-badges').style.display = 'grid'; document.getElementById('subview-achievements').style.display = 'none'; } else { document.getElementById('trophy-tab-achievements').classList.add('active'); document.getElementById('subview-badges').style.display = 'none'; document.getElementById('subview-achievements').style.display = 'grid'; } }
 
         function evaluateCabinetTrophyMetrics() {
