@@ -2765,7 +2765,15 @@
         }
 
         function updateEngineDisplayString() {
-            let totalRunningSecondsMap = (appState.selectedMode === "countdown") ? countdownSecondsRemainingRegister : runningAccumulatedSeconds;
+            let raw = (appState.selectedMode === "countdown") ? countdownSecondsRemainingRegister : runningAccumulatedSeconds;
+            // Floor and sanity-check here as well as at every source. A
+            // fractional value reaching this line renders its whole decimal
+            // expansion (0.5030000000000001 -> "00:0.5030000000000001"),
+            // which blew the timer across the screen after a sleep/wake.
+            // The display is the last line of defence: it must never trust
+            // its input.
+            const totalRunningSecondsMap =
+                (typeof raw === 'number' && isFinite(raw) && raw > 0) ? Math.floor(raw) : 0;
             const mins = Math.floor(totalRunningSecondsMap / 60);
             const secs = totalRunningSecondsMap % 60;
             document.getElementById('timer-display').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -2915,7 +2923,19 @@
             if (isEngineActivelyRunning) engineTickHandler();
         });
 
-        function resetEngineDisplayState() {
+        function resetEngineDisplayState(skipConfirm) {
+            // Reset throws away time already on the clock, so confirm when
+            // there is something to lose. Silent loss of a running session
+            // is exactly what this app must not do.
+            const elapsedOnClock = Math.floor(runningAccumulatedSeconds || 0);
+            if (!skipConfirm && elapsedOnClock >= 60) {
+                const mins = Math.floor(elapsedOnClock / 60);
+                const ok = window.confirm(
+                    "Reset the timer and discard " + mins + " minute" + (mins === 1 ? "" : "s") +
+                    " already on the clock?\n\nTo keep the time instead, cancel and choose Log Focus."
+                );
+                if (!ok) return;
+            }
             clearInterval(engineIntervalRegister);
             engineIntervalRegister = null;
             isEngineActivelyRunning = false;
@@ -3051,7 +3071,10 @@
             } else {
                 triggerAlertToast("Too Short!", "Session was too short to archive. Keep going next time!", false);
             }
-            resetEngineDisplayState();
+            // skipConfirm: the session has just been logged (or was too short
+            // to log), so there is nothing left on the clock to lose and no
+            // reason to ask.
+            resetEngineDisplayState(true);
         }
 
         // Runs once on boot (see DOMContentLoaded below), after the app's own
@@ -3125,6 +3148,9 @@
                 appState.selectedCourse = courseLabel;
                 appState.selectedMode = snapshotMode;
                 countdownTotalSeconds = countdownTotal;
+                // Whole seconds only -- confirmedElapsed is derived from
+                // millisecond clock arithmetic and can be fractional.
+                confirmedElapsed = Math.floor(confirmedElapsed);
                 bankedElapsedSeconds = confirmedElapsed;
                 runningAccumulatedSeconds = confirmedElapsed;
                 countdownSecondsRemainingRegister = Math.max(0, countdownTotal - confirmedElapsed);
