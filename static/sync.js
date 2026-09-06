@@ -10,9 +10,6 @@
  *     function on every state mutation; after this file loads, each call
  *     ALSO schedules a debounced (2s) `PUT /api/state`. The original
  *     synchronous localStorage write is untouched.
- *   - It lazily creates a tiny "Syncing... / Synced" text node right under
- *     the sidebar's `#user-email-display` element and keeps it updated, as
- *     the "unobtrusive sync indicator" required by spec section 9.
  *   - It flushes pending state on `pagehide` and on `visibilitychange` ->
  *     hidden, and retries a failed push on `online` and on the next
  *     bootstrap() -- see "DURABILITY" below.
@@ -257,27 +254,6 @@
 
   // -------------------------------------------------------------- misc helpers
 
-  function ensureIndicator() {
-    var el = document.getElementById("aura-sync-indicator");
-    if (el) return el;
-    var anchor = document.getElementById("user-email-display");
-    if (!anchor || !anchor.parentNode) return null;
-    el = document.createElement("span");
-    el.id = "aura-sync-indicator";
-    el.style.cssText = "display:block;font-size:11px;opacity:0.65;margin-top:2px;";
-    anchor.parentNode.appendChild(el);
-    return el;
-  }
-
-  function setSyncStatus(text) {
-    var el = ensureIndicator();
-    if (el) el.textContent = text;
-  }
-
-  function refreshSyncStatus() {
-    setSyncStatus(isPending() ? "Sync pending…" : "Synced ✓");
-  }
-
   function toast(title, desc) {
     if (typeof window.triggerAlertToast === "function") {
       window.triggerAlertToast(title, desc, false);
@@ -356,10 +332,8 @@
 
   function bootstrap() {
     if (isGuestMode()) {
-      setSyncStatus("");
       return Promise.resolve(null);
     }
-    setSyncStatus("Syncing...");
     return authedFetch("/api/auth/me")
       .then(function (meResult) {
         var user = meResult.data.user;
@@ -439,14 +413,9 @@
           });
         });
       })
-      .then(function (user) {
-        refreshSyncStatus();
-        return user;
-      })
       .catch(function () {
         // 401 already redirected to /login; any other error just means we
         // boot from whatever is cached in localStorage instead.
-        setSyncStatus("");
         return null;
       });
   }
@@ -464,7 +433,6 @@
 
     markPending(); // idempotent -- keeps pendingSince at its earliest timestamp until confirmed synced
     state.pushInFlight = true;
-    setSyncStatus("Syncing...");
 
     putServerState(payload, state.version)
       .then(function (r) {
@@ -483,7 +451,6 @@
       })
       .then(function () {
         state.pushInFlight = false;
-        refreshSyncStatus();
         if (state.pushAgainAfter) {
           state.pushAgainAfter = false;
           push();

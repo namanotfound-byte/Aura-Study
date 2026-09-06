@@ -168,6 +168,15 @@ def test_sync_js_retries_on_reconnect():
     assert "addEventListener(\"online\"" in js or "addEventListener('online'" in js
 
 
+def test_sync_js_does_not_inject_sidebar_sync_indicator():
+    """Cloud sync must keep working without a sidebar Synced/Sync pending label."""
+    js = _read("static", "sync.js")
+    assert "aura-sync-indicator" not in js
+    assert "setSyncStatus" not in js
+    assert "refreshSyncStatus" not in js
+    assert "ensureIndicator" not in js
+
+
 def test_bootstrap_merges_pending_local_edits_instead_of_overwriting():
     js = _read("static", "sync.js")
     # The pending branch inside bootstrap() must go through mergePayloads,
