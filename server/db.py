@@ -176,7 +176,23 @@ CREATE TABLE IF NOT EXISTS leaderboard_weeks (
 );
 CREATE INDEX IF NOT EXISTS idx_leaderboard_week ON leaderboard_weeks(week_start, seconds DESC);
 
--- Owner-only audit trail for admin.py's study-time corrections (see
+CREATE TABLE IF NOT EXISTS leaderboard_days (
+  user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day_date          TEXT NOT NULL,
+  seconds           INTEGER NOT NULL DEFAULT 0,
+  opted_in          INTEGER NOT NULL DEFAULT 1,
+  updated_at        TEXT NOT NULL,
+  PRIMARY KEY (user_id, day_date)
+);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_day ON leaderboard_days(day_date, seconds DESC);
+
+CREATE TABLE IF NOT EXISTS leaderboard_lifetime (
+  user_id           INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  seconds           INTEGER NOT NULL DEFAULT 0,
+  updated_at        TEXT NOT NULL
+);
+
+-- Owner-only audit trail for admin.py's study-time corrections (see)
 -- server/admin.py:inject_time_correction). One row per correction: who did
 -- it, whose data it touched, and the full detail (minutes/date/course/
 -- reason) as a JSON blob -- mirrors user_state.payload's TEXT-column-of-JSON
@@ -317,6 +333,22 @@ CREATE TABLE IF NOT EXISTS leaderboard_weeks (
   PRIMARY KEY (user_id, week_start)
 );
 CREATE INDEX IF NOT EXISTS idx_leaderboard_week ON leaderboard_weeks(week_start, seconds DESC);
+
+CREATE TABLE IF NOT EXISTS leaderboard_days (
+  user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day_date          DATE NOT NULL,
+  seconds           INTEGER NOT NULL DEFAULT 0,
+  opted_in          BOOLEAN NOT NULL DEFAULT TRUE,
+  updated_at        TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (user_id, day_date)
+);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_day ON leaderboard_days(day_date, seconds DESC);
+
+CREATE TABLE IF NOT EXISTS leaderboard_lifetime (
+  user_id           INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  seconds           INTEGER NOT NULL DEFAULT 0,
+  updated_at        TIMESTAMPTZ NOT NULL
+);
 
 -- See the matching comment on SQLITE_SCHEMA's admin_actions above -- same
 -- shape, TIMESTAMPTZ instead of TEXT for created_at.

@@ -133,6 +133,29 @@
             overflow: hidden;
         }
 
+        #achievement-celebrate {
+            position: fixed;
+            inset: 0;
+            z-index: 2600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        #achievement-celebrate[hidden] { display: none !important; }
+        .achievement-celebrate-card {
+            pointer-events: auto;
+            background: var(--bg-card);
+            border: 2px solid var(--neon-pink);
+            border-radius: 24px;
+            padding: 22px 26px;
+            text-align: center;
+            max-width: 360px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .achievement-celebrate-card h3 { margin: 8px 0 4px; font-size: 20px; }
+        .achievement-celebrate-card p { margin: 0; color: var(--text-muted); font-size: 13px; font-weight: 600; }
+
         #confetti-canvas {
             position: fixed;
             top: 0;
@@ -499,6 +522,64 @@
             margin-bottom: 6px;
             text-transform: uppercase;
         }
+        .pet-gallery-btn {
+            margin-top: 10px;
+            background: none;
+            border: none;
+            color: var(--neon-pink);
+            font-weight: 800;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 0;
+            text-decoration: underline;
+        }
+        .pet-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 2400;
+            background: rgba(20, 16, 24, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .pet-modal-backdrop[hidden] { display: none !important; }
+        .pet-modal {
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 24px;
+            max-width: 640px;
+            width: 100%;
+            max-height: min(86vh, 760px);
+            overflow: auto;
+            padding: 22px 22px 18px;
+        }
+        .pet-modal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .pet-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .pet-form-tile {
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 12px 8px;
+            text-align: center;
+            background: var(--bg-card-hover);
+        }
+        .pet-form-tile.is-yours { border-color: var(--neon-pink); box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2); }
+        .pet-form-emoji { font-size: 28px; line-height: 1.2; }
+        .pet-form-name { font-size: 12px; font-weight: 800; color: var(--text-main); margin-top: 4px; }
+        .pet-form-lvl { font-size: 11px; color: var(--text-muted); font-weight: 700; }
+        .pet-top-row { display: flex; align-items: center; gap: 10px; padding: 8px 4px; }
+        .pet-top-row.is-top3 .pet-top-rank { color: var(--neon-pink); }
 
         /* Pastel To-Do List Card Structure */
         .todo-engine-card {
@@ -727,18 +808,16 @@
             width: min(100%, 720px);
             padding: clamp(20px, 4vw, 36px) clamp(20px, 5vw, 52px) clamp(18px, 3vw, 28px);
             border-radius: 28px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.22);
-            box-shadow:
-                0 24px 80px rgba(0, 0, 0, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.25);
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            border: none;
+            box-shadow: none;
         }
         .timer-fullscreen-view.dark-mode-active .timer-hero-plate {
-            background: rgba(0, 0, 0, 0.22);
-            border-color: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 28px 90px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            background: transparent;
+            border: none;
+            box-shadow: none;
         }
 
         /* Corner + footer chrome — recede behind the hero clock */
@@ -876,12 +955,12 @@
             top: auto;
             right: auto;
             z-index: 700;
-            min-width: 200px;
-            max-width: min(240px, calc(100vw - 32px));
+            min-width: min(420px, calc(100vw - 24px));
+            max-width: min(480px, calc(100vw - 24px));
             background: rgba(18, 14, 24, 0.88);
             border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 16px;
-            padding: 12px;
+            border-radius: 999px;
+            padding: 8px 12px;
             box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
             transform-origin: bottom left;
             transition: opacity 0.15s ease, transform 0.15s ease;
@@ -1049,11 +1128,15 @@
             color: rgba(255, 255, 255, 0.72);
             margin-bottom: 0;
             font-weight: 600;
-            background: transparent;
-            padding: 4px 0 0;
+            background: none !important;
+            box-shadow: none !important;
+            outline: none;
+            padding: 8px 0 0;
             border: none;
             border-radius: 0;
             letter-spacing: 0.02em;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
         .timer-fullscreen-view:not(.dark-mode-active) .timer-meta {
             color: var(--text-muted);
@@ -1749,6 +1832,26 @@
             margin-top: 2px;
             text-decoration: underline;
         }
+        .lb-period-tabs {
+            display: flex;
+            gap: 6px;
+            margin: 12px 0 0;
+        }
+        .lb-period-tab {
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            font-weight: 800;
+            font-size: 12px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        .lb-period-tab.active {
+            background: var(--neon-pink);
+            color: #fff;
+            border-color: transparent;
+        }
         .lb-name-form {
             display: flex;
             align-items: center;
@@ -1756,6 +1859,7 @@
             flex-wrap: wrap;
             margin-top: 8px;
         }
+        .lb-name-form[hidden] { display: none !important; }
         .lb-name-form input {
             flex: 1;
             min-width: 160px;
@@ -1954,6 +2058,26 @@
 <body>
 
     <canvas id="confetti-canvas"></canvas>
+    <div id="achievement-celebrate" hidden>
+        <div class="achievement-celebrate-card" role="status">
+            <div style="font-size:36px;" id="achievement-celebrate-emoji">🏆</div>
+            <h3 id="achievement-celebrate-title">Unlocked!</h3>
+            <p id="achievement-celebrate-desc"></p>
+            <button type="button" class="btn btn-neon-pink" style="margin-top:14px;" onclick="closeAchievementCelebrate()">Nice</button>
+        </div>
+    </div>
+    <div class="pet-modal-backdrop" id="pet-gallery-modal" hidden onclick="if(event.target===this)closePetGallery()">
+        <div class="pet-modal" role="dialog" aria-labelledby="pet-gallery-title">
+            <div class="pet-modal-head">
+                <h3 id="pet-gallery-title" style="margin:0;font-size:18px;">All pets</h3>
+                <button type="button" class="btn" onclick="closePetGallery()">Close</button>
+            </div>
+            <div class="pet-form-grid" id="pet-form-grid"></div>
+            <h4 style="margin:0 0 8px;font-size:14px;">Best pets right now</h4>
+            <p class="text-muted" style="font-size:12px;margin:0 0 10px;">Top 10 by lifetime study — first three are the current leaders.</p>
+            <div id="pet-top-list"></div>
+        </div>
+    </div>
 
     <!-- Scrim shown behind the sidebar when it's opened as a mobile off-canvas drawer (<=1024px).
          Tapping it (an "outside tap") closes the drawer. -->
@@ -2065,6 +2189,7 @@
                             <div class="progress-bar-fill" id="pet-xp-progress-fill" style="background: linear-gradient(to right, var(--neon-blue), var(--neon-green));"></div>
                         </div>
                     </div>
+                    <button type="button" class="pet-gallery-btn" onclick="openPetGallery()">View all pets</button>
                 </div>
             </div>
 
@@ -2329,8 +2454,12 @@
             <div class="card" style="margin-bottom: 24px;">
                 <div class="lb-header-row">
                     <div>
-                        <h3 style="font-weight: 800; font-size: 18px; color: var(--text-main);">This Week's Leaderboard</h3>
-                        <p class="lb-copy">Total study hours logged this week, across everyone who's opted in and set a public name -- resets every Monday at 00:00 UTC. Your name is shown to everyone on the leaderboard -- choose something you're comfortable sharing publicly.</p>
+                        <h3 style="font-weight: 800; font-size: 18px; color: var(--text-main);" id="lb-heading">This Week's Leaderboard</h3>
+                        <p class="lb-copy" id="lb-copy">Total study time this week, across everyone who's opted in and set a public name. Resets every Monday. Your public name is shown to everyone on the board.</p>
+                        <div class="lb-period-tabs" role="tablist" aria-label="Leaderboard period">
+                            <button type="button" class="lb-period-tab" id="lb-period-day" onclick="setLeaderboardPeriod('day')">Daily</button>
+                            <button type="button" class="lb-period-tab active" id="lb-period-week" onclick="setLeaderboardPeriod('week')">Weekly</button>
+                        </div>
                     </div>
                     <label class="lb-opt-row" for="leaderboard-opt-toggle">
                         <span>Show me on the board</span>
@@ -2346,8 +2475,8 @@
                 <div class="lb-you-rank" id="lb-you-rank">--</div>
                 <div class="lb-you-meta">
                     <div class="lb-you-alias" id="lb-you-alias">You</div>
-                    <div class="lb-you-sub" id="lb-you-sub">Your public name this week</div>
-                    <button type="button" class="lb-name-edit-btn" id="lb-name-edit-btn" onclick="openLeaderboardNameEditor()" hidden>Change name</button>
+                    <div class="lb-you-sub" id="lb-you-sub">You are shown as this name on the board.</div>
+                    <button type="button" class="lb-name-edit-btn" id="lb-name-edit-btn" onclick="openLeaderboardNameEditor()">Change name</button>
                     <div class="lb-name-form" id="lb-name-form" hidden>
                         <input type="text" class="form-control" id="lb-name-input" maxlength="24" placeholder="Your public name" autocomplete="off">
                         <button type="button" class="btn btn-neon-pink" id="lb-name-save-btn" onclick="submitLeaderboardName()">Save</button>
@@ -2368,7 +2497,7 @@
             <div id="leaderboard-content" style="display: none;">
                 <div class="card" style="margin-bottom: 24px;">
                     <div class="card-title">
-                        <span>Top 20 This Week</span>
+                        <span id="lb-chart-title">Top 20 This Week</span>
                         <span id="lb-participants-label" style="text-transform: none; letter-spacing: normal; font-weight: 700;"></span>
                     </div>
                     <div class="lb-chart-wrap"><canvas id="leaderboardChart"></canvas></div>
@@ -2776,8 +2905,30 @@
                 if (!(window.AuraGuest && AuraGuest.isGuest())) loadHelpMessages();
                 if (typeof AuraSpotify !== 'undefined' && !(window.AuraGuest && AuraGuest.isGuest())) AuraSpotify.init();
                 if (typeof AuraFocus !== 'undefined') AuraFocus.init();
+                syncFullscreenIcon();
             });
+            document.addEventListener('fullscreenchange', syncFullscreenIcon);
+            document.addEventListener('webkitfullscreenchange', syncFullscreenIcon);
+            document.addEventListener('visibilitychange', syncFullscreenIcon);
+            window.addEventListener('focus', syncFullscreenIcon);
+            document.addEventListener('keydown', onTimerKeyboardShortcut);
         });
+
+        function onTimerKeyboardShortcut(e) {
+            const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+            if (tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable)) return;
+            const timerView = document.getElementById('view-timer');
+            if (!timerView || !timerView.classList.contains('active')) return;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                toggleEngineExecutionLoop();
+                return;
+            }
+            if (e.key === 'f' || e.key === 'F') {
+                e.preventDefault();
+                toggleNativeWindowFullscreenEngine();
+            }
+        }
 
         // Applies the real, server-authoritative account email over whatever local
         // placeholder value was cached, and locks the settings email field since it's
@@ -2992,29 +3143,36 @@
         }
 
         // FIXED FEATURE: Native Window Element HTML5 Fullscreen Engine wrapper toggle
+        function isTimerElementFullscreen() {
+            const containerNode = document.getElementById('timer-view-container');
+            const fs = document.fullscreenElement || document.webkitFullscreenElement;
+            return !!(fs && containerNode && (fs === containerNode || containerNode.contains(fs)));
+        }
+
+        function syncFullscreenIcon() {
+            const iconNode = document.getElementById('fullscreen-icon-indicator');
+            if (!iconNode) return;
+            iconNode.setAttribute('data-lucide', isTimerElementFullscreen() ? 'minimize-2' : 'maximize-2');
+            if (window.lucide) lucide.createIcons();
+        }
+
         function toggleNativeWindowFullscreenEngine() {
             const containerNode = document.getElementById('timer-view-container');
-            const iconNode = document.getElementById('fullscreen-icon-indicator');
-
-            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                // Enterprise cross-browser request entry pipeline sequence
+            if (!isTimerElementFullscreen()) {
                 if (containerNode.requestFullscreen) {
                     containerNode.requestFullscreen();
                 } else if (containerNode.webkitRequestFullscreen) {
                     containerNode.webkitRequestFullscreen();
                 }
-                iconNode.setAttribute('data-lucide', 'minimize-2');
                 triggerAlertToast("Fullscreen On", "Distraction-free view enabled.", true);
             } else {
-                // Exit current screen projection allocation context mapping
                 if (document.exitFullscreen) {
                     document.exitFullscreen();
                 } else if (document.webkitExitFullscreen) {
                     document.webkitExitFullscreen();
                 }
-                iconNode.setAttribute('data-lucide', 'maximize-2');
             }
-            setTimeout(() => { lucide.createIcons(); }, 100);
+            setTimeout(syncFullscreenIcon, 80);
         }
 
         // To-Do Task Management System
@@ -3784,7 +3942,7 @@
         let leaderboardHasLoadedOnce = false;
         let leaderboardOptTogglePending = false;
         let leaderboardYouState = {};
-        let leaderboardNameEditorAutoOpened = false;
+        let leaderboardPeriod = 'week';
 
         function startLeaderboardPolling() {
             stopLeaderboardPolling();
@@ -3949,7 +4107,7 @@
             // getLocalDateStr) -- keeps "this week" here agreeing with the
             // week PUT /api/state's sync just wrote this user's total into.
             // See server/leaderboard.py:current_week_start's docstring.
-            fetch('/api/leaderboard?local_date=' + encodeURIComponent(getLocalDateStr()), {
+            fetch('/api/leaderboard?period=' + encodeURIComponent(leaderboardPeriod) + '&local_date=' + encodeURIComponent(getLocalDateStr()), {
                 method: 'GET',
                 credentials: 'same-origin',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -4021,45 +4179,53 @@
             youCard.style.display = 'flex';
             hoursEl.textContent = formatLeaderboardHours(you.seconds || 0);
 
+            const form = document.getElementById('lb-name-form');
+            const editorOpen = form && !form.hidden;
+            if (editBtn) {
+                editBtn.textContent = you.public_name ? 'Change name' : 'Set a public name';
+                editBtn.hidden = !!editorOpen;
+            }
+
             if (!you.public_name) {
                 rankEl.textContent = '--';
                 nameEl.textContent = "You're not on the board yet";
-                subEl.textContent = "Set a public name to join -- it's shown to every other AuraStudy user on the board.";
-                if (editBtn) { editBtn.textContent = 'Set a public name'; editBtn.hidden = true; }
-                // Auto-open the editor the first time we learn there's no name
-                // set, so a brand-new user sees the prompt immediately without
-                // hunting for a "set name" control -- but only once per view
-                // visit, so it doesn't keep popping back open under someone
-                // who's deliberately closed it while typing is interrupted by
-                // the 20s poll re-render.
-                if (!leaderboardNameEditorAutoOpened) {
-                    leaderboardNameEditorAutoOpened = true;
-                    openLeaderboardNameEditor();
-                }
+                subEl.textContent = "Set a public name to join. It is shown to every other AuraStudy user on the board.";
                 return;
             }
 
-            if (editBtn) {
-                editBtn.textContent = 'Change name';
-                const form = document.getElementById('lb-name-form');
-                editBtn.hidden = !!(form && !form.hidden); // keep it hidden while the editor is already open
-            }
-
+            nameEl.textContent = you.public_name;
             if (you.rank) {
                 rankEl.textContent = '#' + you.rank;
-                nameEl.textContent = you.public_name;
-                subEl.textContent = you.rank <= entries.length
-                    ? "That's your public name -- visible to everyone on the board."
-                    : ('Out of ' + participants + (participants === 1 ? ' participant' : ' participants') + ' -- your public name is visible to everyone on the board.');
+                subEl.textContent = 'You are shown as ' + you.public_name + ' on the board.';
             } else if (you.opted_in) {
                 rankEl.textContent = '--';
-                nameEl.textContent = you.public_name;
-                subEl.textContent = "You're on the board as \"" + you.public_name + "\" -- log a study session to appear in the rankings.";
+                subEl.textContent = 'You are shown as ' + you.public_name + '. Log a session to appear in the rankings.';
             } else {
                 rankEl.textContent = '--';
-                nameEl.textContent = you.public_name;
-                subEl.textContent = "You're opted out -- only you can see this total. Flip the toggle above to rejoin.";
+                subEl.textContent = 'You are shown as ' + you.public_name + ' to yourself only — flip the toggle to rejoin.';
             }
+        }
+
+        function setLeaderboardPeriod(period) {
+            leaderboardPeriod = period === 'day' ? 'day' : 'week';
+            const dayBtn = document.getElementById('lb-period-day');
+            const weekBtn = document.getElementById('lb-period-week');
+            if (dayBtn) dayBtn.classList.toggle('active', leaderboardPeriod === 'day');
+            if (weekBtn) weekBtn.classList.toggle('active', leaderboardPeriod === 'week');
+            const heading = document.getElementById('lb-heading');
+            const copy = document.getElementById('lb-copy');
+            const chartTitle = document.getElementById('lb-chart-title');
+            if (leaderboardPeriod === 'day') {
+                if (heading) heading.textContent = "Today's Leaderboard";
+                if (copy) copy.textContent = "Total study time today, across everyone who's opted in and set a public name. Resets at midnight in your timezone.";
+                if (chartTitle) chartTitle.textContent = 'Top 20 Today';
+            } else {
+                if (heading) heading.textContent = "This Week's Leaderboard";
+                if (copy) copy.textContent = "Total study time this week, across everyone who's opted in and set a public name. Resets every Monday.";
+                if (chartTitle) chartTitle.textContent = 'Top 20 This Week';
+            }
+            leaderboardHasLoadedOnce = false;
+            loadLeaderboardData();
         }
 
         function openLeaderboardNameEditor() {
@@ -4130,7 +4296,7 @@
             const list = document.getElementById('leaderboard-list');
             list.innerHTML = '';
             if (!entries.length) {
-                list.innerHTML = '<div class="lb-state-panel" style="padding:20px 12px;">No one is ranked yet this week.</div>';
+                list.innerHTML = '<div class="lb-state-panel" style="padding:20px 12px;">No one is ranked yet ' + (leaderboardPeriod === 'day' ? 'today' : 'this week') + '.</div>';
                 return;
             }
             const yourRank = you && you.rank;
@@ -4236,7 +4402,7 @@
             for (let i = 6; i >= 0; i--) {
                 const d = new Date(); d.setDate(d.getDate() - i); labels.push(d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }));
                 const checkStr = getLocalDateStr(d); let mSum = 0; appState.sessions.forEach(s => { if(s.date === checkStr) mSum += s.durationSeconds; });
-                datasets.push(Math.round(mSum / 60));
+                datasets.push(Math.round((mSum / 3600) * 10) / 10);
             }
             // Canvas cannot read CSS variables, so resolve the active theme tokens first
             const accentRgb = readThemeToken('--accent-rgb', '255, 102, 178');
@@ -4247,7 +4413,7 @@
             const gradient = ctx.createLinearGradient(0, 0, 0, 220);
             gradient.addColorStop(0, `rgba(${accentRgb}, 0.8)`);
             gradient.addColorStop(1, `rgba(${secondaryRgb}, 0.1)`);
-            operationalBarChartInstance = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ data: datasets, backgroundColor: gradient, borderColor: accentSolid, borderWidth: 2, borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: gridColour }, ticks: { color: tickColour } }, x: { grid: { display: false }, ticks: { color: tickColour } } } } });
+            operationalBarChartInstance = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ data: datasets, backgroundColor: gradient, borderColor: accentSolid, borderWidth: 2, borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (item) => formatDurationHM(Math.round((item.parsed.y || 0) * 3600)) } } }, scales: { y: { beginAtZero: true, grid: { color: gridColour }, ticks: { color: tickColour, callback: (v) => v + 'h' } }, x: { grid: { display: false }, ticks: { color: tickColour } } } } });
         }
 
         // -- Help / doubts panel -----------------------------------------------
@@ -4546,6 +4712,7 @@
             const badgesContainer = document.getElementById('subview-badges'); const achContainer = document.getElementById('subview-achievements'); badgesContainer.innerHTML = ""; achContainer.innerHTML = "";
             let unlockedCount = 0; const todayStr = getLocalDateStr();
             let todaySecs = 0; appState.sessions.forEach(s => { if(s.date === todayStr) todaySecs += s.durationSeconds; });
+            const newlyUnlocked = [];
 
             const badgeStatus = {
                 b_active_day: appState.sessions.some(s => s.date === todayStr),
@@ -4560,6 +4727,7 @@
 
             fullBadgesDatabase.forEach(b => {
                 const unlocked = badgeStatus[b.id] || false; if(unlocked) unlockedCount++;
+                if (unlocked) newlyUnlocked.push({ id: b.id, title: b.title, desc: b.desc });
                 const el = document.createElement('div'); el.className = `trophy-item-pod ${unlocked ? 'unlocked' : 'locked'}`;
                 el.innerHTML = `<div class="trophy-meta-tag">${b.category}</div><div class="trophy-avatar-ring"><i data-lucide="${b.icon}"></i></div><h4>${b.title}</h4><p>${b.desc}</p>`;
                 badgesContainer.appendChild(el);
@@ -4567,6 +4735,7 @@
 
             fullAchievementsDatabase.forEach(a => {
                 const unlocked = a.check(appState); if(unlocked) unlockedCount++;
+                if (unlocked) newlyUnlocked.push({ id: a.id, title: a.title, desc: a.desc });
                 const el = document.createElement('div'); el.className = `trophy-item-pod ${unlocked ? 'unlocked' : 'locked'}`;
                 let progressTrackHtml = ""; if(a.progress) { let currentVal = a.max === 100 ? appState.streak : a.max === 300 ? appState.sessions.length : getTotalFocusHours(appState); let ratio = Math.min(Math.floor((currentVal / a.max) * 100), 100); progressTrackHtml = `<div style="font-size:11px; font-weight:700; margin-top:10px; color:var(--text-muted);">${currentVal} / ${a.max} ${a.unit}</div><div class="trophy-card-progress-track"><div class="trophy-card-progress-fill" style="width: ${ratio}%"></div></div>`; }
                 el.innerHTML = `<div class="trophy-meta-tag">${a.category}</div><div class="trophy-avatar-ring"><i data-lucide="${unlocked ? a.icon : (a.secret ? 'help-circle' : 'lock-keyhole')}"></i></div><h4>${a.title}</h4><p>${a.desc}</p>${progressTrackHtml}`;
@@ -4577,6 +4746,105 @@
             document.getElementById('trophy-unlocked-ratio-label').innerText = `${unlockedCount} / ${totalItems} Earned`;
             document.getElementById('trophy-progress-fill-bar').style.width = `${Math.floor((unlockedCount/totalItems)*100)}%`;
             lucide.createIcons();
+            celebrateNewUnlocks(newlyUnlocked);
+        }
+
+        function readSeenUnlocks() {
+            try {
+                const raw = localStorage.getItem('aurastudy_seen_unlocks');
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : null;
+            } catch (e) { return null; }
+        }
+
+        function writeSeenUnlocks(ids) {
+            try { localStorage.setItem('aurastudy_seen_unlocks', JSON.stringify(ids)); } catch (e) { /* ignore */ }
+        }
+
+        function celebrateNewUnlocks(unlockedItems) {
+            const ids = unlockedItems.map(item => item.id);
+            const seen = readSeenUnlocks();
+            if (seen === null) {
+                writeSeenUnlocks(ids);
+                return;
+            }
+            const fresh = unlockedItems.filter(item => seen.indexOf(item.id) === -1);
+            writeSeenUnlocks(ids);
+            if (!fresh.length) return;
+            const first = fresh[0];
+            const overlay = document.getElementById('achievement-celebrate');
+            const title = document.getElementById('achievement-celebrate-title');
+            const desc = document.getElementById('achievement-celebrate-desc');
+            if (title) title.textContent = first.title;
+            if (desc) desc.textContent = fresh.length > 1
+                ? first.desc + ' (+' + (fresh.length - 1) + ' more)'
+                : first.desc;
+            if (overlay) overlay.hidden = false;
+            executeHighImpactConfettiFXParticleBurst();
+        }
+
+        function closeAchievementCelebrate() {
+            const overlay = document.getElementById('achievement-celebrate');
+            if (overlay) overlay.hidden = true;
+        }
+
+        function openPetGallery() {
+            const modal = document.getElementById('pet-gallery-modal');
+            const grid = document.getElementById('pet-form-grid');
+            if (!modal || !grid) return;
+            const currentName = (document.getElementById('pet-level-display-tag') || {}).innerText || '';
+            grid.innerHTML = '';
+            PET_GARDEN_FORMS.forEach((form, idx) => {
+                const tile = document.createElement('div');
+                tile.className = 'pet-form-tile' + (currentName.indexOf(form.name) !== -1 ? ' is-yours' : '');
+                tile.innerHTML = '<div class="pet-form-emoji">' + form.emoji + '</div>'
+                    + '<div class="pet-form-name">' + escapeHtml(form.name) + '</div>'
+                    + '<div class="pet-form-lvl">Level ' + (idx + 1) + (idx === 11 ? '+' : '') + '</div>';
+                grid.appendChild(tile);
+            });
+            loadPetLeaderboard();
+            modal.hidden = false;
+        }
+
+        function closePetGallery() {
+            const modal = document.getElementById('pet-gallery-modal');
+            if (modal) modal.hidden = true;
+        }
+
+        function loadPetLeaderboard() {
+            const list = document.getElementById('pet-top-list');
+            if (!list) return;
+            if (window.AuraGuest && AuraGuest.isGuest()) {
+                list.innerHTML = '<p class="text-muted" style="font-size:13px;">Sign in free to see who has the best pet.</p>';
+                return;
+            }
+            list.innerHTML = '<p class="text-muted" style="font-size:13px;">Loading…</p>';
+            fetch('/api/leaderboard/pets?local_date=' + encodeURIComponent(getLocalDateStr()), {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(res => res.json().catch(() => ({})).then(data => ({ res: res, data: data })))
+                .then(({ res, data }) => {
+                    if (res.status === 401) { list.innerHTML = '<p class="text-muted" style="font-size:13px;">Sign in to see the pet leaders.</p>'; return; }
+                    if (!res.ok) { list.innerHTML = '<p class="text-muted" style="font-size:13px;">Could not load pet rankings.</p>'; return; }
+                    const entries = data.entries || [];
+                    if (!entries.length) {
+                        list.innerHTML = '<p class="text-muted" style="font-size:13px;">No public pets ranked yet. Set a name and stay opted in.</p>';
+                        return;
+                    }
+                    list.innerHTML = '';
+                    entries.forEach(e => {
+                        const row = document.createElement('div');
+                        row.className = 'pet-top-row' + (e.rank <= 3 ? ' is-top3' : '');
+                        row.innerHTML = '<strong class="pet-top-rank">#' + e.rank + '</strong>'
+                            + '<span style="flex:1;font-weight:700;">' + escapeHtml(e.name) + '</span>'
+                            + '<span style="font-size:12px;font-weight:800;">Lv ' + e.level + ' · ' + escapeHtml(e.form) + '</span>';
+                        list.appendChild(row);
+                    });
+                })
+                .catch(() => { list.innerHTML = '<p class="text-muted" style="font-size:13px;">Could not load pet rankings.</p>'; });
         }
 
         function triggerManualSaveNotification() { updateProfileSettings(); triggerAlertToast("Settings Updated", "Your changes have been saved.", true); }

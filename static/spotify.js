@@ -157,19 +157,28 @@
       '.as-progress{height:6px;border-radius:6px;background:var(--border-color);margin-top:10px;overflow:hidden}' +
       '.as-progress-fill{height:100%;background:linear-gradient(to right,var(--neon-pink),var(--neon-purple));border-radius:6px;transition:width .4s linear}' +
       '.as-time-row{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:4px}' +
-      '.as-controls{display:flex;align-items:center;gap:12px;margin-top:16px}' +
+      '.as-now-bar{display:flex;align-items:center;gap:12px;flex-wrap:nowrap}' +
+      '.as-now-bar .as-art{width:48px;height:48px;border-radius:10px}' +
+      '.as-now-bar .as-track-name{font-size:13px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.as-now-bar .as-track-artist{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.as-now-meta{min-width:0;flex:1}' +
+      '.as-controls{display:flex;align-items:center;gap:8px;margin-top:0;flex-shrink:0}' +
+      '.as-now-bar .as-icon-btn{width:36px;height:36px}' +
+      '.as-now-bar .as-icon-btn.as-play{width:42px;height:42px}' +
       '.as-icon-btn{background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-main);border-radius:50%;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s ease}' +
       '.as-icon-btn:hover{border-color:var(--neon-pink);transform:translateY(-1px)}' +
       '.as-icon-btn:focus-visible{outline:2px solid var(--neon-pink);outline-offset:2px}' +
       '.as-icon-btn.as-play{background:var(--neon-pink);border-color:var(--neon-pink);color:#fff;width:48px;height:48px}' +
       /* -- Timer-view Music popover: compact self-contained player, no browsing -- */
-      '.tmp-now-playing{display:flex;align-items:center;gap:10px;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--border-color);text-align:left}' +
-      '.tmp-art{width:44px;height:44px;border-radius:10px;object-fit:cover;background:var(--bg-card-hover);flex-shrink:0}' +
+      '.tmp-now-playing{display:flex;align-items:center;gap:10px;text-align:left}' +
+      '.tmp-art{width:36px;height:36px;border-radius:8px;object-fit:cover;background:var(--bg-card-hover);flex-shrink:0}' +
       '.tmp-track-meta{min-width:0;flex:1}' +
-      '.tmp-track-name{font-weight:800;color:var(--text-main);font-size:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-      '.tmp-track-artist{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-      '.tmp-controls{display:flex;align-items:center;justify-content:center;gap:10px}' +
-      '.tmp-note{margin:0;font-size:12px;line-height:1.5;color:var(--text-muted);text-align:center;max-width:200px}' +
+      '.tmp-track-name{font-weight:800;color:var(--text-main);font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.tmp-track-artist{font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.tmp-controls{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-shrink:0}' +
+      '.tmp-controls .as-icon-btn{width:32px;height:32px}' +
+      '.tmp-controls .as-icon-btn.as-play{width:36px;height:36px}' +
+      '.tmp-note{margin:0;font-size:11px;line-height:1.4;color:var(--text-muted);text-align:left;max-width:none}' +
       '.tmp-note+.tmp-note{margin-top:8px}' +
       '#tmp-device-note{margin-top:10px}' +
       '.as-volume{display:flex;align-items:center;gap:10px;margin-top:14px}' +
@@ -348,21 +357,24 @@
       '<div class="card as-card" id="as-now-playing-card">' +
       '<div class="card-title">Now Playing<span style="text-transform:none;font-weight:600;">' +
       esc(s.display_name || '') + (premium ? ' · Premium' : ' · Free') + '</span></div>' +
-      '<div class="as-row">' +
+      '<div class="as-now-bar">' +
       '<img class="as-art" id="as-art" alt="Album art" src="" style="display:none;">' +
-      '<div style="flex:1;min-width:0;">' +
+      '<div class="as-now-meta">' +
       '<div class="as-track-name" id="as-track-name">Nothing playing right now</div>' +
       '<div class="as-track-artist" id="as-track-artist"></div>' +
-      renderPlayHint('as-note as-play-hint') +
-      '<div class="as-progress"><div class="as-progress-fill" id="as-progress-fill" style="width:0%;"></div></div>' +
-      '<div class="as-time-row"><span id="as-time-cur">0:00</span><span id="as-time-dur">0:00</span></div>' +
-      '</div></div>' +
+      '</div>' +
       (premium
         ? '<div class="as-controls">' +
           '<button class="as-icon-btn" data-action="prev" title="Previous"><i data-lucide="skip-back"></i></button>' +
           '<button class="as-icon-btn as-play" data-action="playpause" id="as-playpause" title="Play/Pause"><i data-lucide="play"></i></button>' +
           '<button class="as-icon-btn" data-action="next" title="Next"><i data-lucide="skip-forward"></i></button>' +
-          '</div>' +
+          '</div>'
+        : '') +
+      '</div>' +
+      renderPlayHint('as-note as-play-hint') +
+      (premium
+        ? '<div class="as-progress"><div class="as-progress-fill" id="as-progress-fill" style="width:0%;"></div></div>' +
+          '<div class="as-time-row"><span id="as-time-cur">0:00</span><span id="as-time-dur">0:00</span></div>' +
           '<div class="as-volume"><i data-lucide="volume-2" style="color:var(--text-muted);width:16px;height:16px;"></i>' +
           '<input type="range" id="as-volume-range" min="0" max="100" value="60"></div>'
         : '<p class="as-note">Playback control needs Spotify Premium. Pick a playlist below to preview it here instead.</p>') +
@@ -784,18 +796,17 @@
       '<img class="tmp-art" id="tmp-art" alt="" style="display:none;">' +
       '<div class="tmp-track-meta">' +
       '<div class="tmp-track-name" id="tmp-track-name">Nothing playing right now</div>' +
-      '<div class="tmp-track-artist" id="tmp-track-artist"></div>' +
+      '<div class="tmp-track-artist" id="tmp-track-artist">Open Spotify and play a song</div>' +
       '</div>' +
-      '</div>' +
-      renderPlayHint('tmp-note') +
       (s.premium
         ? '<div class="tmp-controls">' +
           '<button class="as-icon-btn" type="button" role="menuitem" data-action="prev" title="Previous track" aria-label="Previous track"><i data-lucide="skip-back"></i></button>' +
           '<button class="as-icon-btn as-play" type="button" role="menuitem" id="tmp-playpause" data-action="playpause" title="Play or pause" aria-label="Play or pause"><i data-lucide="play"></i></button>' +
           '<button class="as-icon-btn" type="button" role="menuitem" data-action="next" title="Next track" aria-label="Next track"><i data-lucide="skip-forward"></i></button>' +
-          '</div>' +
-          '<p class="tmp-note" id="tmp-device-note" hidden>No active device — open Spotify on a device to control playback.</p>'
-        : '<p class="tmp-note">Playback control needs Spotify Premium.</p>');
+          '</div>'
+        : '') +
+      '</div>' +
+      '<p class="tmp-note" id="tmp-device-note" hidden>No active device — open Spotify on a phone or computer.</p>';
     if (s.premium) setPlayPauseIcon('tmp-playpause', STATE.isPlaying);
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
   }

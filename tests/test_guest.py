@@ -83,6 +83,7 @@ def test_guest_apis_return_401(client):
     endpoints = [
         ("/api/state", "GET"),
         ("/api/leaderboard", "GET"),
+        ("/api/leaderboard/pets", "GET"),
         ("/api/spotify/status", "GET"),
         ("/api/support/messages", "GET"),
     ]

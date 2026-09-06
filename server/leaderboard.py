@@ -33,7 +33,27 @@ bp = flask.Blueprint("leaderboard", __name__)
 
 # A week's study time is bounded above by 7*24h -- see compute_week_seconds.
 MAX_WEEK_SECONDS = 7 * 24 * 60 * 60
+MAX_DAY_SECONDS = 24 * 60 * 60
+MAX_LIFETIME_SECONDS = 10 * 365 * 24 * 60 * 60
 TOP_N = 20
+PET_TOP_N = 10
+
+# Must stay in lockstep with index.html PET_LEVEL_COSTS_HOURS / PET_GARDEN_FORMS.
+PET_LEVEL_COSTS_HOURS = [2, 3, 5, 8, 12, 16, 22, 30, 40, 55, 75]
+PET_GARDEN_FORMS = [
+    "Seedling",
+    "Sprout Bun",
+    "Leaf Fox",
+    "Blossom Cat",
+    "Grove Owl",
+    "Orchard Stag",
+    "Canopy Wolf",
+    "Storm Cedar",
+    "Mountain Grove",
+    "Season Keeper",
+    "World Tree",
+    "Eternal Bloom",
+]
 
 MIN_NAME_LENGTH = 2
 MAX_NAME_LENGTH = 24
@@ -226,6 +246,100 @@ def compute_week_seconds(payload, week_start: datetime.date) -> int:
     return min(int(total), MAX_WEEK_SECONDS)
 
 
+def _session_seconds(entry) -> float:
+    if not isinstance(entry, dict):
+        return 0.0
+    secs = entry.get("durationSeconds")
+    if isinstance(secs, bool) or not isinstance(secs, (int, float)):
+        return 0.0
+    if not math.isfinite(secs) or secs < 0:
+        return 0.0
+    return float(secs)
+
+
+def compute_day_seconds(payload, day: datetime.date) -> int:
+    sessions = payload.get("sessions") if isinstance(payload, dict) else None
+    if not isinstance(sessions, list):
+        return 0
+    total = 0.0
+    day_str = day.isoformat()
+    for entry in sessions:
+        if not isinstance(entry, dict):
+            continue
+        date_raw = entry.get("date")
+        if not isinstance(date_raw, str) or date_raw[:10] != day_str:
+            continue
+        total += _session_seconds(entry)
+    return min(int(total), MAX_DAY_SECONDS)
+
+
+def compute_lifetime_seconds(payload) -> int:
+    sessions = payload.get("sessions") if isinstance(payload, dict) else None
+    if not isinstance(sessions, list):
+        return 0
+    total = 0.0
+    for entry in sessions:
+        total += _session_seconds(entry)
+    return min(int(total), MAX_LIFETIME_SECONDS)
+
+
+def pet_level_cost_hours(level: int) -> int:
+    if level <= len(PET_LEVEL_COSTS_HOURS):
+        return PET_LEVEL_COSTS_HOURS[level - 1]
+    return 100 + (level - 12) * 25
+
+
+def pet_from_seconds(seconds: int):
+    """Return (level, form_name) using the same garden ladder as the client."""
+    total_hours = max(0, int(seconds)) / 3600.0
+    level = 1
+    cumulative = 0.0
+    # Cap the climb so a crafted lifetime total cannot loop forever.
+    for _ in range(200):
+        next_cost = pet_level_cost_hours(level)
+        if total_hours < cumulative + next_cost:
+            break
+        cumulative += next_cost
+        level += 1
+    form = PET_GARDEN_FORMS[min(level, 12) - 1]
+    return level, form
+
+
+def current_day(local_date=None) -> datetime.date:
+    return _parse_client_local_date(local_date) or utcnow().date()
+
+
+def upsert_day_seconds(db, user_id: int, payload, local_date=None) -> None:
+    day = current_day(local_date)
+    seconds = compute_day_seconds(payload, day)
+    now = utcnow_iso()
+    db.execute(
+        """
+        INSERT INTO leaderboard_days (user_id, day_date, seconds, opted_in, updated_at)
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (user_id, day_date) DO UPDATE SET
+            seconds = excluded.seconds,
+            updated_at = excluded.updated_at
+        """,
+        (user_id, day.isoformat(), seconds, True, now),
+    )
+
+
+def upsert_lifetime_seconds(db, user_id: int, payload) -> None:
+    seconds = compute_lifetime_seconds(payload)
+    now = utcnow_iso()
+    db.execute(
+        """
+        INSERT INTO leaderboard_lifetime (user_id, seconds, updated_at)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (user_id) DO UPDATE SET
+            seconds = excluded.seconds,
+            updated_at = excluded.updated_at
+        """,
+        (user_id, seconds, now),
+    )
+
+
 def upsert_week_seconds(db, user_id: int, payload, local_date=None) -> None:
     """Recompute and store the caller's current-week total. Called from
     server/state.py:put_state on every successful PUT /api/state, using the
@@ -255,45 +369,33 @@ def upsert_week_seconds(db, user_id: int, payload, local_date=None) -> None:
         """,
         (user_id, week_start.isoformat(), seconds, True, now),
     )
+    upsert_day_seconds(db, user_id, payload, local_date=local_date)
+    upsert_lifetime_seconds(db, user_id, payload)
 
 
 # ------------------------------------------------------------------ routes
 
-@bp.route("/leaderboard", methods=["GET"])
-@login_required
-def get_leaderboard():
-    db = get_db()
-    user = flask.g.user
+def _board_from_table(db, user, table, date_col, date_value, limit=TOP_N):
     user_id = user["id"]
     my_public_name = user["public_name"]
-    # See current_week_start's docstring: `local_date` (the client's own
-    # local "today") keeps this read landing on the same week the client's
-    # own state syncs are writing into.
-    week_start = current_week_start(flask.request.args.get("local_date"))
-    week_start_str = week_start.isoformat()
-
     my_row = db.execute(
-        "SELECT seconds, opted_in FROM leaderboard_weeks WHERE user_id = %s AND week_start = %s",
-        (user_id, week_start_str),
+        "SELECT seconds, opted_in FROM {} WHERE user_id = %s AND {} = %s".format(table, date_col),
+        (user_id, date_value),
     ).fetchone()
     my_seconds = my_row["seconds"] if my_row is not None else 0
     my_opted_in = bool(my_row["opted_in"]) if my_row is not None else True
 
-    # Only opted-in users who have set a public name AND have a nonzero
-    # total are ranked, listed in `entries`, or countable as a participant --
-    # no name set means "hasn't opted into being publicly identifiable yet",
-    # which must behave the same as not being in `entries` at all.
     top_rows = db.execute(
         """
-        SELECT lw.user_id, lw.seconds, u.public_name
-        FROM leaderboard_weeks lw
-        JOIN users u ON u.id = lw.user_id
-        WHERE lw.week_start = %s AND lw.opted_in = %s AND lw.seconds > 0
+        SELECT t.user_id, t.seconds, u.public_name
+        FROM {} t
+        JOIN users u ON u.id = t.user_id
+        WHERE t.{} = %s AND t.opted_in = %s AND t.seconds > 0
               AND u.public_name IS NOT NULL
-        ORDER BY lw.seconds DESC, lw.user_id ASC
+        ORDER BY t.seconds DESC, t.user_id ASC
         LIMIT %s
-        """,
-        (week_start_str, True, TOP_N),
+        """.format(table, date_col),
+        (date_value, True, limit),
     ).fetchall()
 
     entries = []
@@ -309,17 +411,15 @@ def get_leaderboard():
 
     listed = my_opted_in and my_public_name is not None and my_seconds > 0
     if listed and my_rank is None:
-        # Not in the visible top N, but still has a real rank: 1 + how many
-        # listed participants strictly outrank them.
         better = db.execute(
             """
             SELECT COUNT(*) AS c
-            FROM leaderboard_weeks lw
-            JOIN users u ON u.id = lw.user_id
-            WHERE lw.week_start = %s AND lw.opted_in = %s AND lw.seconds > %s
+            FROM {} t
+            JOIN users u ON u.id = t.user_id
+            WHERE t.{} = %s AND t.opted_in = %s AND t.seconds > %s
                   AND u.public_name IS NOT NULL
-            """,
-            (week_start_str, True, my_seconds),
+            """.format(table, date_col),
+            (date_value, True, my_seconds),
         ).fetchone()
         my_rank = better["c"] + 1
     elif not listed:
@@ -328,16 +428,15 @@ def get_leaderboard():
     participants_row = db.execute(
         """
         SELECT COUNT(*) AS c
-        FROM leaderboard_weeks lw
-        JOIN users u ON u.id = lw.user_id
-        WHERE lw.week_start = %s AND lw.opted_in = %s AND lw.seconds > 0
+        FROM {} t
+        JOIN users u ON u.id = t.user_id
+        WHERE t.{} = %s AND t.opted_in = %s AND t.seconds > 0
               AND u.public_name IS NOT NULL
-        """,
-        (week_start_str, True),
+        """.format(table, date_col),
+        (date_value, True),
     ).fetchone()
 
-    return flask.jsonify({
-        "week_start": week_start_str,
+    return {
         "you": {
             "rank": my_rank,
             "seconds": my_seconds,
@@ -346,6 +445,112 @@ def get_leaderboard():
         },
         "entries": entries,
         "participants": participants_row["c"],
+    }
+
+
+@bp.route("/leaderboard", methods=["GET"])
+@login_required
+def get_leaderboard():
+    db = get_db()
+    user = flask.g.user
+    local_date = flask.request.args.get("local_date")
+    period = (flask.request.args.get("period") or "week").strip().lower()
+    if period not in ("week", "day"):
+        return json_error("validation_error", "period must be week or day.", 400)
+
+    if period == "day":
+        day_str = current_day(local_date).isoformat()
+        body = _board_from_table(db, user, "leaderboard_days", "day_date", day_str)
+        body["period"] = "day"
+        body["day"] = day_str
+        return flask.jsonify(body)
+
+    week_start_str = current_week_start(local_date).isoformat()
+    body = _board_from_table(db, user, "leaderboard_weeks", "week_start", week_start_str)
+    body["period"] = "week"
+    body["week_start"] = week_start_str
+    return flask.jsonify(body)
+
+
+@bp.route("/leaderboard/pets", methods=["GET"])
+@login_required
+def get_pet_leaderboard():
+    db = get_db()
+    user = flask.g.user
+    user_id = user["id"]
+    my_public_name = user["public_name"]
+    week_start_str = current_week_start(flask.request.args.get("local_date")).isoformat()
+
+    opt_row = db.execute(
+        "SELECT opted_in FROM leaderboard_weeks WHERE user_id = %s AND week_start = %s",
+        (user_id, week_start_str),
+    ).fetchone()
+    my_opted_in = bool(opt_row["opted_in"]) if opt_row is not None else True
+
+    life = db.execute(
+        "SELECT seconds FROM leaderboard_lifetime WHERE user_id = %s",
+        (user_id,),
+    ).fetchone()
+    my_seconds = life["seconds"] if life is not None else 0
+    my_level, my_form = pet_from_seconds(my_seconds)
+
+    top_rows = db.execute(
+        """
+        SELECT ll.user_id, ll.seconds, u.public_name, lw.opted_in
+        FROM leaderboard_lifetime ll
+        JOIN users u ON u.id = ll.user_id
+        LEFT JOIN leaderboard_weeks lw
+            ON lw.user_id = ll.user_id AND lw.week_start = %s
+        WHERE ll.seconds > 0 AND u.public_name IS NOT NULL
+              AND (lw.opted_in IS NULL OR lw.opted_in = %s)
+        ORDER BY ll.seconds DESC, ll.user_id ASC
+        LIMIT %s
+        """,
+        (week_start_str, True, PET_TOP_N),
+    ).fetchall()
+
+    entries = []
+    my_rank = None
+    for idx, row in enumerate(top_rows, start=1):
+        level, form = pet_from_seconds(row["seconds"])
+        entries.append({
+            "rank": idx,
+            "name": row["public_name"],
+            "seconds": row["seconds"],
+            "level": level,
+            "form": form,
+        })
+        if row["user_id"] == user_id:
+            my_rank = idx
+
+    listed = my_opted_in and my_public_name is not None and my_seconds > 0
+    if listed and my_rank is None:
+        better = db.execute(
+            """
+            SELECT COUNT(*) AS c
+            FROM leaderboard_lifetime ll
+            JOIN users u ON u.id = ll.user_id
+            LEFT JOIN leaderboard_weeks lw
+                ON lw.user_id = ll.user_id AND lw.week_start = %s
+            WHERE ll.seconds > %s AND u.public_name IS NOT NULL
+                  AND (lw.opted_in IS NULL OR lw.opted_in = %s)
+            """,
+            (week_start_str, my_seconds, True),
+        ).fetchone()
+        my_rank = better["c"] + 1
+    elif not listed:
+        my_rank = None
+
+    return flask.jsonify({
+        "you": {
+            "rank": my_rank,
+            "seconds": my_seconds,
+            "level": my_level,
+            "form": my_form,
+            "public_name": my_public_name,
+            "opted_in": my_opted_in,
+        },
+        "entries": entries,
     })
 
 
@@ -376,6 +581,17 @@ def put_opt():
             updated_at = excluded.updated_at
         """,
         (user_id, week_start_str, opted_in, now),
+    )
+    day_str = current_day(body.get("local_date")).isoformat()
+    db.execute(
+        """
+        INSERT INTO leaderboard_days (user_id, day_date, seconds, opted_in, updated_at)
+        VALUES (%s, %s, 0, %s, %s)
+        ON CONFLICT (user_id, day_date) DO UPDATE SET
+            opted_in = excluded.opted_in,
+            updated_at = excluded.updated_at
+        """,
+        (user_id, day_str, opted_in, now),
     )
     db.commit()
     return flask.jsonify({"ok": True})

@@ -477,7 +477,8 @@ def test_response_exposes_only_rank_name_seconds_in_entries(client, outbox):
     put_state(client, [session_today(1)])
     lb = client.get("/api/leaderboard", headers=JSON_HEADERS).get_json()
 
-    assert set(lb.keys()) == {"week_start", "you", "entries", "participants"}
+    assert set(lb.keys()) == {"week_start", "you", "entries", "participants", "period"}
+    assert lb["period"] == "week"
     assert set(lb["you"].keys()) == {"rank", "seconds", "public_name", "opted_in"}
     for entry in lb["entries"]:
         assert set(entry.keys()) == {"rank", "name", "seconds"}
@@ -753,3 +754,44 @@ def test_opt_uses_local_date_for_week_bucket(client, outbox, monkeypatch):
 
     lb = client.get("/api/leaderboard?local_date={}".format(monday.isoformat()), headers=JSON_HEADERS)
     assert lb.get_json()["you"]["opted_in"] is False
+
+
+def test_daily_leaderboard_ranks_today_only(client, outbox):
+    from server.db import utcnow
+
+    today = utcnow().date().isoformat()
+    yesterday = (utcnow().date() - datetime.timedelta(days=1)).isoformat()
+    register_verify(client, outbox, "daily-a@example.com")
+    set_name(client, "Daily Ace")
+    put_state(client, [
+        {"date": today, "course": "Math", "type": "Stopwatch", "durationSeconds": 3600, "timestamp": "10:00 AM", "hourOfDayExecuted": 10},
+        {"date": yesterday, "course": "Math", "type": "Stopwatch", "durationSeconds": 7200, "timestamp": "10:00 AM", "hourOfDayExecuted": 10},
+    ])
+    lb = client.get(
+        "/api/leaderboard?period=day&local_date={}".format(today),
+        headers=JSON_HEADERS,
+    ).get_json()
+    assert lb["period"] == "day"
+    assert lb["day"] == today
+    assert lb["you"]["seconds"] == 3600
+    assert lb["entries"][0]["name"] == "Daily Ace"
+    assert lb["entries"][0]["seconds"] == 3600
+
+
+def test_pet_leaderboard_uses_lifetime_seconds(client, outbox):
+    register_verify(client, outbox, "pet-champ@example.com")
+    set_name(client, "Pet Champ")
+    put_state(client, [session_today(10 * 3600)])
+    resp = client.get("/api/leaderboard/pets", headers=JSON_HEADERS)
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["you"]["form"] == "Blossom Cat"
+    assert data["you"]["level"] == 4
+    assert data["entries"][0]["name"] == "Pet Champ"
+    assert data["entries"][0]["form"] == "Blossom Cat"
+
+
+def test_invalid_leaderboard_period_rejected(client, outbox):
+    register_verify(client, outbox, "badperiod@example.com")
+    resp = client.get("/api/leaderboard?period=month", headers=JSON_HEADERS)
+    assert resp.status_code == 400
