@@ -791,6 +791,20 @@ def test_pet_leaderboard_uses_lifetime_seconds(client, outbox):
     assert data["entries"][0]["form"] == "Blossom Cat"
 
 
+def test_pet_leaderboard_backfills_missing_lifetime_rows(client, app, outbox):
+    register_verify(client, outbox, "sur-pet@example.com")
+    set_name(client, "sur")
+    put_state(client, [session_today(12 * 3600)])
+    with app.app_context():
+        from server.db import get_db
+        db = get_db()
+        db.execute("DELETE FROM leaderboard_lifetime")
+        db.commit()
+    data = client.get("/api/leaderboard/pets", headers=JSON_HEADERS).get_json()
+    names = [e["name"] for e in data["entries"]]
+    assert "sur" in names
+
+
 def test_invalid_leaderboard_period_rejected(client, outbox):
     register_verify(client, outbox, "badperiod@example.com")
     resp = client.get("/api/leaderboard?period=month", headers=JSON_HEADERS)

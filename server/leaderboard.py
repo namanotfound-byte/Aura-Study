@@ -20,6 +20,7 @@ server/db.py) rather than an alias:
   correlate a user beyond the name they explicitly chose to publish.
 """
 import datetime
+import json
 import math
 import re
 import unicodedata
@@ -472,10 +473,45 @@ def get_leaderboard():
     return flask.jsonify(body)
 
 
+def backfill_lifetime_from_user_state(db) -> None:
+    """Fill leaderboard_lifetime from saved study payloads.
+
+    The lifetime table was added after some accounts already had weeks on
+    the study leaderboard. Without this, those people (e.g. Sur) stay
+    invisible on the pet board until they happen to sync again.
+    """
+    rows = db.execute("SELECT user_id, payload FROM user_state").fetchall()
+    now = utcnow_iso()
+    for row in rows:
+        raw = row["payload"]
+        if isinstance(raw, str):
+            try:
+                payload = json.loads(raw)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                continue
+        elif isinstance(raw, dict):
+            payload = raw
+        else:
+            continue
+        seconds = compute_lifetime_seconds(payload)
+        db.execute(
+            """
+            INSERT INTO leaderboard_lifetime (user_id, seconds, updated_at)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (user_id) DO UPDATE SET
+                seconds = excluded.seconds,
+                updated_at = excluded.updated_at
+            """,
+            (row["user_id"], seconds, now),
+        )
+    db.commit()
+
+
 @bp.route("/leaderboard/pets", methods=["GET"])
 @login_required
 def get_pet_leaderboard():
     db = get_db()
+    backfill_lifetime_from_user_state(db)
     user = flask.g.user
     user_id = user["id"]
     my_public_name = user["public_name"]

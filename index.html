@@ -4,6 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>AuraStudy — Focus Timer & Study Tracker</title>
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('aurastudy_theme');
+                if (theme !== 'blue' && theme !== 'pink') {
+                    var raw = localStorage.getItem('aurastudy_state_v1') || localStorage.getItem('aurastudy_girly_v8');
+                    if (raw) theme = JSON.parse(raw).colourTheme;
+                }
+                if (theme === 'blue') document.documentElement.setAttribute('data-theme', 'blue');
+            } catch (e) { /* first paint stays default */ }
+        })();
+    </script>
     <!-- Chart.js for data analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Lucide Icons library -->
@@ -44,6 +56,7 @@
         }
 
         /* Blueberry Frost theme. Same layout, cool palette. */
+        :root[data-theme="blue"],
         body[data-theme="blue"] {
             --bg-main: #F2F8FF;
             --bg-sidebar: #E4F0FF;
@@ -523,16 +536,24 @@
             text-transform: uppercase;
         }
         .pet-gallery-btn {
-            margin-top: 10px;
-            background: none;
+            margin-top: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: var(--neon-pink);
+            color: #fff;
             border: none;
-            color: var(--neon-pink);
+            border-radius: 999px;
             font-weight: 800;
             font-size: 12px;
             cursor: pointer;
-            padding: 0;
-            text-decoration: underline;
+            padding: 8px 16px;
+            text-decoration: none;
+            box-shadow: 0 6px 16px rgba(var(--accent-rgb), 0.28);
         }
+        .pet-gallery-btn:hover { filter: brightness(1.05); text-decoration: none; }
+        .pet-form-req { font-size: 10px; color: var(--text-muted); font-weight: 700; margin-top: 4px; line-height: 1.35; }
         .pet-modal-backdrop {
             position: fixed;
             inset: 0;
@@ -3017,8 +3038,14 @@
 
         function applyColourTheme(themeKey, isInitialLoad = false) {
             appState.colourTheme = (themeKey === 'blue') ? 'blue' : 'pink';
-            if (appState.colourTheme === 'blue') document.body.setAttribute('data-theme', 'blue');
-            else document.body.removeAttribute('data-theme');
+            if (appState.colourTheme === 'blue') {
+                document.documentElement.setAttribute('data-theme', 'blue');
+                document.body.setAttribute('data-theme', 'blue');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                document.body.removeAttribute('data-theme');
+            }
+            try { localStorage.setItem('aurastudy_theme', appState.colourTheme); } catch (e) { /* ignore */ }
 
             const pinkBtn = document.getElementById('theme-btn-pink');
             const blueBtn = document.getElementById('theme-btn-blue');
@@ -4796,11 +4823,23 @@
             const currentName = (document.getElementById('pet-level-display-tag') || {}).innerText || '';
             grid.innerHTML = '';
             PET_GARDEN_FORMS.forEach((form, idx) => {
+                const level = idx + 1;
+                const reachHours = getPetCumulativeHoursForLevel(level);
+                const stepHours = getPetLevelCostHours(level === 1 ? 1 : level - 1);
+                let req = 'Start here — 0h 0m';
+                if (level > 1) {
+                    req = 'Reach at ' + formatDurationHM(reachHours * 3600);
+                    if (level < 12) req += ' · ' + formatDurationHM(getPetLevelCostHours(level) * 3600) + ' to next';
+                    else req += ' · then +25h 0m per level';
+                } else {
+                    req = 'Start here · ' + formatDurationHM(stepHours * 3600) + ' to Sprout Bun';
+                }
                 const tile = document.createElement('div');
                 tile.className = 'pet-form-tile' + (currentName.indexOf(form.name) !== -1 ? ' is-yours' : '');
                 tile.innerHTML = '<div class="pet-form-emoji">' + form.emoji + '</div>'
                     + '<div class="pet-form-name">' + escapeHtml(form.name) + '</div>'
-                    + '<div class="pet-form-lvl">Level ' + (idx + 1) + (idx === 11 ? '+' : '') + '</div>';
+                    + '<div class="pet-form-lvl">Level ' + level + (level === 12 ? '+' : '') + '</div>'
+                    + '<div class="pet-form-req">' + escapeHtml(req) + '</div>';
                 grid.appendChild(tile);
             });
             loadPetLeaderboard();

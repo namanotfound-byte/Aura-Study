@@ -21,6 +21,9 @@ def test_leaderboard_has_daily_weekly_toggle_and_no_auto_open_name_editor():
     assert "function celebrateNewUnlocks" in html
     assert "function openPetGallery" in html
     assert "mSum / 3600" in html
+    assert "aurastudy_theme" in html
+    assert "Reach at " in html
+    assert "text-decoration: none" in html
 
 
 def test_spotify_timer_bar_is_horizontal():
