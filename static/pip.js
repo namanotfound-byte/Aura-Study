@@ -203,7 +203,8 @@
   }
 
   function currentAmbientVar() {
-    return "var(--ambient-grad-" + (appState.ambientKey || "cottoncandy") + ")";
+    var key = appState.ambientKey || "pink-cottoncandy";
+    return "var(--timer-grad-" + key + ")";
   }
 
   // -- Web Notification fallback (path 3) -------------------------------

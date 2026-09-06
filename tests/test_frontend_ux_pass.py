@@ -72,12 +72,21 @@ def test_theme_and_timer_colors_live_in_settings_not_sidebar():
     assert "theme-btn-pink" not in sidebar_footer
     assert "settings-theme-btn-pink" in html
     assert "settings-theme-btn-blue" in html
-    assert 'id="settings-ambient-picker"' in html
+    assert 'id="settings-ambient-picker"' not in html
     timer_view = html[html.index('<!-- VIEW: TIMER -->'):html.index("<!-- VIEW: COURSES -->")]
-    assert "ambient-selector-bar" not in timer_view
-    assert "data-ambient-key=\"mintrefresh\"" in html
+    assert "ambient-selector-bar" in timer_view
+    assert 'id="timer-colour-control-wrap"' in timer_view
+    assert 'id="timer-colour-trigger-btn"' in timer_view
+    assert 'id="timer-colour-popover"' in timer_view
+    assert 'data-ambient-key="pink-mintrefresh"' in html
+    assert 'data-ambient-key="blue-mintrefresh"' in html
+    assert "function migrateAmbientKey" in html
+    assert "function timerGradCssVar" in html
+    root_block = html[html.index(":root {"):html.index("/* Blueberry Frost")]
+    assert root_block.count("--timer-grad-") == 14
     blue_theme_block = html[html.index(":root[data-theme=\"blue\"]"):html.index("/* Theme switch control")]
-    assert "--ambient-grad-mintrefresh" in blue_theme_block
+    assert "--timer-grad-" not in blue_theme_block
+    assert "--ambient-grad-" not in blue_theme_block
 
 
 def test_custom_404_template_exists():

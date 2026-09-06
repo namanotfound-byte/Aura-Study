@@ -38,14 +38,21 @@
             --text-main: #4A3E43;
             --text-muted: #8A7680;
             
-            /* High-Fidelity Light/Dark Gradients for the Timer Workspace Rooms */
-            --ambient-grad-cottoncandy: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%);
-            --ambient-grad-sunsetglow: linear-gradient(135deg, #FFE4E1 0%, #FFB6C1 50%, #E6E6FA 100%);
-            --ambient-grad-peachy: linear-gradient(135deg, #FFF0F5 0%, #FFE4B5 100%);
-            --ambient-grad-mintrefresh: linear-gradient(135deg, #E8F5E9 0%, #E0F7FA 100%);
-            --ambient-grad-lavenderdream: linear-gradient(135deg, #E6E6FA 0%, #FAD0C4 100%);
-            --ambient-grad-auroracute: linear-gradient(135deg, #D4FC79 0%, #96E6A1 100%);
-            --ambient-grad-magicaldark: linear-gradient(135deg, #2A0845 0%, #6441A5 50%, #FF007F 100%);
+            /* Timer background presets — theme-independent (14 total: 7 pink + 7 blue) */
+            --timer-grad-pink-cottoncandy: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%);
+            --timer-grad-pink-sunsetglow: linear-gradient(135deg, #FFE4E1 0%, #FFB6C1 50%, #E6E6FA 100%);
+            --timer-grad-pink-peachy: linear-gradient(135deg, #FFF0F5 0%, #FFE4B5 100%);
+            --timer-grad-pink-mintrefresh: linear-gradient(135deg, #E8F5E9 0%, #E0F7FA 100%);
+            --timer-grad-pink-lavenderdream: linear-gradient(135deg, #E6E6FA 0%, #FAD0C4 100%);
+            --timer-grad-pink-auroracute: linear-gradient(135deg, #D4FC79 0%, #96E6A1 100%);
+            --timer-grad-pink-magicaldark: linear-gradient(135deg, #2A0845 0%, #6441A5 50%, #FF007F 100%);
+            --timer-grad-blue-cottoncandy: linear-gradient(135deg, #D7ECFF 0%, #B5FFFC 100%);
+            --timer-grad-blue-sunsetglow: linear-gradient(135deg, #E1EEFF 0%, #B6D4F1 50%, #E6E6FA 100%);
+            --timer-grad-blue-peachy: linear-gradient(135deg, #F0F7FF 0%, #B5D8F5 100%);
+            --timer-grad-blue-mintrefresh: linear-gradient(135deg, #E0F4FF 0%, #C8F0E8 100%);
+            --timer-grad-blue-lavenderdream: linear-gradient(135deg, #E6ECFA 0%, #C4E3FF 100%);
+            --timer-grad-blue-auroracute: linear-gradient(135deg, #79E2FC 0%, #96C7E6 100%);
+            --timer-grad-blue-magicaldark: linear-gradient(135deg, #08213D 0%, #21497F 50%, #0090FF 100%);
 
             /* Accent used for every glow, shadow and highlight in the app */
             --accent-rgb: 255, 102, 178;
@@ -76,14 +83,6 @@
             --accent-secondary: #6C8CFF;
             --chart-grid: #E4F0FF;
             --accent-strong: #1B82C6;
-
-            --ambient-grad-cottoncandy: linear-gradient(135deg, #D7ECFF 0%, #B5FFFC 100%);
-            --ambient-grad-sunsetglow: linear-gradient(135deg, #E1EEFF 0%, #B6D4F1 50%, #E6E6FA 100%);
-            --ambient-grad-peachy: linear-gradient(135deg, #F0F7FF 0%, #B5D8F5 100%);
-            --ambient-grad-mintrefresh: linear-gradient(135deg, #E0F4FF 0%, #C8F0E8 100%);
-            --ambient-grad-lavenderdream: linear-gradient(135deg, #E6ECFA 0%, #C4E3FF 100%);
-            --ambient-grad-auroracute: linear-gradient(135deg, #79E2FC 0%, #96C7E6 100%);
-            --ambient-grad-magicaldark: linear-gradient(135deg, #08213D 0%, #21497F 50%, #0090FF 100%);
         }
 
         /* Theme switch control (Settings only) */
@@ -98,18 +97,6 @@
             border-radius: 16px;
         }
 
-        .settings-ambient-picker {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 8px;
-        }
-
-        .settings-ambient-picker .ambient-preset-dot {
-            width: 28px;
-            height: 28px;
-        }
-
         .settings-appearance-label {
             display: block;
             font-size: 11px;
@@ -119,8 +106,7 @@
             color: var(--text-muted);
         }
 
-        .settings-appearance-label + .settings-theme-row,
-        .settings-appearance-label + .settings-ambient-picker {
+        .settings-appearance-label + .settings-theme-row {
             margin-bottom: 20px;
         }
 
@@ -858,7 +844,7 @@
         .timer-fullscreen-view {
             height: 100%;
             min-height: 100%;
-            background: var(--ambient-grad-cottoncandy);
+            background: var(--timer-grad-pink-cottoncandy);
             display: flex;
             flex-direction: column;
             align-items: stretch;
@@ -1150,6 +1136,68 @@
         .timer-music-popover.is-opening {
             opacity: 0;
             transform: translateY(4px) scale(0.96);
+        }
+
+        /* Timer colour popover — opens upward from bottom-center chip */
+        .timer-colour-control-wrap {
+            position: relative;
+        }
+        .timer-colour-popover {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 700;
+            min-width: min(320px, calc(100vw - 24px));
+            max-width: min(420px, calc(100vw - 24px));
+            background: rgba(18, 14, 24, 0.88);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 12px 14px;
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+            transform-origin: bottom center;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-colour-popover {
+            background: rgba(255, 255, 255, 0.94);
+            border-color: var(--border-color);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
+        }
+        .timer-colour-popover[hidden] { display: none; }
+        .timer-colour-popover.is-opening {
+            opacity: 0;
+            transform: translateX(-50%) translateY(4px) scale(0.96);
+        }
+        .timer-colour-popover-inner {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .timer-colour-group-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: rgba(255, 255, 255, 0.55);
+            margin-top: 2px;
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-colour-group-label {
+            color: var(--text-muted);
+        }
+        .timer-colour-popover .ambient-selector-bar {
+            margin: 0;
+        }
+        .timer-colour-popover .ambient-preset-dot {
+            width: 22px;
+            height: 22px;
+        }
+        .timer-colour-chip-label {
+            letter-spacing: 0.02em;
+        }
+        @media (max-width: 480px) {
+            .timer-colour-chip-label { display: none; }
         }
 
         /* Mode chips — studywithme-style pills above the clock */
@@ -2596,6 +2644,38 @@
                             <div class="timer-music-popover" id="timer-music-popover" role="menu" aria-label="Music controls" hidden></div>
                         </div>
                     </div>
+                    <div class="timer-stage-footer-center">
+                        <div class="timer-colour-control-wrap" id="timer-colour-control-wrap">
+                            <button class="timer-floating-interactive-trigger-btn" id="timer-colour-trigger-btn" type="button" title="Timer background colour" aria-label="Timer background colour" aria-haspopup="true" aria-expanded="false" aria-controls="timer-colour-popover">
+                                <i data-lucide="palette" style="width: 14px; height: 14px;"></i>
+                                <span class="timer-colour-chip-label tfi-label">Colour</span>
+                            </button>
+                            <div class="timer-colour-popover" id="timer-colour-popover" role="menu" aria-label="Timer background colours" hidden>
+                                <div class="timer-colour-popover-inner">
+                                    <span class="timer-colour-group-label">Pink hues</span>
+                                    <div class="ambient-selector-bar" id="timer-colour-picker-pink">
+                                        <div class="ambient-preset-dot" data-ambient-key="pink-cottoncandy" data-ambient-dark="false" style="background: var(--timer-grad-pink-cottoncandy);" title="Cotton Candy Dream" onclick="selectAmbientEnvironmentPreset('pink-cottoncandy', false, this)"></div>
+                                        <div class="ambient-preset-dot" data-ambient-key="pink-sunsetglow" data-ambient-dark="false" style="background: var(--timer-grad-pink-sunsetglow);" title="Sunset Lavender Glow" onclick="selectAmbientEnvironmentPreset('pink-sunsetglow', false, this)"></div>
+                                        <div class="ambient-preset-dot" data-ambient-key="pink-peachy" data-ambient-dark="false" style="background: var(--timer-grad-pink-peachy);" title="Sweet Peach Aura" onclick="selectAmbientEnvironmentPreset('pink-peachy', false, this)"></div>
+                                        <div class="ambient-preset-dot" data-ambient-key="pink-mintrefresh" data-ambient-dark="false" style="background: var(--timer-grad-pink-mintrefresh);" title="Minty Refresh Glow" onclick="selectAmbientEnvironmentPreset('pink-mintrefresh', false, this)"></div>
+                                        <div class="ambient-preset-dot" data-ambient-key="pink-lavenderdream" data-ambient-dark="false" style="background: var(--timer-grad-pink-lavenderdream);" title="Lavender Macaron" onclick="selectAmbientEnvironmentPreset('pink-lavenderdream', false, this)"></div>
+                                        <div class="ambient-preset-dot" data-ambient-key="pink-auroracute" data-ambient-dark="false" style="background: var(--timer-grad-pink-auroracute);" title="Aurora Glow" onclick="selectAmbientEnvironmentPreset('pink-auroracute', false, this)"></div>
+                                        <div class="ambient-preset-dot" data-ambient-key="pink-magicaldark" data-ambient-dark="true" style="background: var(--timer-grad-pink-magicaldark);" title="Magical Dark Galaxy" onclick="selectAmbientEnvironmentPreset('pink-magicaldark', true, this)"></div>
+                                    </div>
+                                    <span class="timer-colour-group-label">Blue hues</span>
+                                    <div class="ambient-selector-bar" id="timer-colour-picker-blue">
+                                        <div class="ambient-preset-dot" data-ambient-key="blue-cottoncandy" data-ambient-dark="false" style="background: var(--timer-grad-blue-cottoncandy);" title="Frost Cotton Candy" onclick="selectAmbientEnvironmentPreset('blue-cottoncandy', false, this)"></div>
+                                        <div class="ambient-preset-dot" data-ambient-key="blue-sunsetglow" data-ambient-dark="false" style="background: var(--timer-grad-blue-sunsetglow);" title="Frost Sunset Glow" onclick="selectAmbientEnvironmentPreset('blue-sunsetglow', false, this)"></div>
+                                        <div class="ambient-preset-dot" data-ambient-key="blue-peachy" data-ambient-dark="false" style="background: var(--timer-grad-blue-peachy);" title="Frost Peach Aura" onclick="selectAmbientEnvironmentPreset('blue-peachy', false, this)"></div>
+                                        <div class="ambient-preset-dot" data-ambient-key="blue-mintrefresh" data-ambient-dark="false" style="background: var(--timer-grad-blue-mintrefresh);" title="Frost Mint Refresh" onclick="selectAmbientEnvironmentPreset('blue-mintrefresh', false, this)"></div>
+                                        <div class="ambient-preset-dot" data-ambient-key="blue-lavenderdream" data-ambient-dark="false" style="background: var(--timer-grad-blue-lavenderdream);" title="Frost Lavender Macaron" onclick="selectAmbientEnvironmentPreset('blue-lavenderdream', false, this)"></div>
+                                        <div class="ambient-preset-dot" data-ambient-key="blue-auroracute" data-ambient-dark="false" style="background: var(--timer-grad-blue-auroracute);" title="Frost Aurora Glow" onclick="selectAmbientEnvironmentPreset('blue-auroracute', false, this)"></div>
+                                        <div class="ambient-preset-dot" data-ambient-key="blue-magicaldark" data-ambient-dark="true" style="background: var(--timer-grad-blue-magicaldark);" title="Blue Dark Galaxy" onclick="selectAmbientEnvironmentPreset('blue-magicaldark', true, this)"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="timer-stage-footer-right">
                         <button class="timer-floating-interactive-trigger-btn timer-floating-circle-btn" onclick="toggleNativeWindowFullscreenEngine()" title="Toggle Fullscreen Mode" aria-label="Toggle fullscreen">
                             <i data-lucide="maximize-2" id="fullscreen-icon-indicator" style="width: 16px; height: 16px;"></i>
@@ -2795,7 +2875,7 @@
 
             <div class="card" style="max-width: 600px; margin-top: 24px;">
                 <div class="card-title">Appearance</div>
-                <p class="text-muted" style="font-size: 12px; margin-top: -10px; margin-bottom: 16px;">Choose your app theme and timer background colour.</p>
+                <p class="text-muted" style="font-size: 12px; margin-top: -10px; margin-bottom: 16px;">Choose your app colour theme. Timer background colours are on the Timer view.</p>
 
                 <span class="settings-appearance-label">Colour Theme</span>
                 <div class="settings-theme-row">
@@ -2807,17 +2887,6 @@
                         <span class="theme-swatch" style="background: linear-gradient(135deg, #2F9BE0, #6C8CFF);"></span>
                         Blue
                     </button>
-                </div>
-
-                <span class="settings-appearance-label">Timer Background</span>
-                <div class="settings-ambient-picker" id="settings-ambient-picker">
-                    <div class="ambient-preset-dot" data-ambient-key="cottoncandy" data-ambient-dark="false" style="background: var(--ambient-grad-cottoncandy);" title="Cotton Candy Dream" onclick="selectAmbientEnvironmentPreset('cottoncandy', false, this)"></div>
-                    <div class="ambient-preset-dot" data-ambient-key="sunsetglow" data-ambient-dark="false" style="background: var(--ambient-grad-sunsetglow);" title="Sunset Lavender Glow" onclick="selectAmbientEnvironmentPreset('sunsetglow', false, this)"></div>
-                    <div class="ambient-preset-dot" data-ambient-key="peachy" data-ambient-dark="false" style="background: var(--ambient-grad-peachy);" title="Sweet Peach Aura" onclick="selectAmbientEnvironmentPreset('peachy', false, this)"></div>
-                    <div class="ambient-preset-dot" data-ambient-key="mintrefresh" data-ambient-dark="false" style="background: var(--ambient-grad-mintrefresh);" title="Minty Refresh Glow" onclick="selectAmbientEnvironmentPreset('mintrefresh', false, this)"></div>
-                    <div class="ambient-preset-dot" data-ambient-key="lavenderdream" data-ambient-dark="false" style="background: var(--ambient-grad-lavenderdream);" title="Lavender Macaron" onclick="selectAmbientEnvironmentPreset('lavenderdream', false, this)"></div>
-                    <div class="ambient-preset-dot" data-ambient-key="auroracute" data-ambient-dark="false" style="background: var(--ambient-grad-auroracute);" title="Aurora Glow" onclick="selectAmbientEnvironmentPreset('auroracute', false, this)"></div>
-                    <div class="ambient-preset-dot" data-ambient-key="magicaldark" data-ambient-dark="true" style="background: var(--ambient-grad-magicaldark);" title="Magical Dark Galaxy" onclick="selectAmbientEnvironmentPreset('magicaldark', true, this)"></div>
                 </div>
             </div>
 
@@ -2973,7 +3042,7 @@
             ],
             selectedCourse: "Math",
             selectedMode: "countdown",
-            ambientKey: "cottoncandy",
+            ambientKey: "pink-cottoncandy",
             isDarkAmbient: false,
             colourTheme: "blue", // Phase 4 §6: brand-new users start on blue; anyone with a saved theme keeps it (see loadStateFromLocalStorageRegister)
             streak: 0
@@ -3178,6 +3247,7 @@
                 // (see onHelpViewShown / switchView). Guests stay local-only.
                 if (!(window.AuraGuest && AuraGuest.isGuest())) loadHelpMessages();
                 if (typeof AuraSpotify !== 'undefined' && !(window.AuraGuest && AuraGuest.isGuest())) AuraSpotify.init();
+                initTimerColourPopover();
                 if (typeof AuraFocus !== 'undefined') AuraFocus.init();
                 syncFullscreenIcon();
                 restorePersistedActiveView();
@@ -3312,14 +3382,6 @@
                 blueBtn.classList.toggle('active', appState.colourTheme === 'blue');
             }
 
-            syncSettingsAmbientPicker();
-
-            // The timer room background is painted inline, so repaint it in the new palette
-            const containerNode = document.getElementById('timer-view-container');
-            if (containerNode && appState.ambientKey) {
-                containerNode.style.background = `var(--ambient-grad-${appState.ambientKey})`;
-            }
-
             if (!isInitialLoad) {
                 saveStateToLocalStorageRegister();
                 if (operationalBarChartInstance) buildAnalyticsChartCanvasComponent();
@@ -3353,6 +3415,8 @@
                     if(typeof parsed.isDarkAmbient === 'boolean') appState.isDarkAmbient = parsed.isDarkAmbient;
                 } catch(e) { console.error(e); }
             }
+            appState.ambientKey = migrateAmbientKey(appState.ambientKey, appState.colourTheme);
+            appState.isDarkAmbient = ambientPresetIsDark(appState.ambientKey);
             applyColourTheme(appState.colourTheme, true);
             applyAmbientEnvironmentPreset(appState.ambientKey, appState.isDarkAmbient);
             document.getElementById('settings-user-email').value = appState.profile.email;
@@ -3639,8 +3703,9 @@
             // rather than leave it open-but-invisible with its outside-click/
             // Escape listeners still attached.
             const wasTimerActive = previouslyActivePanel && previouslyActivePanel.id === 'view-timer';
-            if (wasTimerActive && targetPanelKey !== 'timer' && typeof AuraSpotify !== 'undefined') {
-                AuraSpotify.closeMusicPopover();
+            if (wasTimerActive && targetPanelKey !== 'timer') {
+                if (typeof AuraSpotify !== 'undefined') AuraSpotify.closeMusicPopover();
+                closeTimerColourPopover();
             }
 
             document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
@@ -3663,7 +3728,6 @@
             else if (targetPanelKey === 'spotify' && typeof AuraSpotify !== 'undefined') AuraSpotify.onViewShown();
             else if (targetPanelKey === 'settings') {
                 refreshSettingsSpotifyStatus();
-                syncSettingsAmbientPicker();
             }
             else if (targetPanelKey === 'leaderboard') startLeaderboardPolling();
             else if (targetPanelKey === 'help') onHelpViewShown();
@@ -5450,8 +5514,85 @@
                 })
                 .catch(() => { el.textContent = 'Could not load Spotify status.'; });
         }
-        function syncSettingsAmbientPicker() {
-            document.querySelectorAll('#settings-ambient-picker .ambient-preset-dot').forEach((dot) => {
+        function timerGradCssVar(presetKey) {
+            return 'var(--timer-grad-' + (presetKey || 'pink-cottoncandy') + ')';
+        }
+
+        const LEGACY_AMBIENT_KEYS = ['cottoncandy', 'sunsetglow', 'peachy', 'mintrefresh', 'lavenderdream', 'auroracute', 'magicaldark'];
+
+        function migrateAmbientKey(legacyKey, colourTheme) {
+            const themePrefix = colourTheme === 'blue' ? 'blue' : 'pink';
+            if (!legacyKey) return themePrefix + '-cottoncandy';
+            if (legacyKey.indexOf('pink-') === 0 || legacyKey.indexOf('blue-') === 0) return legacyKey;
+            if (LEGACY_AMBIENT_KEYS.indexOf(legacyKey) !== -1) return themePrefix + '-' + legacyKey;
+            return themePrefix + '-cottoncandy';
+        }
+
+        function ambientPresetIsDark(presetKey) {
+            return presetKey === 'pink-magicaldark' || presetKey === 'blue-magicaldark';
+        }
+
+        let timerColourPopoverOpen = false;
+        let timerColourOutsideHandler = null;
+        let timerColourKeyHandler = null;
+
+        function closeTimerColourPopover() {
+            if (!timerColourPopoverOpen) return;
+            timerColourPopoverOpen = false;
+            const popover = document.getElementById('timer-colour-popover');
+            const trigger = document.getElementById('timer-colour-trigger-btn');
+            if (popover) {
+                popover.hidden = true;
+                popover.classList.remove('is-opening');
+            }
+            if (trigger) trigger.setAttribute('aria-expanded', 'false');
+            if (timerColourOutsideHandler) {
+                document.removeEventListener('pointerdown', timerColourOutsideHandler, true);
+                timerColourOutsideHandler = null;
+            }
+            if (timerColourKeyHandler) {
+                document.removeEventListener('keydown', timerColourKeyHandler, true);
+                timerColourKeyHandler = null;
+            }
+        }
+
+        function openTimerColourPopover() {
+            const popover = document.getElementById('timer-colour-popover');
+            const trigger = document.getElementById('timer-colour-trigger-btn');
+            if (!popover || !trigger) return;
+            if (typeof AuraSpotify !== 'undefined') AuraSpotify.closeMusicPopover();
+            if (timerColourPopoverOpen) {
+                closeTimerColourPopover();
+                return;
+            }
+            timerColourPopoverOpen = true;
+            popover.hidden = false;
+            popover.classList.add('is-opening');
+            requestAnimationFrame(function () { popover.classList.remove('is-opening'); });
+            trigger.setAttribute('aria-expanded', 'true');
+            syncTimerColourPicker();
+            timerColourOutsideHandler = function (e) {
+                const wrap = document.getElementById('timer-colour-control-wrap');
+                if (wrap && !wrap.contains(e.target)) closeTimerColourPopover();
+            };
+            document.addEventListener('pointerdown', timerColourOutsideHandler, true);
+            timerColourKeyHandler = function (e) {
+                if (e.key === 'Escape') closeTimerColourPopover();
+            };
+            document.addEventListener('keydown', timerColourKeyHandler, true);
+        }
+
+        function initTimerColourPopover() {
+            const trigger = document.getElementById('timer-colour-trigger-btn');
+            if (!trigger) return;
+            trigger.addEventListener('click', function (e) {
+                e.stopPropagation();
+                openTimerColourPopover();
+            });
+        }
+
+        function syncTimerColourPicker() {
+            document.querySelectorAll('#timer-colour-popover .ambient-preset-dot').forEach(function (dot) {
                 const key = dot.getAttribute('data-ambient-key');
                 dot.classList.toggle('active', key === appState.ambientKey);
             });
@@ -5462,10 +5603,10 @@
             if (!containerNode || !presetKey) return;
             appState.ambientKey = presetKey;
             appState.isDarkAmbient = !!isDarkActive;
-            containerNode.style.background = 'var(--ambient-grad-' + presetKey + ')';
+            containerNode.style.background = timerGradCssVar(presetKey);
             if (isDarkActive) containerNode.classList.add('dark-mode-active');
             else containerNode.classList.remove('dark-mode-active');
-            syncSettingsAmbientPicker();
+            syncTimerColourPicker();
         }
 
         function selectAmbientEnvironmentPreset(presetKey, isDarkActive, dotElementRef) {
@@ -5473,7 +5614,7 @@
             saveStateToLocalStorageRegister();
             localStorage.setItem('aurastudy_tinkered_flag', 'true');
             if (dotElementRef) {
-                document.querySelectorAll('.ambient-preset-dot').forEach(d => d.classList.remove('active'));
+                document.querySelectorAll('#timer-colour-popover .ambient-preset-dot').forEach(function (d) { d.classList.remove('active'); });
                 dotElementRef.classList.add('active');
             }
         }
