@@ -46,6 +46,13 @@ def test_active_view_is_persisted_and_restored_after_bootstrap():
     assert "persistActiveView(targetPanelKey)" in html
     assert "restorePersistedActiveView()" in html
     assert "GUEST_LOCKED_VIEWS" in html
+    assert "'leaderboard'" not in html[html.index("GUEST_LOCKED_VIEWS"):html.index("GUEST_LOCKED_VIEWS") + 80]
+    assert "leaderboardRankMedal" in html
+    assert "pet-journey-stage" in html
+    assert "Ant" in html
+    assert "Lion" in html
+    assert "trophy-medal-emoji" in html
+    assert "maybePromptGuestLogin" in _read("static", "guest.js")
     assert "function isViewAccessible" in html
 
 

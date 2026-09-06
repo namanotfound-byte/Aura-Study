@@ -28,7 +28,7 @@ import unicodedata
 import flask
 
 from .db import get_db, utcnow, utcnow_iso
-from .security import INTEGRITY_ERRORS, json_error, login_required, require_csrf
+from .security import INTEGRITY_ERRORS, json_error, login_or_guest_read, login_required, require_csrf
 
 bp = flask.Blueprint("leaderboard", __name__)
 
@@ -42,18 +42,18 @@ PET_TOP_N = 10
 # Must stay in lockstep with index.html PET_LEVEL_COSTS_HOURS / PET_GARDEN_FORMS.
 PET_LEVEL_COSTS_HOURS = [2, 3, 5, 8, 12, 16, 22, 30, 40, 55, 75]
 PET_GARDEN_FORMS = [
-    "Seedling",
-    "Sprout Bun",
-    "Leaf Fox",
-    "Blossom Cat",
-    "Grove Owl",
-    "Orchard Stag",
-    "Canopy Wolf",
-    "Storm Cedar",
-    "Mountain Grove",
-    "Season Keeper",
-    "World Tree",
-    "Eternal Bloom",
+    "Ant",
+    "Beetle",
+    "Frog",
+    "Lizard",
+    "Snake",
+    "Owl",
+    "Monkey",
+    "Crocodile",
+    "Leopard",
+    "Tiger",
+    "Elephant",
+    "Lion",
 ]
 
 MIN_NAME_LENGTH = 2
@@ -449,16 +449,105 @@ def _board_from_table(db, user, table, date_col, date_value, limit=TOP_N):
     }
 
 
+def _board_guest_view(db, table, date_col, date_value, limit=TOP_N):
+    top_rows = db.execute(
+        """
+        SELECT t.user_id, t.seconds, u.public_name
+        FROM {} t
+        JOIN users u ON u.id = t.user_id
+        WHERE t.{} = %s AND t.opted_in = %s AND t.seconds > 0
+              AND u.public_name IS NOT NULL
+        ORDER BY t.seconds DESC, t.user_id ASC
+        LIMIT %s
+        """.format(table, date_col),
+        (date_value, True, limit),
+    ).fetchall()
+
+    entries = []
+    for idx, row in enumerate(top_rows, start=1):
+        entries.append({
+            "rank": idx,
+            "name": row["public_name"],
+            "seconds": row["seconds"],
+        })
+
+    participants_row = db.execute(
+        """
+        SELECT COUNT(*) AS c
+        FROM {} t
+        JOIN users u ON u.id = t.user_id
+        WHERE t.{} = %s AND t.opted_in = %s AND t.seconds > 0
+              AND u.public_name IS NOT NULL
+        """.format(table, date_col),
+        (date_value, True),
+    ).fetchone()
+
+    return {
+        "you": None,
+        "entries": entries,
+        "participants": participants_row["c"],
+        "guest_view": True,
+    }
+
+
+def _pet_entries_guest_view(db, week_start_str):
+    backfill_lifetime_from_user_state(db)
+    top_rows = db.execute(
+        """
+        SELECT ll.user_id, ll.seconds, u.public_name, lw.opted_in
+        FROM leaderboard_lifetime ll
+        JOIN users u ON u.id = ll.user_id
+        LEFT JOIN leaderboard_weeks lw
+            ON lw.user_id = ll.user_id AND lw.week_start = %s
+        WHERE ll.seconds > 0 AND u.public_name IS NOT NULL
+              AND (lw.opted_in IS NULL OR lw.opted_in = %s)
+        ORDER BY ll.seconds DESC, ll.user_id ASC
+        LIMIT %s
+        """,
+        (week_start_str, True, PET_TOP_N),
+    ).fetchall()
+
+    entries = []
+    for idx, row in enumerate(top_rows, start=1):
+        level, form = pet_from_seconds(row["seconds"])
+        entries.append({
+            "rank": idx,
+            "name": row["public_name"],
+            "seconds": row["seconds"],
+            "level": level,
+            "form": form,
+        })
+
+    return {
+        "you": None,
+        "entries": entries,
+        "guest_view": True,
+    }
+
+
 @bp.route("/leaderboard", methods=["GET"])
-@login_required
+@login_or_guest_read
 def get_leaderboard():
     db = get_db()
-    user = flask.g.user
     local_date = flask.request.args.get("local_date")
     period = (flask.request.args.get("period") or "week").strip().lower()
     if period not in ("week", "day"):
         return json_error("validation_error", "period must be week or day.", 400)
 
+    if flask.g.get("guest_readonly"):
+        if period == "day":
+            day_str = current_day(local_date).isoformat()
+            body = _board_guest_view(db, "leaderboard_days", "day_date", day_str)
+            body["period"] = "day"
+            body["day"] = day_str
+            return flask.jsonify(body)
+        week_start_str = current_week_start(local_date).isoformat()
+        body = _board_guest_view(db, "leaderboard_weeks", "week_start", week_start_str)
+        body["period"] = "week"
+        body["week_start"] = week_start_str
+        return flask.jsonify(body)
+
+    user = flask.g.user
     if period == "day":
         day_str = current_day(local_date).isoformat()
         body = _board_from_table(db, user, "leaderboard_days", "day_date", day_str)
@@ -508,9 +597,14 @@ def backfill_lifetime_from_user_state(db) -> None:
 
 
 @bp.route("/leaderboard/pets", methods=["GET"])
-@login_required
+@login_or_guest_read
 def get_pet_leaderboard():
     db = get_db()
+    week_start_str = current_week_start(flask.request.args.get("local_date")).isoformat()
+
+    if flask.g.get("guest_readonly"):
+        return flask.jsonify(_pet_entries_guest_view(db, week_start_str))
+
     backfill_lifetime_from_user_state(db)
     user = flask.g.user
     user_id = user["id"]

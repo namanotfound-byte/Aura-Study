@@ -687,24 +687,73 @@
             margin-bottom: 14px;
         }
         .pet-form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0;
             margin-bottom: 20px;
+            max-height: min(52vh, 420px);
+            overflow-y: auto;
+            padding: 4px 2px 8px;
+        }
+        .pet-journey-stage {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+        }
+        .pet-journey-connector {
+            width: 2px;
+            height: 14px;
+            background: linear-gradient(to bottom, rgba(var(--accent-rgb), 0.15), rgba(var(--accent-rgb), 0.45));
+            margin: 0 auto 0 39px;
+            flex-shrink: 0;
         }
         .pet-form-tile {
+            flex: 1;
             border: 1px solid var(--border-color);
             border-radius: 16px;
-            padding: 12px 8px;
-            text-align: center;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
             background: var(--bg-card-hover);
+            min-width: 0;
         }
-        .pet-form-tile.is-yours { border-color: var(--neon-pink); box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2); }
-        .pet-form-emoji { font-size: 28px; line-height: 1.2; }
-        .pet-form-name { font-size: 12px; font-weight: 800; color: var(--text-main); margin-top: 4px; }
-        .pet-form-lvl { font-size: 11px; color: var(--text-muted); font-weight: 700; }
+        .pet-form-tile.is-yours {
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2);
+            background: rgba(var(--accent-rgb), 0.08);
+        }
+        .pet-form-tile.is-locked {
+            opacity: 0.55;
+        }
+        .pet-form-emoji { font-size: 26px; line-height: 1; flex-shrink: 0; }
+        .pet-form-body { min-width: 0; text-align: left; flex: 1; }
+        .pet-form-name { font-size: 13px; font-weight: 800; color: var(--text-main); }
+        .pet-form-lvl { font-size: 11px; color: var(--text-muted); font-weight: 700; margin-top: 2px; }
+        .pet-form-req { font-size: 10px; color: var(--text-muted); font-weight: 600; margin-top: 3px; line-height: 1.35; }
         .pet-top-row { display: flex; align-items: center; gap: 10px; padding: 8px 4px; }
-        .pet-top-row.is-top3 .pet-top-rank { color: var(--neon-pink); }
+        .pet-top-rank-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 52px;
+            flex-shrink: 0;
+            text-align: center;
+        }
+        .pet-top-medal { font-size: 22px; line-height: 1.1; }
+        .pet-top-medal-name {
+            font-size: 10px;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-top: 2px;
+            max-width: 52px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .pet-top-rank-num { font-weight: 800; font-size: 13px; color: var(--text-muted); width: 36px; text-align: center; flex-shrink: 0; }
 
         /* Pastel To-Do List Card Structure */
         .todo-engine-card {
@@ -1531,7 +1580,7 @@
         .trophy-item-pod.hue-ink.unlocked .trophy-avatar-ring { background: linear-gradient(135deg, #6C8CFF, #B57CFF); }
         .trophy-item-pod.hue-mystery.unlocked .trophy-avatar-ring { background: linear-gradient(135deg, #FF007F, #6441A5); }
 
-        .trophy-item-pod h4 {
+        .trophy-medal-emoji { font-size: 28px; line-height: 1; }
             font-size: 15px;
             font-weight: 800;
             margin-bottom: 6px;
@@ -1981,15 +2030,30 @@
             border: 1px solid rgba(var(--accent-rgb), 0.35);
         }
         .lb-row-rank {
-            width: 30px;
+            width: 52px;
             text-align: center;
             font-weight: 800;
             font-size: 13px;
             color: var(--text-muted);
             flex-shrink: 0;
         }
-        .lb-row.is-you .lb-row-rank,
-        .lb-row-rank.is-top3 { color: var(--neon-pink); }
+        .lb-rank-medal-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .lb-rank-medal-emoji { font-size: 22px; line-height: 1.1; }
+        .lb-rank-medal-name {
+            font-size: 10px;
+            font-weight: 800;
+            color: var(--text-main);
+            max-width: 52px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .lb-you-rank .lb-rank-medal-col { align-items: center; }
         .lb-row-alias { flex: 1; font-weight: 700; font-size: 13px; color: var(--text-main); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lb-row-hours { font-weight: 800; font-size: 13px; color: var(--text-main); flex-shrink: 0; }
         .lb-you-pill {
@@ -2352,13 +2416,13 @@
             
             <!-- Virtual Interactive Growing Pet Scoreboard Element -->
             <div class="pet-container-card">
-                <div class="pet-sprite-frame" id="pet-avatar-emoji">🌱</div>
+                <div class="pet-sprite-frame" id="pet-avatar-emoji">🐜</div>
                 <div class="pet-status-info">
-                    <div class="pet-level-badge" id="pet-level-display-tag">Level 1: Seedling</div>
-                    <h3 style="font-size:16px; font-weight:800; color:var(--text-main);" id="pet-headline-label">Mochi is just starting to grow.</h3>
+                    <div class="pet-level-badge" id="pet-level-display-tag">Level 1: Ant</div>
+                    <h3 style="font-size:16px; font-weight:800; color:var(--text-main);" id="pet-headline-label">The smallest hunter starts the chain.</h3>
                     <div class="progress-wrapper" style="margin-top:6px;">
                         <div class="progress-labels" style="font-size:11px; margin-bottom:4px;">
-                            <span id="pet-xp-numerical-label">0h 0m / 2h 0m toward Sprout Bun</span>
+                            <span id="pet-xp-numerical-label">0h 0m / 2h 0m toward Beetle</span>
                             <span style="font-weight:bold; color:var(--neon-purple);">Next Level</span>
                         </div>
                         <div class="progress-bar-bg" style="height:8px;">
@@ -2934,7 +2998,7 @@
         // time -- see persistRunningTimerSnapshot / attemptRunningTimerRecovery.
         const RUNNING_TIMER_STORAGE_KEY = 'aurastudy_running_timer_v1';
         const ACTIVE_VIEW_STORAGE_KEY = 'aurastudy_active_view';
-        const GUEST_LOCKED_VIEWS = ['spotify', 'leaderboard', 'help'];
+        const GUEST_LOCKED_VIEWS = ['spotify', 'help'];
         const TIMER_PERSIST_THROTTLE_MS = 5000;        // how often the live heartbeat snapshot is rewritten while running
         const MAX_UNOBSERVED_GAP_SECONDS = 90;          // a gap longer than this between two live ticks means the device was asleep/suspended, not just a slow tick -- see syncEngineRegistersFromClock
         const MAX_PLAUSIBLE_RECOVERY_SECONDS = 4 * 60 * 60; // beyond this a *recovered* (post-reload) session is capped and confirmed with the user rather than trusted silently -- see attemptRunningTimerRecovery
@@ -3117,6 +3181,10 @@
                 if (typeof AuraFocus !== 'undefined') AuraFocus.init();
                 syncFullscreenIcon();
                 restorePersistedActiveView();
+                if (window.AuraGuest && typeof AuraGuest.maybePromptGuestLogin === 'function') {
+                    const guestStudySecs = appState.sessions.reduce((acc, s) => acc + s.durationSeconds, 0);
+                    AuraGuest.maybePromptGuestLogin(guestStudySecs);
+                }
             });
             document.addEventListener('fullscreenchange', syncFullscreenIcon);
             document.addEventListener('webkitfullscreenchange', syncFullscreenIcon);
@@ -3301,21 +3369,21 @@
             updateEngineDisplayString();
         }
 
-        // Mochi Study Pet Growth Engine — garden ladder (hours to next level)
+        // Jungle food-chain pet growth engine (hours to next level)
         const PET_LEVEL_COSTS_HOURS = [2, 3, 5, 8, 12, 16, 22, 30, 40, 55, 75];
         const PET_GARDEN_FORMS = [
-            { emoji: "🌱", name: "Seedling", headline: "Mochi is just starting to grow." },
-            { emoji: "🐰", name: "Sprout Bun", headline: "Mochi sprouted into a little bun." },
-            { emoji: "🦊", name: "Leaf Fox", headline: "Mochi evolved into a leaf fox." },
-            { emoji: "🐱", name: "Blossom Cat", headline: "Mochi blossomed into a cat." },
-            { emoji: "🦉", name: "Grove Owl", headline: "Mochi watches over the grove." },
-            { emoji: "🦌", name: "Orchard Stag", headline: "Mochi roams the orchard." },
-            { emoji: "🐺", name: "Canopy Wolf", headline: "Mochi guards the canopy." },
-            { emoji: "🌲", name: "Storm Cedar", headline: "Mochi stands tall like a storm cedar." },
-            { emoji: "⛰️", name: "Mountain Grove", headline: "Mochi reached the mountain grove." },
-            { emoji: "🍂", name: "Season Keeper", headline: "Mochi keeps the seasons turning." },
-            { emoji: "🌳", name: "World Tree", headline: "Mochi grew into a world tree." },
-            { emoji: "🌸", name: "Eternal Bloom", headline: "Mochi reached eternal bloom." }
+            { emoji: "🐜", name: "Ant", headline: "The smallest hunter starts the chain." },
+            { emoji: "🪲", name: "Beetle", headline: "Hard shell, steady climb." },
+            { emoji: "🐸", name: "Frog", headline: "Quick leaps up the food chain." },
+            { emoji: "🦎", name: "Lizard", headline: "Sun-warmed and climbing higher." },
+            { emoji: "🐍", name: "Snake", headline: "Silent progress through the undergrowth." },
+            { emoji: "🦉", name: "Owl", headline: "Watching from the canopy." },
+            { emoji: "🐒", name: "Monkey", headline: "Swinging through the mid-level jungle." },
+            { emoji: "🐊", name: "Crocodile", headline: "Patient power by the river." },
+            { emoji: "🐆", name: "Leopard", headline: "Swift steps toward the apex." },
+            { emoji: "🐅", name: "Tiger", headline: "Striped strength of the jungle." },
+            { emoji: "🐘", name: "Elephant", headline: "Heavy footsteps, deep roots." },
+            { emoji: "🦁", name: "Lion", headline: "King of the jungle food chain." }
         ];
 
         function getPetLevelCostHours(level) {
@@ -3767,10 +3835,6 @@
         }
 
         function toggleEngineExecutionLoop() {
-            if (window.AuraGuest && AuraGuest.isGuest() && AuraGuest.isExpired() && !isEngineActivelyRunning) {
-                AuraGuest.requireAccount('Your guest trial has ended. Log in or sign up to start studying again.');
-                return;
-            }
             const startBtn = document.getElementById('timer-start-btn');
             if (isEngineActivelyRunning) {
                 syncEngineRegistersFromClock();
@@ -3961,6 +4025,7 @@
                 saveStateToLocalStorageRegister();
                 updatePetEvolutionState();
                 initDashboardMetricsAndCharts();
+                maybeNudgeGuestAfterStudy();
                 // Flush to the server immediately rather than waiting out
                 // sync.js's debounce -- see static/sync.js's flush().
                 if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
@@ -4124,6 +4189,7 @@
                     saveStateToLocalStorageRegister();
                     updatePetEvolutionState();
                     initDashboardMetricsAndCharts();
+                    maybeNudgeGuestAfterStudy();
                     if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
                     triggerAlertToast("Session Logged", `Logged a capped ${formatDurationHM(cappedSeconds)} for the interrupted session.`, true);
                 } else {
@@ -4265,12 +4331,11 @@
 
         function startLeaderboardPolling() {
             stopLeaderboardPolling();
-            if (window.AuraGuest && AuraGuest.isGuest()) {
-                document.getElementById('leaderboard-content').style.display = 'none';
-                document.getElementById('leaderboard-you-card').style.display = 'none';
-                showLeaderboardState('empty', AuraGuest.guestAccountMessage('the leaderboard'));
-                return;
-            }
+            const isGuestViewer = window.AuraGuest && AuraGuest.isGuest();
+            const optRow = document.querySelector('.lb-opt-row');
+            const youCard = document.getElementById('leaderboard-you-card');
+            if (optRow) optRow.style.display = isGuestViewer ? 'none' : '';
+            if (isGuestViewer && youCard) youCard.style.display = 'none';
             loadLeaderboardData();
             leaderboardPollTimer = setInterval(loadLeaderboardData, LEADERBOARD_POLL_MS);
         }
@@ -4418,7 +4483,6 @@
         }
 
         function loadLeaderboardData() {
-            if (window.AuraGuest && AuraGuest.isGuest()) return;
             if (leaderboardRequestInFlight) return;
             leaderboardRequestInFlight = true;
             if (!leaderboardHasLoadedOnce) showLeaderboardState('loading', 'Loading the leaderboard...');
@@ -4452,25 +4516,62 @@
                 });
         }
 
+        function leaderboardRankMedal(rank) {
+            if (rank === 1) return '🥇';
+            if (rank === 2) return '🥈';
+            if (rank === 3) return '🥉';
+            return null;
+        }
+
+        function renderLeaderboardRankCell(rankEl, rank, nameForMedal) {
+            const medal = leaderboardRankMedal(rank);
+            if (medal) {
+                rankEl.innerHTML = '';
+                const col = document.createElement('div');
+                col.className = 'lb-rank-medal-col';
+                const emoji = document.createElement('span');
+                emoji.className = 'lb-rank-medal-emoji';
+                emoji.textContent = medal;
+                col.appendChild(emoji);
+                if (nameForMedal) {
+                    const nm = document.createElement('span');
+                    nm.className = 'lb-rank-medal-name';
+                    nm.textContent = nameForMedal;
+                    col.appendChild(nm);
+                }
+                rankEl.appendChild(col);
+            } else {
+                rankEl.textContent = '#' + rank;
+            }
+        }
+
         function renderLeaderboardData(data) {
             const content = document.getElementById('leaderboard-content');
-            const you = (data && typeof data.you === 'object' && data.you) || {};
+            const isGuestViewer = !!(window.AuraGuest && AuraGuest.isGuest()) || !!(data && data.guest_view);
+            const you = (!isGuestViewer && data && typeof data.you === 'object' && data.you) || {};
             const entries = Array.isArray(data && data.entries) ? data.entries : [];
             const participants = typeof (data && data.participants) === 'number' ? data.participants : entries.length;
 
             const optToggle = document.getElementById('leaderboard-opt-toggle');
-            if (optToggle && !leaderboardOptTogglePending) optToggle.checked = !!you.opted_in;
+            if (optToggle && !leaderboardOptTogglePending && !isGuestViewer) optToggle.checked = !!you.opted_in;
 
-            leaderboardYouState = you;
-            renderLeaderboardYouCard(you, participants, entries);
+            if (isGuestViewer) {
+                const youCard = document.getElementById('leaderboard-you-card');
+                if (youCard) youCard.style.display = 'none';
+            } else {
+                leaderboardYouState = you;
+                renderLeaderboardYouCard(you, participants, entries);
+            }
 
             if (participants === 0 && entries.length === 0) {
                 content.style.display = 'none';
-                showLeaderboardState('empty', !you.public_name
-                    ? "No one has logged study time this week yet. Set a public name above to be ready to join once you start studying."
-                    : (you.opted_in
-                        ? "No one has logged study time this week yet -- be the first! Your total will show up here once you've studied a bit."
-                        : "No one has logged study time this week yet. Flip \"Show me on the board\" above to join in once you start studying."));
+                showLeaderboardState('empty', isGuestViewer
+                    ? "No one has logged study time yet. Sign up free to appear on the board once you start studying."
+                    : (!you.public_name
+                        ? "No one has logged study time this week yet. Set a public name above to be ready to join once you start studying."
+                        : (you.opted_in
+                            ? "No one has logged study time this week yet -- be the first! Your total will show up here once you've studied a bit."
+                            : "No one has logged study time this week yet. Flip \"Show me on the board\" above to join in once you start studying.")));
                 return;
             }
 
@@ -4480,7 +4581,7 @@
             const participantsLabel = document.getElementById('lb-participants-label');
             if (participantsLabel) participantsLabel.textContent = participants + (participants === 1 ? ' participant' : ' participants');
 
-            renderLeaderboardList(entries, you);
+            renderLeaderboardList(entries, you, isGuestViewer);
             renderLeaderboardChart(entries, you);
         }
 
@@ -4514,7 +4615,7 @@
 
             nameEl.textContent = you.public_name;
             if (you.rank) {
-                rankEl.textContent = '#' + you.rank;
+                renderLeaderboardRankCell(rankEl, you.rank, you.public_name);
                 subEl.textContent = 'You are shown as ' + you.public_name + ' on the board.';
             } else if (you.opted_in) {
                 rankEl.textContent = '--';
@@ -4611,31 +4712,38 @@
                 });
         }
 
-        function renderLeaderboardList(entries, you) {
+        function renderLeaderboardList(entries, you, isGuestViewer) {
             const list = document.getElementById('leaderboard-list');
             list.innerHTML = '';
             if (!entries.length) {
                 list.innerHTML = '<div class="lb-state-panel" style="padding:20px 12px;">No one is ranked yet ' + (leaderboardPeriod === 'day' ? 'today' : 'this week') + '.</div>';
                 return;
             }
-            const yourRank = you && you.rank;
+            const yourRank = (!isGuestViewer && you && you.rank) || null;
             entries.forEach(e => {
                 const isYou = yourRank != null && e.rank === yourRank;
                 const row = document.createElement('div');
                 row.className = 'lb-row' + (isYou ? ' is-you' : '');
 
                 const rankEl = document.createElement('div');
-                rankEl.className = 'lb-row-rank' + (e.rank <= 3 ? ' is-top3' : '');
-                rankEl.textContent = '#' + e.rank;
+                rankEl.className = 'lb-row-rank';
+                const showNameUnderMedal = e.rank <= 3;
+                renderLeaderboardRankCell(rankEl, e.rank, showNameUnderMedal ? e.name : null);
 
                 const nameEl = document.createElement('div');
                 nameEl.className = 'lb-row-alias';
-                nameEl.textContent = e.name;
+                if (e.rank <= 3) {
+                    nameEl.textContent = '';
+                    nameEl.style.display = 'none';
+                } else {
+                    nameEl.textContent = e.name;
+                }
                 if (isYou) {
                     const pill = document.createElement('span');
                     pill.className = 'lb-you-pill';
                     pill.textContent = 'You';
                     nameEl.appendChild(pill);
+                    nameEl.style.display = e.rank <= 3 ? 'none' : '';
                 }
 
                 const hoursEl = document.createElement('div');
@@ -5068,12 +5176,21 @@
                 return map[category] || 'hue-rose';
             }
 
+            const MEDAL_BADGE_EMOJI = {
+                b_bronze_medal: '🥉',
+                b_silver_medal: '🥈',
+                b_gold_medal: '🥇'
+            };
+
             fullBadgesDatabase.forEach((b, idx) => {
                 const unlocked = badgeStatus[b.id] || false; if(unlocked) unlockedCount++;
                 if (unlocked) newlyUnlocked.push({ id: b.id, title: b.title, desc: b.desc });
                 const el = document.createElement('div'); el.className = `trophy-item-pod ${unlocked ? 'unlocked' : 'locked'} ${trophyHueClass(b.category)}`;
                 el.style.setProperty('--i', String(idx));
-                el.innerHTML = `<div class="trophy-meta-tag">${b.category}</div><div class="trophy-avatar-ring"><i data-lucide="${b.icon}"></i></div><h4>${b.title}</h4><p>${b.desc}</p>`;
+                const ringIcon = MEDAL_BADGE_EMOJI[b.id]
+                    ? `<span class="trophy-medal-emoji">${MEDAL_BADGE_EMOJI[b.id]}</span>`
+                    : `<i data-lucide="${b.icon}"></i>`;
+                el.innerHTML = `<div class="trophy-meta-tag">${b.category}</div><div class="trophy-avatar-ring">${ringIcon}</div><h4>${b.title}</h4><p>${b.desc}</p>`;
                 badgesContainer.appendChild(el);
             });
 
@@ -5134,14 +5251,39 @@
             if (overlay) overlay.hidden = true;
         }
 
+        function maybeNudgeGuestAfterStudy() {
+            if (window.AuraGuest && typeof AuraGuest.maybePromptGuestLogin === 'function') {
+                const totalSecs = appState.sessions.reduce((acc, s) => acc + s.durationSeconds, 0);
+                AuraGuest.maybePromptGuestLogin(totalSecs);
+            }
+        }
+
+        function getCurrentPetLevel() {
+            const totalSeconds = appState.sessions.reduce((acc, s) => acc + s.durationSeconds, 0);
+            const totalHours = totalSeconds / 3600;
+            let level = 1;
+            while (totalHours >= getPetCumulativeHoursForLevel(level + 1)) {
+                level++;
+            }
+            return level;
+        }
+
         function openPetGallery() {
             const modal = document.getElementById('pet-gallery-modal');
             const grid = document.getElementById('pet-form-grid');
             if (!modal || !grid) return;
-            const currentName = (document.getElementById('pet-level-display-tag') || {}).innerText || '';
+            const currentLevel = getCurrentPetLevel();
             grid.innerHTML = '';
-            PET_GARDEN_FORMS.forEach((form, idx) => {
+            const formsTopToBottom = PET_GARDEN_FORMS.slice().reverse();
+            formsTopToBottom.forEach((form, revIdx) => {
+                const idx = PET_GARDEN_FORMS.length - 1 - revIdx;
                 const level = idx + 1;
+                if (revIdx > 0) {
+                    const connector = document.createElement('div');
+                    connector.className = 'pet-journey-connector';
+                    connector.setAttribute('aria-hidden', 'true');
+                    grid.appendChild(connector);
+                }
                 const reachHours = getPetCumulativeHoursForLevel(level);
                 const stepHours = getPetLevelCostHours(level === 1 ? 1 : level - 1);
                 let req = 'Start here — 0h 0m';
@@ -5150,15 +5292,22 @@
                     if (level < 12) req += ' · ' + formatDurationHM(getPetLevelCostHours(level) * 3600) + ' to next';
                     else req += ' · then +25h 0m per level';
                 } else {
-                    req = 'Start here · ' + formatDurationHM(stepHours * 3600) + ' to Sprout Bun';
+                    req = 'Start here · ' + formatDurationHM(stepHours * 3600) + ' to Beetle';
                 }
+                const stage = document.createElement('div');
+                stage.className = 'pet-journey-stage';
                 const tile = document.createElement('div');
-                tile.className = 'pet-form-tile' + (currentName.indexOf(form.name) !== -1 ? ' is-yours' : '');
+                const isYours = level === currentLevel;
+                const isLocked = level > currentLevel;
+                tile.className = 'pet-form-tile' + (isYours ? ' is-yours' : '') + (isLocked ? ' is-locked' : '');
                 tile.innerHTML = '<div class="pet-form-emoji">' + form.emoji + '</div>'
+                    + '<div class="pet-form-body">'
                     + '<div class="pet-form-name">' + escapeHtml(form.name) + '</div>'
                     + '<div class="pet-form-lvl">Level ' + level + (level === 12 ? '+' : '') + '</div>'
-                    + '<div class="pet-form-req">' + escapeHtml(req) + '</div>';
-                grid.appendChild(tile);
+                    + '<div class="pet-form-req">' + escapeHtml(req) + '</div>'
+                    + '</div>';
+                stage.appendChild(tile);
+                grid.appendChild(stage);
             });
             loadPetLeaderboard();
             modal.hidden = false;
@@ -5172,10 +5321,6 @@
         function loadPetLeaderboard() {
             const list = document.getElementById('pet-top-list');
             if (!list) return;
-            if (window.AuraGuest && AuraGuest.isGuest()) {
-                list.innerHTML = '<p class="text-muted" style="font-size:13px;">Sign in free to see who has the best pet.</p>';
-                return;
-            }
             list.innerHTML = '<p class="text-muted" style="font-size:13px;">Loading…</p>';
             fetch('/api/leaderboard/pets?local_date=' + encodeURIComponent(getLocalDateStr()), {
                 method: 'GET',
@@ -5188,15 +5333,24 @@
                     if (!res.ok) { list.innerHTML = '<p class="text-muted" style="font-size:13px;">Could not load pet rankings.</p>'; return; }
                     const entries = data.entries || [];
                     if (!entries.length) {
-                        list.innerHTML = '<p class="text-muted" style="font-size:13px;">No public pets ranked yet. Set a name and stay opted in.</p>';
+                        list.innerHTML = '<p class="text-muted" style="font-size:13px;">No public pets ranked yet.</p>';
                         return;
                     }
                     list.innerHTML = '';
                     entries.forEach(e => {
                         const row = document.createElement('div');
-                        row.className = 'pet-top-row' + (e.rank <= 3 ? ' is-top3' : '');
-                        row.innerHTML = '<strong class="pet-top-rank">#' + e.rank + '</strong>'
-                            + '<span style="flex:1;font-weight:700;">' + escapeHtml(e.name) + '</span>'
+                        row.className = 'pet-top-row';
+                        const medal = leaderboardRankMedal(e.rank);
+                        let rankHtml;
+                        if (medal) {
+                            rankHtml = '<div class="pet-top-rank-col"><span class="pet-top-medal">' + medal + '</span>'
+                                + '<span class="pet-top-medal-name">' + escapeHtml(e.name) + '</span></div>'
+                                + '<span style="flex:1;"></span>';
+                        } else {
+                            rankHtml = '<span class="pet-top-rank-num">#' + e.rank + '</span>'
+                                + '<span style="flex:1;font-weight:700;">' + escapeHtml(e.name) + '</span>';
+                        }
+                        row.innerHTML = rankHtml
                             + '<span style="font-size:12px;font-weight:800;">Lv ' + e.level + ' · ' + escapeHtml(e.form) + '</span>';
                         list.appendChild(row);
                     });

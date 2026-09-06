@@ -1,4 +1,4 @@
-"""Guest trial routing, cookie behaviour, and API access."""
+"""Guest routing, cookie behaviour, and API access."""
 import json
 import re
 from datetime import timedelta
@@ -37,6 +37,7 @@ def test_landing_includes_guest_cta(client):
     assert "Continue as guest" in body
     assert "/app?guest=1" in body
     assert "Completely free. No credit card. Nothing required." in body
+    assert "free forever" in body.lower()
 
 
 def test_guest_start_serves_app_without_login(client):
@@ -65,7 +66,7 @@ def test_logged_in_app_unchanged(client, outbox):
     assert '"is_guest":false' in body
 
 
-def test_expired_guest_cookie_still_serves_app(client, monkeypatch):
+def test_old_guest_cookie_still_serves_app(client, monkeypatch):
     started = utcnow() - timedelta(days=guest_module.GUEST_TRIAL_DAYS + 1)
     client.set_cookie(
         guest_module.GUEST_COOKIE_NAME,
@@ -75,21 +76,36 @@ def test_expired_guest_cookie_still_serves_app(client, monkeypatch):
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert 'id="view-timer"' in body
-    assert '"expired":true' in body
+    assert '"is_guest":true' in body
+    assert '"expired"' not in body
 
 
-def test_guest_apis_return_401(client):
+def test_guest_leaderboard_get_allowed_state_still_401(client):
     start_guest_trial(client)
-    endpoints = [
-        ("/api/state", "GET"),
+    allowed = [
         ("/api/leaderboard", "GET"),
         ("/api/leaderboard/pets", "GET"),
+    ]
+    for path, method in allowed:
+        resp = client.open(path, method=method, headers=JSON_HEADERS)
+        assert resp.status_code == 200, path
+
+    blocked = [
+        ("/api/state", "GET"),
         ("/api/spotify/status", "GET"),
         ("/api/support/messages", "GET"),
     ]
-    for path, method in endpoints:
+    for path, method in blocked:
         resp = client.open(path, method=method, headers=JSON_HEADERS)
         assert resp.status_code == 401, path
+
+    name_resp = client.put(
+        "/api/leaderboard/name",
+        data=json.dumps({"public_name": "GuestTry"}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert name_resp.status_code == 401
 
 
 def test_guest_cookie_is_httponly_samesite_lax(client):

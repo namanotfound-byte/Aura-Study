@@ -1,24 +1,19 @@
 /*
- * AuraStudy guest trial (static/guest.js)
- * ========================================
+ * AuraStudy guest mode (static/guest.js)
+ * ======================================
  * Reads window.__AURA_GUEST_CTX__ injected by the /app route (server/guest.py).
- * Exposes window.AuraGuest for soft-locking account-only features while keeping
- * localStorage study data intact after the 7-day window ends.
+ * Guests use the timer free forever with localStorage; account-only features
+ * (Spotify, Help, cloud sync, appearing on leaderboards) stay locked while
+ * leaderboard views remain read-only.
  */
 (function () {
   "use strict";
 
-  var TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
+  var NUDGE_INTERVAL_HOURS = 2.5;
+  var NUDGE_STORAGE_KEY = "aurastudy_guest_nudge_hours";
 
   function ctx() {
     return window.__AURA_GUEST_CTX__ || { is_guest: false };
-  }
-
-  function startedAtMs() {
-    var c = ctx();
-    if (!c.is_guest || !c.started_at) return null;
-    var ms = Date.parse(c.started_at);
-    return isNaN(ms) ? null : ms;
   }
 
   function isGuest() {
@@ -26,19 +21,11 @@
   }
 
   function isExpired() {
-    if (!isGuest()) return false;
-    var start = startedAtMs();
-    if (start === null) return true;
-    return Date.now() >= start + TRIAL_MS;
+    return false;
   }
 
   function daysLeft() {
-    if (!isGuest()) return 0;
-    var start = startedAtMs();
-    if (start === null) return 0;
-    var remaining = start + TRIAL_MS - Date.now();
-    if (remaining <= 0) return 0;
-    return remaining / (24 * 60 * 60 * 1000);
+    return 0;
   }
 
   function ensureModal() {
@@ -80,7 +67,7 @@
     if (body) {
       body.textContent =
         message ||
-        "Your guest trial has ended. Log in or sign up to continue studying and unlock leaderboard, Spotify, and cloud sync.";
+        "Create a free account to unlock Spotify, Help, cloud sync, and appearing on the leaderboard.";
     }
     modal.classList.add("visible");
   }
@@ -102,14 +89,7 @@
     }
     var emailDisplay = document.getElementById("user-email-display");
     if (emailDisplay) {
-      var days = daysLeft();
-      if (isExpired()) {
-        emailDisplay.textContent = "Guest trial ended";
-      } else if (days >= 1) {
-        emailDisplay.textContent = "Guest · " + Math.ceil(days) + " day" + (Math.ceil(days) === 1 ? "" : "s") + " left";
-      } else {
-        emailDisplay.textContent = "Guest · less than a day left";
-      }
+      emailDisplay.textContent = "Guest";
     }
   }
 
@@ -137,6 +117,52 @@
     if (window.lucide) lucide.createIcons();
   }
 
+  function readLastNudgeHours() {
+    try {
+      var raw = localStorage.getItem(NUDGE_STORAGE_KEY);
+      var val = parseFloat(raw);
+      return isFinite(val) && val >= 0 ? val : 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function writeLastNudgeHours(hours) {
+    try {
+      localStorage.setItem(NUDGE_STORAGE_KEY, String(hours));
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function maybePromptGuestLogin(totalStudySeconds) {
+    if (!isGuest()) return;
+    if (typeof totalStudySeconds !== "number" || totalStudySeconds <= 0) return;
+    var totalHours = totalStudySeconds / 3600;
+    if (totalHours < NUDGE_INTERVAL_HOURS) return;
+
+    var currentThreshold =
+      Math.floor(totalHours / NUDGE_INTERVAL_HOURS) * NUDGE_INTERVAL_HOURS;
+    var lastNudgeHours = readLastNudgeHours();
+    if (currentThreshold <= lastNudgeHours) return;
+
+    writeLastNudgeHours(currentThreshold);
+
+    if (typeof showAuraConfirmDialog !== "function") return;
+
+    showAuraConfirmDialog({
+      title: "Would you like to log in?",
+      message:
+        "You have been studying as a guest. Log in or sign up free to sync your progress, appear on the leaderboard, and unlock Spotify and Help.",
+      confirmLabel: "Log in",
+      cancelLabel: "Keep studying",
+    }).then(function (confirmed) {
+      if (confirmed) {
+        window.location.href = "/login?next=%2Fapp";
+      }
+    });
+  }
+
   window.AuraGuest = {
     isGuest: isGuest,
     isExpired: isExpired,
@@ -146,5 +172,6 @@
     applyGuestNav: applyGuestNav,
     guestAccountMessage: guestAccountMessage,
     showGuestLockedPanel: showGuestLockedPanel,
+    maybePromptGuestLogin: maybePromptGuestLogin,
   };
 })();

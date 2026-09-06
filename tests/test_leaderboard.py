@@ -785,10 +785,10 @@ def test_pet_leaderboard_uses_lifetime_seconds(client, outbox):
     resp = client.get("/api/leaderboard/pets", headers=JSON_HEADERS)
     assert resp.status_code == 200
     data = resp.get_json()
-    assert data["you"]["form"] == "Blossom Cat"
+    assert data["you"]["form"] == "Lizard"
     assert data["you"]["level"] == 4
     assert data["entries"][0]["name"] == "Pet Champ"
-    assert data["entries"][0]["form"] == "Blossom Cat"
+    assert data["entries"][0]["form"] == "Lizard"
 
 
 def test_pet_leaderboard_backfills_missing_lifetime_rows(client, app, outbox):

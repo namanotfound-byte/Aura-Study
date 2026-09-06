@@ -50,21 +50,21 @@ def test_unicorn_forever_path_removed():
     assert "Bunny" not in update_body
 
 
-def test_garden_form_names_present():
+def test_jungle_form_names_present():
     html = _read("index.html")
     for name in [
-        "Seedling",
-        "Sprout Bun",
-        "Leaf Fox",
-        "Blossom Cat",
-        "Grove Owl",
-        "Orchard Stag",
-        "Canopy Wolf",
-        "Storm Cedar",
-        "Mountain Grove",
-        "Season Keeper",
-        "World Tree",
-        "Eternal Bloom",
+        "Ant",
+        "Beetle",
+        "Frog",
+        "Lizard",
+        "Snake",
+        "Owl",
+        "Monkey",
+        "Crocodile",
+        "Leopard",
+        "Tiger",
+        "Elephant",
+        "Lion",
     ]:
         assert name in html
 
@@ -75,7 +75,7 @@ def test_xp_label_uses_format_duration_hm():
     assert "formatDurationHM(progressSeconds)" in body
     assert "formatDurationHM(nextCostSeconds)" in body
     assert "toward ${nextForm.name}" in body
-    assert 'id="pet-xp-numerical-label">0h 0m / 2h 0m toward Sprout Bun<' in html
+    assert 'id="pet-xp-numerical-label">0h 0m / 2h 0m toward Beetle<' in html
 
 
 def test_no_sixty_minute_flat_level_formula():

@@ -1,8 +1,9 @@
-"""Guest trial cookie helpers (7-day try-before-sign-up, no user row).
+"""Guest cookie helpers (free-forever local use, no user row).
 
-The guest cookie stores when the trial started. Privileges expire after
-GUEST_TRIAL_DAYS, but the cookie itself is kept so /app still loads and the
-frontend can soft-lock features without wiping localStorage via a redirect.
+The guest cookie marks a browser as a guest so /app loads without login.
+Guests use the timer indefinitely with localStorage; account-only features
+(Spotify, Help, cloud sync, appearing on leaderboards) stay locked while
+leaderboard GET endpoints remain view-only.
 """
 import datetime
 import json
@@ -14,13 +15,9 @@ from .config import get_config
 from .db import parse_iso, utcnow
 
 GUEST_COOKIE_NAME = "aurastudy_guest"
+# Kept for backwards-compatible tests referencing the constant name.
 GUEST_TRIAL_DAYS = 7
-# Keep the cookie long after privileges expire so /app keeps serving.
 GUEST_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 400
-
-
-def _trial_duration() -> datetime.timedelta:
-    return datetime.timedelta(days=GUEST_TRIAL_DAYS)
 
 
 def guest_started_at_from_request() -> Optional[datetime.datetime]:
@@ -42,24 +39,10 @@ def has_guest_cookie() -> bool:
     return guest_started_at_from_request() is not None
 
 
-def is_guest_trial_expired(started_at: datetime.datetime) -> bool:
-    return utcnow() >= started_at + _trial_duration()
-
-
-def guest_days_left(started_at: datetime.datetime) -> float:
-    remaining = (started_at + _trial_duration()) - utcnow()
-    if remaining.total_seconds() <= 0:
-        return 0.0
-    return remaining.total_seconds() / (60 * 60 * 24)
-
-
-def guest_context_dict(started_at: datetime.datetime) -> Dict[str, Any]:
-    expired = is_guest_trial_expired(started_at)
+def guest_context_dict(started_at) -> Dict[str, Any]:
     return {
         "is_guest": True,
         "started_at": started_at.isoformat(),
-        "expired": expired,
-        "days_left": round(guest_days_left(started_at), 2),
     }
 
 
@@ -67,8 +50,8 @@ def logged_out_context_dict() -> Dict[str, Any]:
     return {"is_guest": False}
 
 
-def set_guest_cookie(response: flask.Response, started_at: Optional[datetime.datetime] = None) -> None:
-    """Set or refresh the guest trial cookie on ``response``."""
+def set_guest_cookie(response: flask.Response, started_at=None) -> None:
+    """Set or refresh the guest cookie on ``response``."""
     cfg = get_config()
     when = started_at or utcnow()
     payload = json.dumps({"started_at": when.isoformat()}, separators=(",", ":"))

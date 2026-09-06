@@ -219,7 +219,33 @@ def login_required(fn):
             return flask.redirect("/login?next=" + quote(flask.request.path, safe=""))
 
         flask.g.user = user
+        flask.g.guest_readonly = False
         return fn(*args, **kwargs)
+
+    return wrapper
+
+
+def login_or_guest_read(fn):
+    """Allow logged-in users or guest-cookie holders on read-only GET routes."""
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        user = current_user()
+        if user is not None:
+            cfg = get_config()
+            if cfg.require_email_verification and not user["is_verified"]:
+                return json_error("email_unverified", "Please verify your email first.", 403)
+            flask.g.user = user
+            flask.g.guest_readonly = False
+            return fn(*args, **kwargs)
+
+        from . import guest as guest_module
+
+        if guest_module.has_guest_cookie():
+            flask.g.user = None
+            flask.g.guest_readonly = True
+            return fn(*args, **kwargs)
+
+        return json_error("unauthenticated", "You need to be logged in.", 401)
 
     return wrapper
 
