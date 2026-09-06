@@ -82,3 +82,11 @@ def test_healthz_is_unauthenticated_and_does_not_redirect(client):
     resp = client.get("/healthz")
     assert resp.status_code == 200
     assert resp.get_json() == {"status": "ok"}
+
+
+def test_unknown_route_renders_branded_404_page(client):
+    resp = client.get("/this-route-does-not-exist")
+    assert resp.status_code == 404
+    body = resp.get_data(as_text=True)
+    assert "Page not found" in body
+    assert 'href="/app"' in body

@@ -253,11 +253,11 @@ def test_recovery_uses_last_heartbeat_not_wall_clock_now():
 def test_recovery_caps_and_prompts_for_implausibly_long_sessions():
     """'a session running for 14 hours because a laptop was shut overnight
     needs a sane cap and a prompt rather than a silent N-hour log' -- pinned
-    literally: a cap constant, and a confirm() gate before anything is
+    literally: a cap constant, and a branded confirm gate before anything is
     logged for the implausible case."""
     html = _read("index.html")
     assert "MAX_PLAUSIBLE_RECOVERY_SECONDS" in html
-    assert "window.confirm(" in html
+    assert "showAuraConfirmDialog" in html
     assert re.search(r"confirmedElapsed <= MAX_PLAUSIBLE_RECOVERY_SECONDS", html)
 
 
@@ -265,7 +265,7 @@ def test_recovery_never_auto_logs_a_session_without_a_decision_point():
     """The plausible-recovery branch must restore the timer (paused) for the
     user to see and act on -- not silently create a session entry on its
     own. Only the capped/implausible branch ever writes to
-    appState.sessions, and only after window.confirm() returns true."""
+    appState.sessions, and only after showAuraConfirmDialog() resolves true."""
     html = _read("index.html")
     m = re.search(
         r"if \(confirmedElapsed <= MAX_PLAUSIBLE_RECOVERY_SECONDS\) \{([\s\S]*?)\n            \} else \{",

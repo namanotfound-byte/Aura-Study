@@ -80,12 +80,14 @@
             --ambient-grad-cottoncandy: linear-gradient(135deg, #D7ECFF 0%, #B5FFFC 100%);
             --ambient-grad-sunsetglow: linear-gradient(135deg, #E1EEFF 0%, #B6D4F1 50%, #E6E6FA 100%);
             --ambient-grad-peachy: linear-gradient(135deg, #F0F7FF 0%, #B5D8F5 100%);
+            --ambient-grad-mintrefresh: linear-gradient(135deg, #E0F4FF 0%, #C8F0E8 100%);
             --ambient-grad-lavenderdream: linear-gradient(135deg, #E6ECFA 0%, #C4E3FF 100%);
             --ambient-grad-auroracute: linear-gradient(135deg, #79E2FC 0%, #96C7E6 100%);
             --ambient-grad-magicaldark: linear-gradient(135deg, #08213D 0%, #21497F 50%, #0090FF 100%);
         }
 
-        /* Theme switch control in the sidebar footer */
+        /* Theme switch control (Settings only) */
+        .settings-theme-row,
         .theme-switch-row {
             display: flex;
             gap: 8px;
@@ -94,6 +96,79 @@
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 16px;
+        }
+
+        .settings-ambient-picker {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .settings-ambient-picker .ambient-preset-dot {
+            width: 28px;
+            height: 28px;
+        }
+
+        .settings-appearance-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+        }
+
+        .settings-appearance-label + .settings-theme-row,
+        .settings-appearance-label + .settings-ambient-picker {
+            margin-bottom: 20px;
+        }
+
+        /* Branded in-app confirm dialog (replaces window.confirm for destructive actions) */
+        .aura-confirm-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 13000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(20, 24, 32, 0.45);
+            backdrop-filter: blur(4px);
+        }
+        .aura-confirm-backdrop[hidden] { display: none !important; }
+        .aura-confirm-card {
+            width: min(440px, 100%);
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+        }
+        .aura-confirm-card h3 {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 10px;
+        }
+        .aura-confirm-card p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.55;
+            margin-bottom: 0;
+            white-space: pre-line;
+        }
+        .aura-confirm-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .aura-confirm-actions .btn-danger {
+            background: #FF4D6D;
+            color: #fff;
+            border-color: transparent;
         }
 
         .theme-switch-btn {
@@ -2239,16 +2314,6 @@
         </div>
 
         <div class="sidebar-footer">
-            <div class="theme-switch-row">
-                <button class="theme-switch-btn active" id="theme-btn-pink" onclick="applyColourTheme('pink')" title="Bubblegum Pink">
-                    <span class="theme-swatch" style="background: linear-gradient(135deg, #FF66B2, #B57CFF);"></span>
-                    Pink
-                </button>
-                <button class="theme-switch-btn" id="theme-btn-blue" onclick="applyColourTheme('blue')" title="Blueberry Frost">
-                    <span class="theme-swatch" style="background: linear-gradient(135deg, #2F9BE0, #6C8CFF);"></span>
-                    Blue
-                </button>
-            </div>
             <div class="nav-item" onclick="switchView('settings', this); closeMobileNav();">
                 <i data-lucide="settings-2"></i>
                 <span>Settings</span>
@@ -2467,17 +2532,6 @@
                             <div class="timer-music-popover" id="timer-music-popover" role="menu" aria-label="Music controls" hidden></div>
                         </div>
                     </div>
-                    <div class="timer-stage-footer-center">
-                        <div class="ambient-selector-bar">
-                            <div class="ambient-preset-dot active" style="background: var(--ambient-grad-cottoncandy);" title="Cotton Candy Dream" onclick="selectAmbientEnvironmentPreset('cottoncandy', false, this)"></div>
-                            <div class="ambient-preset-dot" style="background: var(--ambient-grad-sunsetglow);" title="Sunset Lavender Glow" onclick="selectAmbientEnvironmentPreset('sunsetglow', false, this)"></div>
-                            <div class="ambient-preset-dot" style="background: var(--ambient-grad-peachy);" title="Sweet Peach Aura" onclick="selectAmbientEnvironmentPreset('peachy', false, this)"></div>
-                            <div class="ambient-preset-dot" style="background: var(--ambient-grad-mintrefresh);" title="Minty Refresh Glow" onclick="selectAmbientEnvironmentPreset('mintrefresh', false, this)"></div>
-                            <div class="ambient-preset-dot" style="background: var(--ambient-grad-lavenderdream);" title="Lavender Macaron" onclick="selectAmbientEnvironmentPreset('lavenderdream', false, this)"></div>
-                            <div class="ambient-preset-dot" style="background: var(--ambient-grad-auroracute);" title="Aurora Glow" onclick="selectAmbientEnvironmentPreset('auroracute', false, this)"></div>
-                            <div class="ambient-preset-dot" style="background: var(--ambient-grad-magicaldark);" title="Magical Dark Galaxy" onclick="selectAmbientEnvironmentPreset('magicaldark', true, this)"></div>
-                        </div>
-                    </div>
                     <div class="timer-stage-footer-right">
                         <button class="timer-floating-interactive-trigger-btn timer-floating-circle-btn" onclick="toggleNativeWindowFullscreenEngine()" title="Toggle Fullscreen Mode" aria-label="Toggle fullscreen">
                             <i data-lucide="maximize-2" id="fullscreen-icon-indicator" style="width: 16px; height: 16px;"></i>
@@ -2676,6 +2730,34 @@
             </div>
 
             <div class="card" style="max-width: 600px; margin-top: 24px;">
+                <div class="card-title">Appearance</div>
+                <p class="text-muted" style="font-size: 12px; margin-top: -10px; margin-bottom: 16px;">Choose your app theme and timer background colour.</p>
+
+                <span class="settings-appearance-label">Colour Theme</span>
+                <div class="settings-theme-row">
+                    <button class="theme-switch-btn" id="settings-theme-btn-pink" type="button" onclick="applyColourTheme('pink')" title="Bubblegum Pink">
+                        <span class="theme-swatch" style="background: linear-gradient(135deg, #FF66B2, #B57CFF);"></span>
+                        Pink
+                    </button>
+                    <button class="theme-switch-btn" id="settings-theme-btn-blue" type="button" onclick="applyColourTheme('blue')" title="Blueberry Frost">
+                        <span class="theme-swatch" style="background: linear-gradient(135deg, #2F9BE0, #6C8CFF);"></span>
+                        Blue
+                    </button>
+                </div>
+
+                <span class="settings-appearance-label">Timer Background</span>
+                <div class="settings-ambient-picker" id="settings-ambient-picker">
+                    <div class="ambient-preset-dot" data-ambient-key="cottoncandy" data-ambient-dark="false" style="background: var(--ambient-grad-cottoncandy);" title="Cotton Candy Dream" onclick="selectAmbientEnvironmentPreset('cottoncandy', false, this)"></div>
+                    <div class="ambient-preset-dot" data-ambient-key="sunsetglow" data-ambient-dark="false" style="background: var(--ambient-grad-sunsetglow);" title="Sunset Lavender Glow" onclick="selectAmbientEnvironmentPreset('sunsetglow', false, this)"></div>
+                    <div class="ambient-preset-dot" data-ambient-key="peachy" data-ambient-dark="false" style="background: var(--ambient-grad-peachy);" title="Sweet Peach Aura" onclick="selectAmbientEnvironmentPreset('peachy', false, this)"></div>
+                    <div class="ambient-preset-dot" data-ambient-key="mintrefresh" data-ambient-dark="false" style="background: var(--ambient-grad-mintrefresh);" title="Minty Refresh Glow" onclick="selectAmbientEnvironmentPreset('mintrefresh', false, this)"></div>
+                    <div class="ambient-preset-dot" data-ambient-key="lavenderdream" data-ambient-dark="false" style="background: var(--ambient-grad-lavenderdream);" title="Lavender Macaron" onclick="selectAmbientEnvironmentPreset('lavenderdream', false, this)"></div>
+                    <div class="ambient-preset-dot" data-ambient-key="auroracute" data-ambient-dark="false" style="background: var(--ambient-grad-auroracute);" title="Aurora Glow" onclick="selectAmbientEnvironmentPreset('auroracute', false, this)"></div>
+                    <div class="ambient-preset-dot" data-ambient-key="magicaldark" data-ambient-dark="true" style="background: var(--ambient-grad-magicaldark);" title="Magical Dark Galaxy" onclick="selectAmbientEnvironmentPreset('magicaldark', true, this)"></div>
+                </div>
+            </div>
+
+            <div class="card" style="max-width: 600px; margin-top: 24px;">
                 <div class="card-title">Account Security</div>
                 <p class="text-muted" style="font-size: 12px; margin-top: -10px; margin-bottom: 16px;">Your login email is tied to your AuraStudy account and can't be changed here. Update your password instead:</p>
 
@@ -2756,6 +2838,18 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Branded confirm dialog (replaces window.confirm for destructive in-app actions) -->
+    <div class="aura-confirm-backdrop" id="aura-confirm-modal" hidden role="presentation">
+        <div class="aura-confirm-card" role="dialog" aria-modal="true" aria-labelledby="aura-confirm-title">
+            <h3 id="aura-confirm-title">Are you sure?</h3>
+            <p id="aura-confirm-message"></p>
+            <div class="aura-confirm-actions">
+                <button type="button" class="btn" id="aura-confirm-cancel">Cancel</button>
+                <button type="button" class="btn btn-neon-pink" id="aura-confirm-ok">Confirm</button>
+            </div>
+        </div>
     </div>
 
     <!-- Toast Notifications Alert System -->
@@ -2839,6 +2933,8 @@
         // seconds so a reload can reconstruct (not silently invent) elapsed
         // time -- see persistRunningTimerSnapshot / attemptRunningTimerRecovery.
         const RUNNING_TIMER_STORAGE_KEY = 'aurastudy_running_timer_v1';
+        const ACTIVE_VIEW_STORAGE_KEY = 'aurastudy_active_view';
+        const GUEST_LOCKED_VIEWS = ['spotify', 'leaderboard', 'help'];
         const TIMER_PERSIST_THROTTLE_MS = 5000;        // how often the live heartbeat snapshot is rewritten while running
         const MAX_UNOBSERVED_GAP_SECONDS = 90;          // a gap longer than this between two live ticks means the device was asleep/suspended, not just a slow tick -- see syncEngineRegistersFromClock
         const MAX_PLAUSIBLE_RECOVERY_SECONDS = 4 * 60 * 60; // beyond this a *recovered* (post-reload) session is capped and confirmed with the user rather than trusted silently -- see attemptRunningTimerRecovery
@@ -3020,6 +3116,7 @@
                 if (typeof AuraSpotify !== 'undefined' && !(window.AuraGuest && AuraGuest.isGuest())) AuraSpotify.init();
                 if (typeof AuraFocus !== 'undefined') AuraFocus.init();
                 syncFullscreenIcon();
+                restorePersistedActiveView();
             });
             document.addEventListener('fullscreenchange', syncFullscreenIcon);
             document.addEventListener('webkitfullscreenchange', syncFullscreenIcon);
@@ -3140,12 +3237,14 @@
             }
             try { localStorage.setItem('aurastudy_theme', appState.colourTheme); } catch (e) { /* ignore */ }
 
-            const pinkBtn = document.getElementById('theme-btn-pink');
-            const blueBtn = document.getElementById('theme-btn-blue');
+            const pinkBtn = document.getElementById('settings-theme-btn-pink');
+            const blueBtn = document.getElementById('settings-theme-btn-blue');
             if (pinkBtn && blueBtn) {
                 pinkBtn.classList.toggle('active', appState.colourTheme === 'pink');
                 blueBtn.classList.toggle('active', appState.colourTheme === 'blue');
             }
+
+            syncSettingsAmbientPicker();
 
             // The timer room background is painted inline, so repaint it in the new palette
             const containerNode = document.getElementById('timer-view-container');
@@ -3182,9 +3281,12 @@
                     if(parsed.todoItems) appState.todoItems = parsed.todoItems;
                     if(parsed.selectedCourse) appState.selectedCourse = parsed.selectedCourse;
                     if(parsed.colourTheme) appState.colourTheme = parsed.colourTheme;
+                    if(parsed.ambientKey) appState.ambientKey = parsed.ambientKey;
+                    if(typeof parsed.isDarkAmbient === 'boolean') appState.isDarkAmbient = parsed.isDarkAmbient;
                 } catch(e) { console.error(e); }
             }
             applyColourTheme(appState.colourTheme, true);
+            applyAmbientEnvironmentPreset(appState.ambientKey, appState.isDarkAmbient);
             document.getElementById('settings-user-email').value = appState.profile.email;
             document.getElementById('settings-daily-goal').value = appState.profile.dailyGoalHours;
             document.getElementById('settings-timer-duration').value = appState.profile.defaultTimerMinutes;
@@ -3374,6 +3476,83 @@
             }
         }
 
+        function findNavItemForView(viewKey) {
+            const items = document.querySelectorAll('#app-sidebar .nav-item');
+            for (const item of items) {
+                const onclick = item.getAttribute('onclick') || '';
+                if (onclick.includes("switchView('" + viewKey + "'")) return item;
+            }
+            return null;
+        }
+
+        function isViewAccessible(viewKey) {
+            if (!viewKey || !document.getElementById('view-' + viewKey)) return false;
+            if (window.AuraGuest && AuraGuest.isGuest() && GUEST_LOCKED_VIEWS.indexOf(viewKey) >= 0) return false;
+            return true;
+        }
+
+        function persistActiveView(viewKey) {
+            try { localStorage.setItem(ACTIVE_VIEW_STORAGE_KEY, viewKey); } catch (e) { /* ignore */ }
+        }
+
+        function restorePersistedActiveView() {
+            let viewKey = null;
+            try { viewKey = localStorage.getItem(ACTIVE_VIEW_STORAGE_KEY); } catch (e) { /* ignore */ }
+            if (!isViewAccessible(viewKey)) viewKey = 'dashboard';
+            if (viewKey === 'dashboard') return;
+            switchView(viewKey, findNavItemForView(viewKey));
+        }
+
+        let auraConfirmResolver = null;
+
+        function showAuraConfirmDialog(options) {
+            const modal = document.getElementById('aura-confirm-modal');
+            const titleEl = document.getElementById('aura-confirm-title');
+            const messageEl = document.getElementById('aura-confirm-message');
+            const cancelBtn = document.getElementById('aura-confirm-cancel');
+            const okBtn = document.getElementById('aura-confirm-ok');
+            if (!modal || !titleEl || !messageEl || !cancelBtn || !okBtn) {
+                return Promise.resolve(false);
+            }
+            titleEl.innerText = options.title || 'Are you sure?';
+            messageEl.innerText = options.message || '';
+            okBtn.innerText = options.confirmLabel || 'Confirm';
+            cancelBtn.innerText = options.cancelLabel || 'Cancel';
+            okBtn.className = options.destructive ? 'btn btn-danger' : 'btn btn-neon-pink';
+            modal.hidden = false;
+            return new Promise((resolve) => {
+                auraConfirmResolver = resolve;
+            });
+        }
+
+        function closeAuraConfirmDialog(confirmed) {
+            const modal = document.getElementById('aura-confirm-modal');
+            if (modal) modal.hidden = true;
+            if (auraConfirmResolver) {
+                const resolve = auraConfirmResolver;
+                auraConfirmResolver = null;
+                resolve(!!confirmed);
+            }
+        }
+
+        (function initAuraConfirmDialog() {
+            const modal = document.getElementById('aura-confirm-modal');
+            const cancelBtn = document.getElementById('aura-confirm-cancel');
+            const okBtn = document.getElementById('aura-confirm-ok');
+            if (!modal || !cancelBtn || !okBtn) return;
+            cancelBtn.addEventListener('click', () => closeAuraConfirmDialog(false));
+            okBtn.addEventListener('click', () => closeAuraConfirmDialog(true));
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeAuraConfirmDialog(false);
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modal && !modal.hidden) {
+                    e.preventDefault();
+                    closeAuraConfirmDialog(false);
+                }
+            });
+        })();
+
         function switchView(targetPanelKey, clickedAnchorRef) {
             // Spotify's now-playing poll must only run while its view is actually
             // visible, so stop it here before we swap the active panel away from it.
@@ -3414,9 +3593,14 @@
             else if (targetPanelKey === 'sessions') renderSessionsTable();
             else if (targetPanelKey === 'trophies') evaluateCabinetTrophyMetrics();
             else if (targetPanelKey === 'spotify' && typeof AuraSpotify !== 'undefined') AuraSpotify.onViewShown();
-            else if (targetPanelKey === 'settings') refreshSettingsSpotifyStatus();
+            else if (targetPanelKey === 'settings') {
+                refreshSettingsSpotifyStatus();
+                syncSettingsAmbientPicker();
+            }
             else if (targetPanelKey === 'leaderboard') startLeaderboardPolling();
             else if (targetPanelKey === 'help') onHelpViewShown();
+
+            persistActiveView(targetPanelKey);
         }
 
         function changeEngineMode(modeKey) {
@@ -3638,11 +3822,16 @@
             const elapsedOnClock = Math.floor(runningAccumulatedSeconds || 0);
             if (!skipConfirm && elapsedOnClock >= 60) {
                 const durationLabel = formatDurationHM(elapsedOnClock, { long: true });
-                const ok = window.confirm(
-                    "Reset the timer and discard " + durationLabel +
-                    " already on the clock?\n\nTo keep the time instead, cancel and choose Log Focus."
-                );
-                if (!ok) return;
+                showAuraConfirmDialog({
+                    title: 'Reset timer?',
+                    message: 'Reset the timer and discard ' + durationLabel + ' already on the clock?\n\nTo keep the time instead, cancel and choose Log Focus.',
+                    confirmLabel: 'Reset timer',
+                    cancelLabel: 'Keep time',
+                    destructive: true
+                }).then((ok) => {
+                    if (ok) resetEngineDisplayState(true);
+                });
+                return;
             }
             clearInterval(engineIntervalRegister);
             engineIntervalRegister = null;
@@ -3913,12 +4102,13 @@
                 const cappedSeconds = MAX_PLAUSIBLE_RECOVERY_SECONDS;
                 const cappedLabel = formatDurationHM(cappedSeconds, { long: true });
                 const hrs = Math.floor(confirmedElapsed / 3600);
-                const wantsLog = window.confirm(
-                    `AuraStudy found an interrupted ${snapshotMode} session in "${courseLabel}" that ran for about ${hrs}+ ` +
-                    `hours -- longer than a real study block, most likely because this device was asleep or the tab stayed ` +
-                    `closed for a while.\n\nClick OK to log the first ${cappedLabel} (a safe cap) now, or Cancel to ` +
-                    `discard it and start fresh.`
-                );
+                showAuraConfirmDialog({
+                    title: 'Recover long session?',
+                    message: 'AuraStudy found an interrupted ' + snapshotMode + ' session in "' + courseLabel + '" that ran for about ' + hrs + '+ hours — longer than a real study block, most likely because this device was asleep or the tab stayed closed for a while.\n\nConfirm to log the first ' + cappedLabel + ' (a safe cap) now, or cancel to discard it and start fresh.',
+                    confirmLabel: 'Log capped time',
+                    cancelLabel: 'Discard session',
+                    destructive: false
+                }).then((wantsLog) => {
                 if (wantsLog) {
                     const logDataNode = {
                         clientId: 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10),
@@ -3940,6 +4130,7 @@
                     triggerAlertToast("Discarded", "The interrupted session was discarded.", false);
                 }
                 clearRunningTimerSnapshot();
+                });
             }
         }
 
@@ -4006,13 +4197,21 @@
         }
 
         function deleteExistingCourseTargetDomain(courseName) {
-            if(!confirm(`Delete your "${courseName}" track completely?`)) return;
+            showAuraConfirmDialog({
+                title: 'Delete course?',
+                message: 'Delete your "' + courseName + '" track completely? This cannot be undone.',
+                confirmLabel: 'Delete course',
+                cancelLabel: 'Cancel',
+                destructive: true
+            }).then((ok) => {
+            if(!ok) return;
             appState.courses = appState.courses.filter(c => c !== courseName);
             if(appState.selectedCourse === courseName) appState.selectedCourse = appState.courses[0] || "";
             saveStateToLocalStorageRegister();
             renderCoursesView();
             renderTimerSubjectPills();
             triggerAlertToast("Course Removed", "Removed from your courses.", false);
+            });
         }
 
         // Dashboard Metrics and Chart Logic
@@ -4810,7 +5009,14 @@
             const confirmMsg = adminCount > 0
                 ? ("Clear your own session history? This can't be undone. " + adminCount + (adminCount === 1 ? " correction" : " corrections") + " added by AuraStudy will stay.")
                 : "Clear all session history? This can't be undone.";
-            if (!confirm(confirmMsg)) return;
+            showAuraConfirmDialog({
+                title: 'Clear session history?',
+                message: confirmMsg,
+                confirmLabel: 'Clear history',
+                cancelLabel: 'Cancel',
+                destructive: true
+            }).then((ok) => {
+            if (!ok) return;
             appState.sessions = appState.sessions.filter(s => s && s.addedByAdmin);
             saveStateToLocalStorageRegister();
             renderSessionsTable();
@@ -4825,6 +5031,7 @@
             // the fix report).
             if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
             triggerAlertToast("History Cleared", "Your session logs have been cleared.", false);
+            });
         }
         function switchTrophySubView(key) { document.querySelectorAll('.trophy-tab-trigger').forEach(t => t.classList.remove('active')); if(key === 'badges') { document.getElementById('trophy-tab-badges').classList.add('active'); document.getElementById('subview-badges').style.display = 'grid'; document.getElementById('subview-achievements').style.display = 'none'; } else { document.getElementById('trophy-tab-achievements').classList.add('active'); document.getElementById('subview-badges').style.display = 'none'; document.getElementById('subview-achievements').style.display = 'grid'; } }
 
@@ -5089,7 +5296,33 @@
                 })
                 .catch(() => { el.textContent = 'Could not load Spotify status.'; });
         }
-        function selectAmbientEnvironmentPreset(presetKey, isDarkActive, dotElementRef) { const containerNode = document.getElementById('timer-view-container'); appState.ambientKey = presetKey; appState.isDarkAmbient = isDarkActive; saveStateToLocalStorageRegister(); document.querySelectorAll('.ambient-preset-dot').forEach(d => d.classList.remove('active')); if(dotElementRef) dotElementRef.classList.add('active'); if(presetKey === 'cottoncandy') containerNode.style.background = "var(--ambient-grad-cottoncandy)"; else if(presetKey === 'sunsetglow') containerNode.style.background = "var(--ambient-grad-sunsetglow)"; else if(presetKey === 'peachy') containerNode.style.background = "var(--ambient-grad-peachy)"; else if(presetKey === 'mintrefresh') containerNode.style.background = "var(--ambient-grad-mintrefresh)"; else if(presetKey === 'lavenderdream') containerNode.style.background = "var(--ambient-grad-lavenderdream)"; else if(presetKey === 'auroracute') containerNode.style.background = "var(--ambient-grad-auroracute)"; else if(presetKey === 'magicaldark') containerNode.style.background = "var(--ambient-grad-magicaldark)"; if(isDarkActive) containerNode.classList.add('dark-mode-active'); else containerNode.classList.remove('dark-mode-active'); }
+        function syncSettingsAmbientPicker() {
+            document.querySelectorAll('#settings-ambient-picker .ambient-preset-dot').forEach((dot) => {
+                const key = dot.getAttribute('data-ambient-key');
+                dot.classList.toggle('active', key === appState.ambientKey);
+            });
+        }
+
+        function applyAmbientEnvironmentPreset(presetKey, isDarkActive) {
+            const containerNode = document.getElementById('timer-view-container');
+            if (!containerNode || !presetKey) return;
+            appState.ambientKey = presetKey;
+            appState.isDarkAmbient = !!isDarkActive;
+            containerNode.style.background = 'var(--ambient-grad-' + presetKey + ')';
+            if (isDarkActive) containerNode.classList.add('dark-mode-active');
+            else containerNode.classList.remove('dark-mode-active');
+            syncSettingsAmbientPicker();
+        }
+
+        function selectAmbientEnvironmentPreset(presetKey, isDarkActive, dotElementRef) {
+            applyAmbientEnvironmentPreset(presetKey, isDarkActive);
+            saveStateToLocalStorageRegister();
+            localStorage.setItem('aurastudy_tinkered_flag', 'true');
+            if (dotElementRef) {
+                document.querySelectorAll('.ambient-preset-dot').forEach(d => d.classList.remove('active'));
+                dotElementRef.classList.add('active');
+            }
+        }
 
         function triggerAlertToast(title, desc, useSparklesIcon = true) {
             const toast = document.getElementById('toast-alert');

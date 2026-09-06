@@ -119,6 +119,8 @@ def create_app() -> flask.Flask:
         if flask.request.path.startswith("/api/"):
             code = (err.name or "error").lower().replace(" ", "_")
             return json_error(code, err.description or err.name or "Error", err.code or 500)
+        if err.code == 404:
+            return flask.render_template("404.html"), 404
         return err
 
     _register_page_routes(app)
