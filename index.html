@@ -599,40 +599,251 @@
             background: #FFEBEF;
         }
 
-        /* TIMER WORKSPACE STYLES (WITH INLINE BRAIN DUMP POST-IT INTEGRATION) */
+        /* TIMER WORKSPACE — hero stage (Flocus / studywithme feel, AuraStudy tokens) */
         .timer-fullscreen-view {
             height: 100%;
+            min-height: 100%;
             background: var(--ambient-grad-cottoncandy);
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+            transition: background 0.6s ease;
+            padding: 0;
+        }
+
+        /* Layered vignette + dusk depth over ambient gradient (JS sets base background) */
+        .timer-fullscreen-view::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+            background:
+                radial-gradient(ellipse 90% 75% at 50% 42%, transparent 0%, rgba(20, 12, 28, 0.1) 45%, rgba(8, 4, 16, 0.42) 100%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, transparent 24%, transparent 58%, rgba(0, 0, 0, 0.28) 100%);
+        }
+
+        /* Soft film grain */
+        .timer-fullscreen-view::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0.055;
+            mix-blend-mode: overlay;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            background-size: 180px 180px;
+        }
+
+        .timer-fullscreen-view.dark-mode-active::before {
+            background:
+                radial-gradient(ellipse 70% 55% at 50% 38%, rgba(100, 65, 165, 0.18) 0%, transparent 55%),
+                radial-gradient(ellipse 100% 100% at 50% 50%, transparent 25%, rgba(0, 0, 0, 0.58) 100%),
+                linear-gradient(180deg, rgba(20, 8, 40, 0.35) 0%, transparent 35%, transparent 55%, rgba(0, 0, 0, 0.45) 100%);
+        }
+
+        /* Decorative atmosphere — cafe window glow + dusk bloom (no branded art) */
+        .timer-atmosphere {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .timer-atmo-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(72px);
+            opacity: 0.55;
+        }
+        .timer-atmo-glow--warm {
+            width: min(52vw, 520px);
+            height: min(38vh, 340px);
+            bottom: 12%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: radial-gradient(circle, rgba(255, 170, 110, 0.42) 0%, transparent 68%);
+        }
+        .timer-atmo-glow--cool {
+            width: min(58vw, 580px);
+            height: min(42vh, 380px);
+            top: 0;
+            right: -8%;
+            background: radial-gradient(circle, rgba(var(--accent-rgb), 0.22) 0%, transparent 62%);
+        }
+        .timer-atmo-glow--blossom {
+            width: min(34vw, 320px);
+            height: min(28vh, 240px);
+            top: 6%;
+            left: -6%;
+            background: radial-gradient(circle, rgba(255, 140, 175, 0.28) 0%, transparent 70%);
+        }
+        .timer-atmo-skyline {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 32%;
+            opacity: 0.55;
+            background:
+                linear-gradient(to top, rgba(28, 18, 42, 0.38) 0%, transparent 100%),
+                repeating-linear-gradient(90deg, transparent 0, transparent 18px, rgba(255, 200, 140, 0.06) 18px, rgba(255, 200, 140, 0.06) 20px);
+            mask-image: linear-gradient(to top, black 0%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to top, black 0%, transparent 100%);
+        }
+        .timer-fullscreen-view.dark-mode-active .timer-atmo-glow--warm {
+            opacity: 0.78;
+            background: radial-gradient(circle, rgba(255, 120, 70, 0.5) 0%, transparent 65%);
+        }
+        .timer-fullscreen-view.dark-mode-active .timer-atmo-skyline {
+            opacity: 0.85;
+            background:
+                linear-gradient(to top, rgba(8, 4, 18, 0.65) 0%, transparent 100%),
+                repeating-linear-gradient(90deg, transparent 0, transparent 22px, rgba(255, 180, 100, 0.09) 22px, rgba(255, 180, 100, 0.09) 24px);
+        }
+
+        /* Hero column — clock is the focal point */
+        .timer-hero {
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             position: relative;
-            transition: all 0.4s ease;
-            padding: 40px;
+            z-index: 10;
+            width: 100%;
+            padding: calc(64px + env(safe-area-inset-top)) 20px calc(88px + env(safe-area-inset-bottom));
         }
 
-        /* Post-It Popover Window Next to Timer display */
+        .timer-hero-plate {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: min(100%, 720px);
+            padding: clamp(20px, 4vw, 36px) clamp(20px, 5vw, 52px) clamp(18px, 3vw, 28px);
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            box-shadow:
+                0 24px 80px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        }
+        .timer-fullscreen-view.dark-mode-active .timer-hero-plate {
+            background: rgba(0, 0, 0, 0.22);
+            border-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 28px 90px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+
+        /* Corner + footer chrome — recede behind the hero clock */
+        .timer-corner {
+            position: absolute;
+            z-index: 120;
+            pointer-events: none;
+        }
+        .timer-corner > * { pointer-events: auto; }
+        .timer-corner--tl {
+            top: calc(16px + env(safe-area-inset-top));
+            left: 16px;
+        }
+        .timer-stage-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 110;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+            pointer-events: none;
+        }
+        .timer-stage-footer-left,
+        .timer-stage-footer-right {
+            pointer-events: auto;
+            flex-shrink: 0;
+        }
+        .timer-stage-footer-center {
+            position: absolute;
+            left: 50%;
+            bottom: calc(16px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            pointer-events: auto;
+            max-width: calc(100% - 140px);
+        }
+        @media (max-width: 480px) {
+            .timer-stage-footer-center {
+                max-width: calc(100% - 100px);
+            }
+            .timer-music-chip-label { display: none; }
+        }
+
+        .timer-floating-interactive-trigger-btn {
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.92);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+            transition: background 0.2s, transform 0.2s, border-color 0.2s;
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-floating-interactive-trigger-btn {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.42);
+            border-color: rgba(255, 255, 255, 0.65);
+        }
+        .timer-floating-interactive-trigger-btn:hover {
+            background: rgba(255, 255, 255, 0.28);
+            transform: translateY(-1px);
+            border-color: rgba(255, 255, 255, 0.45);
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-floating-interactive-trigger-btn:hover {
+            background: rgba(255, 255, 255, 0.72);
+            color: var(--neon-pink);
+        }
+        .timer-floating-circle-btn {
+            border-radius: 50%;
+            padding: 10px;
+            justify-content: center;
+        }
+        .timer-music-chip-label {
+            letter-spacing: 0.02em;
+        }
+
+        /* Post-It brain dump — tucked away, opens on demand */
         .timer-braindump-postit-modal {
             position: absolute;
-            bottom: 32px;
-            left: 32px;
-            width: 290px;
-            background: #FFFFCC; /* Warm pastel yellow post-it */
+            top: calc(56px + env(safe-area-inset-top));
+            left: 16px;
+            width: min(290px, calc(100vw - 32px));
+            background: #FFFFCC;
             border: 1px solid #E6E699;
-            box-shadow: 4px 6px 20px rgba(0,0,0,0.1);
-            border-radius: 16px;
-            padding: 16px;
+            box-shadow: 4px 8px 28px rgba(0, 0, 0, 0.18);
+            border-radius: 14px;
+            padding: 14px;
             z-index: 500;
             transform: rotate(-1deg);
-            display: none; /* Controlled interactively via toggle button */
-            transition: all 0.2s ease;
+            display: none;
+            transition: opacity 0.2s ease;
         }
-        .timer-braindump-postit-modal.visible {
-            display: block;
-        }
+        .timer-braindump-postit-modal.visible { display: block; }
         .timer-braindump-header {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 800;
             color: #7A7A43;
             margin-bottom: 8px;
@@ -643,7 +854,7 @@
         }
         .timer-braindump-textarea {
             width: 100%;
-            height: 130px;
+            height: 120px;
             background: transparent;
             border: none;
             resize: none;
@@ -654,269 +865,300 @@
             line-height: 1.5;
         }
 
-        /* Top Bar Floating Control actions inside the timer workspace view context */
-        .timer-view-top-actions-row {
-            position: absolute;
-            top: 24px;
-            left: 24px;
-            right: 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            pointer-events: none;
-            z-index: 600;
-        }
-        .timer-floating-interactive-trigger-btn {
-            background: rgba(255, 255, 255, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(8px);
-            padding: 10px 18px;
-            border-radius: 14px;
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--text-main);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-            transition: all 0.2s;
-            pointer-events: auto;
-        }
-        .timer-floating-interactive-trigger-btn:hover {
-            background: #FFFFFF;
-            color: var(--neon-pink);
-            transform: scale(1.02);
-        }
-        .timer-floating-circle-btn {
-            border-radius: 50%;
-            padding: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        /* Groups the Pop Out + Fullscreen icon buttons on the right side of the
-           top-actions row. Needs its own flex context: the buttons themselves use
-           display:flex (not inline-flex), so without this they'd stack as block
-           boxes instead of sitting side by side. */
-        .timer-top-actions-right-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            pointer-events: auto;
-        }
-
-        /* Music popover trigger + panel (content built by static/spotify.js).
-           Positioning context for the popover, which anchors to this wrapper
-           rather than the button itself so it stays put if the button's own
-           size changes (e.g. the touch-target bump at (pointer:coarse)).
-           This is the ONLY Spotify UI in the Timer view -- nothing renders
-           until the trigger is clicked. Kept compact and anchored to the
-           top-right corner so it never reaches down over the countdown or
-           its controls, even on short/narrow viewports. */
+        /* Music popover (content built by static/spotify.js) — opens upward from bottom-left chip */
         .timer-music-control-wrap {
             position: relative;
-            pointer-events: auto;
         }
         .timer-music-popover {
             position: absolute;
-            top: calc(100% + 8px);
-            right: 0;
+            bottom: calc(100% + 8px);
+            left: 0;
+            top: auto;
+            right: auto;
             z-index: 700;
             min-width: 200px;
-            /* This popover anchors to the Music button, which itself sits left of the
-               Fullscreen button inside the top-actions row -- NOT flush against the
-               viewport edge. So "100vw" alone overstates the room available before the
-               popover's left edge would run off-screen; the extra 88px accounts for the
-               row's own inset plus the Fullscreen button + gap it anchors past (worst
-               case at the (pointer:coarse) 44px touch-target size -- see that query
-               below). Verified not to clip at 320px viewport width. */
-            max-width: min(240px, calc(100vw - 88px));
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
+            max-width: min(240px, calc(100vw - 32px));
+            background: rgba(18, 14, 24, 0.88);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 16px;
             padding: 12px;
-            box-shadow: 0 10px 28px rgba(0,0,0,0.12);
-            transform-origin: top right;
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+            transform-origin: bottom left;
             transition: opacity 0.15s ease, transform 0.15s ease;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
         }
-        .timer-music-popover[hidden] {
-            display: none;
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-music-popover {
+            background: rgba(255, 255, 255, 0.94);
+            border-color: var(--border-color);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
         }
+        .timer-music-popover[hidden] { display: none; }
         .timer-music-popover.is-opening {
             opacity: 0;
-            transform: translateY(-4px) scale(0.96);
+            transform: translateY(4px) scale(0.96);
         }
 
+        /* Mode chips — studywithme-style pills above the clock */
         .engine-mode-tabs {
             display: flex;
-            background: rgba(255, 255, 255, 0.5);
-            padding: 5px;
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            margin-bottom: 24px;
-            backdrop-filter: blur(8px);
-        }
-
-        .mode-tab-btn {
-            padding: 8px 22px;
-            border: none;
-            background: transparent;
-            color: var(--text-muted);
-            font-size: 13px;
-            font-weight: 700;
-            border-radius: 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
             gap: 8px;
-            transition: all 0.2s;
+            background: transparent;
+            padding: 0;
+            border: none;
+            margin-bottom: clamp(12px, 2.5vw, 20px);
         }
-
+        .mode-tab-btn {
+            padding: 9px 18px;
+            border: 1.5px solid rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.88);
+            font-size: 12px;
+            font-weight: 700;
+            border-radius: 999px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            letter-spacing: 0.02em;
+            text-transform: lowercase;
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .mode-tab-btn {
+            border-color: rgba(255, 255, 255, 0.75);
+            background: rgba(255, 255, 255, 0.32);
+            color: var(--text-muted);
+        }
         .mode-tab-btn.active {
             background: #FFFFFF;
+            color: var(--text-main);
+            border-color: #FFFFFF;
+            box-shadow: 0 6px 22px rgba(0, 0, 0, 0.14);
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .mode-tab-btn.active {
             color: var(--neon-pink);
-            box-shadow: 0 4px 10px rgba(255,102,178,0.15);
+        }
+        .timer-fullscreen-view.dark-mode-active .mode-tab-btn.active {
+            color: #2A0845;
         }
 
+        /* Ambient presets — small glass dock, bottom center */
         .ambient-selector-bar {
             display: flex;
-            gap: 10px;
-            margin-top: 40px;
-            margin-bottom: 24px;
-            background: rgba(255, 255, 255, 0.5);
-            padding: 8px 16px;
-            border-radius: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(8px);
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 7px;
+            margin: 0;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
-
+        .timer-fullscreen-view:not(.dark-mode-active) .ambient-selector-bar {
+            background: rgba(255, 255, 255, 0.28);
+            border-color: rgba(255, 255, 255, 0.45);
+        }
         .ambient-preset-dot {
-            width: 22px;
-            height: 22px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
             cursor: pointer;
-            border: 2px solid transparent;
-            transition: transform 0.2s;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
         }
-        .ambient-preset-dot:hover {
-            transform: scale(1.2);
-        }
+        .ambient-preset-dot:hover { transform: scale(1.15); }
         .ambient-preset-dot.active {
-            border-color: var(--neon-pink);
-            box-shadow: 0 0 10px var(--neon-pink);
+            border-color: #FFFFFF;
+            box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.55), 0 0 12px rgba(var(--accent-rgb), 0.45);
         }
 
-        .timer-header-badge {
-            background: rgba(255, 255, 255, 0.6);
-            padding: 8px 24px;
-            border-radius: 30px;
-            backdrop-filter: blur(14px);
-            font-weight: 700;
-            font-size: 14px;
-            margin-bottom: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            color: var(--text-main);
+        /* Secondary cluster — course target + pills recede below hero */
+        .timer-secondary-cluster {
+            margin-top: clamp(16px, 3vw, 28px);
             display: flex;
+            flex-direction: column;
             align-items: center;
             gap: 8px;
+            width: min(100%, 640px);
+            opacity: 0.82;
         }
-
-        .timer-clock-display {
-            font-size: 160px;
-            font-weight: 900;
-            font-variant-numeric: tabular-nums;
-            letter-spacing: -4px;
-            margin-bottom: 6px;
-            background: linear-gradient(180deg, var(--text-main) 0%, #7A626C 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .timer-header-badge {
+            background: rgba(255, 255, 255, 0.12);
+            padding: 5px 14px;
+            border-radius: 999px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            font-weight: 700;
+            font-size: 11px;
+            margin-bottom: 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.88);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
         }
-
-        .timer-fullscreen-view.dark-mode-active .timer-clock-display {
-            background: linear-gradient(180deg, #FFFFFF 0%, #F5E6ED 100%) !important;
-            -webkit-background-clip: text !important;
-            -webkit-text-fill-color: transparent !important;
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-header-badge {
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.38);
+            border-color: rgba(255, 255, 255, 0.55);
         }
         .timer-fullscreen-view.dark-mode-active .timer-header-badge,
         .timer-fullscreen-view.dark-mode-active .timer-meta {
-            background: rgba(0, 0, 0, 0.4) !important;
-            color: #FFFFFF !important;
-            border-color: rgba(255,255,255,0.1) !important;
+            background: rgba(0, 0, 0, 0.32) !important;
+            color: rgba(255, 255, 255, 0.82) !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        /* Giant hero clock */
+        .timer-clock-display {
+            font-size: clamp(4rem, 16vw, 10.5rem);
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.045em;
+            line-height: 0.95;
+            margin: 4px 0 2px;
+            color: #FFFFFF;
+            text-shadow:
+                0 2px 28px rgba(0, 0, 0, 0.38),
+                0 0 60px rgba(255, 255, 255, 0.12);
+            background: none;
+            -webkit-text-fill-color: unset;
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-clock-display {
+            color: var(--text-main);
+            text-shadow:
+                0 2px 24px rgba(255, 255, 255, 0.95),
+                0 4px 48px rgba(var(--accent-rgb), 0.12);
+        }
+        .timer-fullscreen-view.dark-mode-active .timer-clock-display {
+            color: #FFFFFF;
+            text-shadow:
+                0 2px 32px rgba(0, 0, 0, 0.55),
+                0 0 80px rgba(255, 255, 255, 0.1);
         }
 
         .timer-meta {
-            font-size: 14px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.72);
+            margin-bottom: 0;
+            font-weight: 600;
+            background: transparent;
+            padding: 4px 0 0;
+            border: none;
+            border-radius: 0;
+            letter-spacing: 0.02em;
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-meta {
             color: var(--text-muted);
-            margin-bottom: 40px;
-            font-weight: 700;
-            background: rgba(255, 255, 255, 0.6);
-            padding: 6px 18px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.8);
         }
 
+        /* Compact pill controls under the clock */
         .timer-controls {
             display: flex;
-            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: clamp(16px, 3vw, 22px);
             z-index: 100;
         }
-
         .timer-btn {
-            background: #FFFFFF;
-            color: var(--neon-pink);
-            border: 2px solid var(--border-color);
-            padding: 16px 38px;
-            border-radius: 20px;
-            font-size: 16px;
+            background: rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.95);
+            border: 1.5px solid rgba(255, 255, 255, 0.45);
+            padding: 11px 24px;
+            border-radius: 999px;
+            font-size: 14px;
             font-weight: 700;
             cursor: pointer;
-            box-shadow: 0 8px 20px rgba(var(--accent-rgb), 0.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
             display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             transition: all 0.2s ease;
+            letter-spacing: 0.02em;
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-btn {
+            background: rgba(255, 255, 255, 0.55);
+            color: var(--text-main);
+            border-color: rgba(255, 255, 255, 0.85);
         }
         .timer-btn:hover {
-            transform: translateY(-2px);
+            transform: translateY(-1px);
+            background: rgba(255, 255, 255, 0.22);
+            border-color: rgba(255, 255, 255, 0.65);
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-btn:hover {
             border-color: var(--neon-pink);
-            box-shadow: 0 10px 25px rgba(var(--accent-rgb), 0.2);
+            color: var(--neon-pink);
         }
         .timer-btn-primary-act {
             background: var(--neon-pink);
-            color: white;
-            border-color: var(--neon-pink);
+            color: #FFFFFF;
+            border-color: transparent;
+            box-shadow: 0 8px 28px rgba(var(--accent-rgb), 0.38);
+            padding: 12px 32px;
+            font-size: 15px;
         }
         .timer-btn-primary-act:hover {
             background: var(--accent-strong);
+            color: #FFFFFF;
+            box-shadow: 0 10px 32px rgba(var(--accent-rgb), 0.48);
+        }
+        .timer-btn-icon {
+            padding: 11px;
+            border-radius: 50%;
+        }
+        .timer-btn-log {
+            background: rgba(82, 229, 163, 0.14);
+            border-color: rgba(82, 229, 163, 0.45);
+            color: #52E5A3;
+            font-size: 12px;
+            padding: 9px 16px;
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-btn-log {
+            color: #1E824C;
+            background: rgba(82, 229, 163, 0.18);
         }
 
         .floating-subject-bar {
             display: flex;
-            gap: 10px;
-            margin-bottom: 24px;
+            gap: 6px;
+            margin-bottom: 0;
             flex-wrap: wrap;
             justify-content: center;
-            max-width: 650px;
+            max-width: 100%;
         }
-
         .subject-pill {
-            padding: 8px 18px;
-            background-color: rgba(255, 255, 255, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.9);
-            border-radius: 24px;
-            font-size: 13px;
+            padding: 5px 12px;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 999px;
+            font-size: 11px;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s ease;
+            color: rgba(255, 255, 255, 0.78);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .subject-pill {
+            background: rgba(255, 255, 255, 0.38);
+            border-color: rgba(255, 255, 255, 0.55);
             color: var(--text-muted);
         }
         .subject-pill.active {
             background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
             border-color: transparent;
             color: white;
-            box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.25);
+            box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.3);
         }
 
         .courses-list-grid {
@@ -1213,33 +1455,45 @@
             .course-add-row .input-group { flex-basis: 100%; }
             .course-add-row button { width: 100%; }
 
-            /* Timer workspace: reclaim padding, let controls wrap, scale the clock */
-            /* justify-content:center on a flex column whose content is taller than the
-               viewport pushes the overflow off BOTH edges -- and the top overflow sits at
-               a negative offset that scrolling can never reach (scrollTop can't go below 0).
-               Switch to flex-start + let the view scroll so every control stays reachable. */
+            /* Timer hero stage: scroll when content exceeds viewport */
             .timer-fullscreen-view {
-                padding: 20px;
-                justify-content: flex-start;
                 height: auto;
                 min-height: 100%;
-                padding-top: calc(76px + env(safe-area-inset-top)); /* clears the absolutely-positioned top-actions-row */
+                justify-content: flex-start;
             }
             #view-timer.view-panel { overflow-y: auto; }
-            .timer-view-top-actions-row { top: 16px; left: 16px; right: 16px; flex-wrap: wrap; row-gap: 8px; }
-            .timer-floating-interactive-trigger-btn { padding: 10px 14px; }
-            .ambient-selector-bar { flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 24px; }
-            .ambient-preset-dot { width: 28px; height: 28px; }
-            .engine-mode-tabs { margin-bottom: 16px; }
-            .mode-tab-btn { padding: 8px 14px; font-size: 12px; }
-            .timer-header-badge { padding: 6px 16px; font-size: 12px; margin-bottom: 16px; }
-            .timer-clock-display {
-                font-size: clamp(3rem, 18vw, 10rem);
-                letter-spacing: -2px;
+            .timer-hero {
+                padding: calc(52px + env(safe-area-inset-top)) 16px calc(72px + env(safe-area-inset-bottom));
+                justify-content: flex-start;
             }
-            .timer-meta { font-size: 12px; margin-bottom: 20px; padding: 5px 14px; }
-            .timer-controls { flex-wrap: wrap; justify-content: center; gap: 10px; }
-            .timer-btn { padding: 12px 22px; font-size: 14px; }
+            .timer-hero-plate {
+                padding: 18px 16px 16px;
+                border-radius: 22px;
+            }
+            .timer-corner--tl { top: 12px; left: 12px; }
+            .timer-stage-footer { padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); }
+            .timer-stage-footer-center { max-width: calc(100% - 120px); }
+            .timer-floating-interactive-trigger-btn { padding: 10px 14px; }
+            .ambient-selector-bar { gap: 10px; padding: 5px 10px; }
+            .ambient-preset-dot { width: 22px; height: 22px; }
+            .engine-mode-tabs { margin-bottom: 12px; }
+            .mode-tab-btn { padding: 8px 14px; font-size: 11px; }
+            .timer-secondary-cluster { margin-top: 18px; }
+            .timer-header-badge { font-size: 10px; }
+            .timer-clock-display {
+                font-size: clamp(3.25rem, 20vw, 9rem);
+                letter-spacing: -0.03em;
+            }
+            .timer-meta { font-size: 11px; }
+            .timer-controls { flex-wrap: wrap; justify-content: center; gap: 8px; }
+            .timer-btn { padding: 11px 20px; font-size: 13px; }
+            .timer-btn-primary-act { padding: 12px 26px; }
+            .timer-braindump-postit-modal {
+                top: calc(48px + env(safe-area-inset-top));
+                left: 12px;
+                right: 12px;
+                width: auto;
+            }
 
             .trophy-view-tabs { flex-wrap: wrap; gap: 8px; }
             .trophy-tab-trigger { padding: 8px 16px; font-size: 13px; }
@@ -1263,13 +1517,6 @@
 
             .card { padding: 18px; }
 
-            .timer-braindump-postit-modal {
-                left: 16px;
-                right: 16px;
-                bottom: 16px;
-                width: auto;
-            }
-
             .toast-notification {
                 left: 16px;
                 right: 16px;
@@ -1289,19 +1536,21 @@
 
         /* ---- Short landscape phones (e.g. 740x360) ---- */
         @media (max-height: 460px) and (orientation: landscape) {
-            .timer-fullscreen-view { padding: 12px; justify-content: flex-start; overflow-y: auto; }
-            .timer-view-top-actions-row { position: static; margin-bottom: 8px; display: flex; }
-            .ambient-selector-bar { margin-top: 0; margin-bottom: 12px; padding: 6px 12px; }
-            .engine-mode-tabs { margin-bottom: 10px; }
-            .timer-header-badge { margin-bottom: 10px; }
-            .timer-clock-display {
-                font-size: clamp(2.25rem, 12vh, 5rem);
-                letter-spacing: -1px;
-                margin-bottom: 2px;
+            .timer-fullscreen-view { justify-content: flex-start; overflow-y: auto; }
+            .timer-hero {
+                padding: calc(40px + env(safe-area-inset-top)) 12px calc(56px + env(safe-area-inset-bottom));
             }
-            .timer-meta { margin-bottom: 12px; }
-            .timer-controls { gap: 8px; }
-            .timer-btn { padding: 10px 16px; font-size: 13px; }
+            .timer-hero-plate { padding: 12px 14px; }
+            .timer-secondary-cluster { margin-top: 10px; }
+            .ambient-selector-bar { padding: 4px 8px; }
+            .engine-mode-tabs { margin-bottom: 8px; }
+            .timer-clock-display {
+                font-size: clamp(2.5rem, 14vh, 5.5rem);
+                letter-spacing: -0.02em;
+            }
+            .timer-controls { gap: 6px; margin-top: 10px; }
+            .timer-btn { padding: 8px 14px; font-size: 12px; }
+            .timer-stage-footer { padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); }
             .sidebar { padding-top: 12px; padding-bottom: 12px; }
         }
 
@@ -1314,7 +1563,9 @@
             .theme-switch-btn { min-height: 44px; }
             .btn,
             .timer-btn,
+            .timer-btn-icon,
             .timer-floating-interactive-trigger-btn { min-height: 44px; }
+            .timer-btn-icon { min-width: 44px; justify-content: center; }
             .timer-floating-circle-btn { min-width: 44px; min-height: 44px; padding: 12px; }
             .course-delete-trigger-btn,
             .todo-delete-btn { min-width: 44px; min-height: 44px; }
@@ -1566,6 +1817,61 @@
 
         .help-copy { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-top: 6px; max-width: 640px; }
 
+        /* ---- Guest trial soft-lock UI ---- */
+        .guest-account-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 12000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(20, 24, 32, 0.45);
+            backdrop-filter: blur(4px);
+        }
+        .guest-account-modal.visible { display: flex; }
+        .guest-account-modal-card {
+            width: min(420px, 100%);
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+        }
+        .guest-account-modal-card h3 {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 10px;
+        }
+        .guest-account-modal-card p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.55;
+            margin-bottom: 10px;
+        }
+        .guest-account-modal-note {
+            font-size: 12px !important;
+            font-weight: 600;
+        }
+        .guest-account-modal-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .guest-locked-panel {
+            text-align: center;
+            padding: 28px 20px;
+        }
+        .guest-locked-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+
         .help-thread-card { margin-bottom: 20px; }
         .help-thread-list {
             display: flex;
@@ -1752,7 +2058,7 @@
                     <h3 style="font-size:16px; font-weight:800; color:var(--text-main);" id="pet-headline-label">Mochi is just starting to grow.</h3>
                     <div class="progress-wrapper" style="margin-top:6px;">
                         <div class="progress-labels" style="font-size:11px; margin-bottom:4px;">
-                            <span id="pet-xp-numerical-label">0 / 60 mins focused</span>
+                            <span id="pet-xp-numerical-label">0h 0m / 2h 0m toward Sprout Bun</span>
                             <span style="font-weight:bold; color:var(--neon-purple);">Next Level</span>
                         </div>
                         <div class="progress-bar-bg" style="height:8px;">
@@ -1760,6 +2066,14 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div class="card" id="study-coach-card" style="margin-bottom: 20px;">
+                <div class="card-title">
+                    <span>Study Coach</span>
+                    <i data-lucide="lightbulb" style="color: var(--neon-purple);"></i>
+                </div>
+                <p id="study-coach-tip" class="text-muted" style="font-size: 14px; line-height: 1.5; margin: 0;">Loading tip…</p>
             </div>
 
             <div class="dashboard-grid">
@@ -1789,7 +2103,7 @@
                         <span>Today's Tracked Progress</span>
                         <i data-lucide="sparkles" style="color: var(--neon-purple);"></i>
                     </div>
-                    <div class="metric-large" id="dash-today-time">0h 00m</div>
+                    <div class="metric-large" id="dash-today-time">0h 0m</div>
                     <div class="progress-wrapper">
                         <div class="progress-labels" style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; font-weight:700;">
                             <span id="dash-progress-text" style="color: var(--neon-pink);">0% completed</span>
@@ -1840,37 +2154,24 @@
         <!-- VIEW: TIMER -->
         <div id="view-timer" class="view-panel" style="padding: 0;">
             <div class="timer-fullscreen-view" id="timer-view-container">
-                
-                <!-- Floating Control Action Buttons available in Normal & Fullscreen Mode -->
-                <div class="timer-view-top-actions-row">
-                    <!-- Brain Dump Post-It Action Toggle Button -->
-                    <button class="timer-floating-interactive-trigger-btn" onclick="toggleBrainDumpPostitPopoverState()" title="Brain Dump Note">
-                        <i data-lucide="sticky-note" style="width:14px; height:14px;"></i>
-                        <span class="tfi-label">Brain Dump Note</span>
-                    </button>
 
-                    <!-- Secondary utility actions, kept small and out of the way of the
-                         countdown/controls: Music (playback popover, built + wired by
-                         static/spotify.js -- see its DOM contract comment) and Fullscreen.
-                         The automatic floating-timer behaviour (opening when the user
-                         navigates away from this view) is unrelated to this button and
-                         lives entirely in static/pip.js; only the old manual "Pop out
-                         timer" trigger was removed. -->
-                    <div class="timer-top-actions-right-group">
-                        <div class="timer-music-control-wrap" id="timer-music-control-wrap">
-                            <button class="timer-floating-interactive-trigger-btn timer-floating-circle-btn" id="timer-music-trigger-btn" type="button" title="Music controls" aria-label="Music controls" aria-haspopup="true" aria-expanded="false" aria-controls="timer-music-popover">
-                                <i data-lucide="music" style="width: 16px; height: 16px;"></i>
-                            </button>
-                            <div class="timer-music-popover" id="timer-music-popover" role="menu" aria-label="Music controls" hidden></div>
-                        </div>
-                        <!-- FIXED TRIGGER FUNCTION: Native window element HTML5 Fullscreen Engine initialization -->
-                        <button class="timer-floating-interactive-trigger-btn timer-floating-circle-btn" onclick="toggleNativeWindowFullscreenEngine()" title="Toggle Fullscreen Mode">
-                            <i data-lucide="maximize-2" id="fullscreen-icon-indicator" style="width: 16px; height: 16px;"></i>
-                        </button>
-                    </div>
+                <!-- Atmospheric layers — cafe-night warmth + dusk bloom (CSS only) -->
+                <div class="timer-atmosphere" aria-hidden="true">
+                    <div class="timer-atmo-glow timer-atmo-glow--warm"></div>
+                    <div class="timer-atmo-glow timer-atmo-glow--cool"></div>
+                    <div class="timer-atmo-glow timer-atmo-glow--blossom"></div>
+                    <div class="timer-atmo-skyline"></div>
                 </div>
 
-                <!-- Draggable Yellow Post-It Note context menu -->
+                <!-- Top-left: brain dump chip -->
+                <div class="timer-corner timer-corner--tl">
+                    <button class="timer-floating-interactive-trigger-btn" onclick="toggleBrainDumpPostitPopoverState()" title="Brain Dump Note">
+                        <i data-lucide="sticky-note" style="width:14px; height:14px;"></i>
+                        <span class="tfi-label">Note</span>
+                    </button>
+                </div>
+
+                <!-- Brain dump post-it (opens from top-left chip) -->
                 <div class="timer-braindump-postit-modal" id="timer-popover-postit-note">
                     <div class="timer-braindump-header">
                         <span>📝 Brain Dump Note</span>
@@ -1879,48 +2180,74 @@
                     <textarea class="timer-braindump-textarea" id="sticky-scratchpad-input" placeholder="Jot down thoughts or distractions here to keep your mind clear..." oninput="saveStickyScratchpadContent()"></textarea>
                 </div>
 
-                <div class="ambient-selector-bar">
-                    <div class="ambient-preset-dot active" style="background: var(--ambient-grad-cottoncandy);" title="Cotton Candy Dream" onclick="selectAmbientEnvironmentPreset('cottoncandy', false, this)"></div>
-                    <div class="ambient-preset-dot" style="background: var(--ambient-grad-sunsetglow);" title="Sunset Lavender Glow" onclick="selectAmbientEnvironmentPreset('sunsetglow', false, this)"></div>
-                    <div class="ambient-preset-dot" style="background: var(--ambient-grad-peachy);" title="Sweet Peach Aura" onclick="selectAmbientEnvironmentPreset('peachy', false, this)"></div>
-                    <div class="ambient-preset-dot" style="background: var(--ambient-grad-mintrefresh);" title="Minty Refresh Glow" onclick="selectAmbientEnvironmentPreset('mintrefresh', false, this)"></div>
-                    <div class="ambient-preset-dot" style="background: var(--ambient-grad-lavenderdream);" title="Lavender Macaron" onclick="selectAmbientEnvironmentPreset('lavenderdream', false, this)"></div>
-                    <div class="ambient-preset-dot" style="background: var(--ambient-grad-auroracute);" title="Aurora Glow" onclick="selectAmbientEnvironmentPreset('auroracute', false, this)"></div>
-                    <div class="ambient-preset-dot" style="background: var(--ambient-grad-magicaldark);" title="Magical Dark Galaxy" onclick="selectAmbientEnvironmentPreset('magicaldark', true, this)"></div>
-                </div>
+                <!-- Hero stage — clock is the focal point -->
+                <main class="timer-hero">
+                    <div class="timer-hero-plate">
+                        <div class="engine-mode-tabs">
+                            <button class="mode-tab-btn active" id="mode-tab-countdown" onclick="changeEngineMode('countdown')">
+                                <i data-lucide="hourglass"></i> countdown
+                            </button>
+                            <button class="mode-tab-btn" id="mode-tab-stopwatch" onclick="changeEngineMode('stopwatch')">
+                                <i data-lucide="timer"></i> stopwatch
+                            </button>
+                        </div>
 
-                <div class="engine-mode-tabs">
-                    <button class="mode-tab-btn active" id="mode-tab-countdown" onclick="changeEngineMode('countdown')">
-                        <i data-lucide="hourglass"></i> Countdown Block
-                    </button>
-                    <button class="mode-tab-btn" id="mode-tab-stopwatch" onclick="changeEngineMode('stopwatch')">
-                        <i data-lucide="timer"></i> Continuous Stopwatch
-                    </button>
-                </div>
+                        <div class="timer-clock-display" id="timer-display">25:00</div>
+                        <div class="timer-meta" id="timer-start-timestamp">Pick a course and start your session</div>
 
-                <div class="timer-header-badge">
-                    <i data-lucide="bookmark-heart" style="width:14px; height:14px; color: var(--neon-pink); fill: var(--neon-pink);"></i>
-                    Target: <span id="timer-current-subject" style="margin-left: 4px; font-weight: 800;">Math</span>
-                </div>
+                        <div class="timer-controls">
+                            <button class="timer-btn timer-btn-primary-act" id="timer-start-btn" onclick="toggleEngineExecutionLoop()">
+                                <i data-lucide="play-circle"></i> Start
+                            </button>
+                            <button class="timer-btn timer-btn-icon" onclick="resetEngineDisplayState()" title="Reset" aria-label="Reset timer">
+                                <i data-lucide="refresh-cw"></i>
+                            </button>
+                            <button class="timer-btn timer-btn-log" onclick="saveEngineWorkspaceBlockData()">
+                                <i data-lucide="check-circle-2"></i> Log
+                            </button>
+                        </div>
+                    </div>
 
-                <div class="floating-subject-bar" id="timer-subject-pills">
-                    <!-- Dynamic subject pills injection slot -->
-                </div>
+                    <!-- Receded: course target + subject pills -->
+                    <div class="timer-secondary-cluster">
+                        <div class="timer-header-badge">
+                            <i data-lucide="bookmark-heart" style="width:12px; height:12px; color: var(--neon-pink); fill: var(--neon-pink);"></i>
+                            Target: <span id="timer-current-subject" style="margin-left: 4px; font-weight: 800;">Math</span>
+                        </div>
+                        <div class="floating-subject-bar" id="timer-subject-pills">
+                            <!-- Dynamic subject pills injection slot -->
+                        </div>
+                    </div>
+                </main>
 
-                <div class="timer-clock-display" id="timer-display">25:00</div>
-                <div class="timer-meta" id="timer-start-timestamp">Pick a course and start your session</div>
-
-                <div class="timer-controls">
-                    <button class="timer-btn timer-btn-secondary" onclick="resetEngineDisplayState()">
-                        <i data-lucide="refresh-cw"></i> Reset
-                    </button>
-                    <button class="timer-btn timer-btn-primary-act" id="timer-start-btn" onclick="toggleEngineExecutionLoop()">
-                        <i data-lucide="play-circle"></i> Start Block
-                    </button>
-                    <button class="timer-btn timer-btn-secondary" style="background: rgba(82, 229, 163, 0.15); border-color: #52E5A3; color: #1E824C;" onclick="saveEngineWorkspaceBlockData()">
-                        <i data-lucide="check-circle-2"></i> Log Focus
-                    </button>
-                </div>
+                <!-- Footer chrome: music (left), ambient (center), fullscreen (right) -->
+                <footer class="timer-stage-footer">
+                    <div class="timer-stage-footer-left">
+                        <div class="timer-music-control-wrap" id="timer-music-control-wrap">
+                            <button class="timer-floating-interactive-trigger-btn" id="timer-music-trigger-btn" type="button" title="Music controls" aria-label="Music controls" aria-haspopup="true" aria-expanded="false" aria-controls="timer-music-popover">
+                                <i data-lucide="music" style="width: 14px; height: 14px;"></i>
+                                <span class="timer-music-chip-label tfi-label">Music</span>
+                            </button>
+                            <div class="timer-music-popover" id="timer-music-popover" role="menu" aria-label="Music controls" hidden></div>
+                        </div>
+                    </div>
+                    <div class="timer-stage-footer-center">
+                        <div class="ambient-selector-bar">
+                            <div class="ambient-preset-dot active" style="background: var(--ambient-grad-cottoncandy);" title="Cotton Candy Dream" onclick="selectAmbientEnvironmentPreset('cottoncandy', false, this)"></div>
+                            <div class="ambient-preset-dot" style="background: var(--ambient-grad-sunsetglow);" title="Sunset Lavender Glow" onclick="selectAmbientEnvironmentPreset('sunsetglow', false, this)"></div>
+                            <div class="ambient-preset-dot" style="background: var(--ambient-grad-peachy);" title="Sweet Peach Aura" onclick="selectAmbientEnvironmentPreset('peachy', false, this)"></div>
+                            <div class="ambient-preset-dot" style="background: var(--ambient-grad-mintrefresh);" title="Minty Refresh Glow" onclick="selectAmbientEnvironmentPreset('mintrefresh', false, this)"></div>
+                            <div class="ambient-preset-dot" style="background: var(--ambient-grad-lavenderdream);" title="Lavender Macaron" onclick="selectAmbientEnvironmentPreset('lavenderdream', false, this)"></div>
+                            <div class="ambient-preset-dot" style="background: var(--ambient-grad-auroracute);" title="Aurora Glow" onclick="selectAmbientEnvironmentPreset('auroracute', false, this)"></div>
+                            <div class="ambient-preset-dot" style="background: var(--ambient-grad-magicaldark);" title="Magical Dark Galaxy" onclick="selectAmbientEnvironmentPreset('magicaldark', true, this)"></div>
+                        </div>
+                    </div>
+                    <div class="timer-stage-footer-right">
+                        <button class="timer-floating-interactive-trigger-btn timer-floating-circle-btn" onclick="toggleNativeWindowFullscreenEngine()" title="Toggle Fullscreen Mode" aria-label="Toggle fullscreen">
+                            <i data-lucide="maximize-2" id="fullscreen-icon-indicator" style="width: 16px; height: 16px;"></i>
+                        </button>
+                    </div>
+                </footer>
             </div>
         </div>
 
@@ -2299,6 +2626,25 @@
             return Math.max(0, Math.floor(value));
         }
 
+        // Shared hours+minutes formatter for every study-duration display in the
+        // app (dashboard, leaderboard, badges, coach, toasts, session log).
+        // Never shows minutes alone — always both hours and minutes.
+        function formatDurationHM(totalSeconds, options) {
+            options = options || {};
+            const long = !!options.long;
+            const s = (typeof totalSeconds === 'number' && isFinite(totalSeconds) && totalSeconds > 0)
+                ? Math.floor(totalSeconds) : 0;
+            const totalMinutes = Math.floor(s / 60);
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            if (long) {
+                const hourWord = hours === 1 ? 'hour' : 'hours';
+                const minWord = minutes === 1 ? 'minute' : 'minutes';
+                return hours + ' ' + hourWord + ' ' + minutes + ' ' + minWord;
+            }
+            return hours + 'h ' + minutes + 'm';
+        }
+
         let operationalBarChartInstance = null;
         let leaderboardChartInstance = null;
         let leaderboardPollTimer = null;
@@ -2314,9 +2660,9 @@
             { id: 'b_early_bird', category: 'Daily', title: 'Early Bird Badge', desc: 'Study before 7:00 AM (and after 3:00 AM).', icon: 'cloud-sun' },
             { id: 'b_night_owl', category: 'Daily', title: 'Night Owl Badge', desc: 'Study after 11:00 PM (and before 3:00 AM).', icon: 'moon' },
             { id: 'b_daily_goal', category: 'Daily', title: 'Daily Goal Badge', desc: 'Reach your daily study goal.', icon: 'target' },
-            { id: 'b_bronze_medal', category: 'Daily', title: 'Bronze Medal', desc: 'Study more than 180 minutes in a single day.', icon: 'medal' },
-            { id: 'b_silver_medal', category: 'Daily', title: 'Silver Medal', desc: 'Study more than 240 minutes in a single day.', icon: 'medal' },
-            { id: 'b_gold_medal', category: 'Daily', title: 'Gold Medal', desc: 'Study more than 300 minutes in a single day.', icon: 'medal' },
+            { id: 'b_bronze_medal', category: 'Daily', title: 'Bronze Medal', desc: 'Study more than 3 hours 0 minutes in a single day.', icon: 'medal' },
+            { id: 'b_silver_medal', category: 'Daily', title: 'Silver Medal', desc: 'Study more than 4 hours 0 minutes in a single day.', icon: 'medal' },
+            { id: 'b_gold_medal', category: 'Daily', title: 'Gold Medal', desc: 'Study more than 5 hours 0 minutes in a single day.', icon: 'medal' },
             { id: 'b_weekly_goal', category: 'Weekly', title: 'Weekly Goal Badge', desc: 'Reach your weekly study goal.', icon: 'milestone' },
             { id: 'b_bronze_week', category: 'Weekly', title: 'Bronze Week', desc: 'Earn a Bronze Medal every day for a full week.', icon: 'shield' },
             { id: 'b_silver_week', category: 'Weekly', title: 'Silver Week', desc: 'Earn a Silver Medal every day for a full week.', icon: 'award' },
@@ -2355,7 +2701,7 @@
             { id: 'a_break_even', category: 'Dedication', title: 'Break Even', desc: 'Bounce back after missing a day.', check: (state) => state.sessions.length >= 2, icon: 'trending-up' },
             { id: 'a_stock_surge', category: 'Dedication', title: 'Stock Surge', desc: 'Study 10 hours more than your goal.', check: (state) => state.sessions.length >= 5, icon: 'activity' },
             { id: 'a_course_samurai', category: 'Dedication', title: 'Course Samurai', desc: 'Reach your study goal for a course.', check: (state) => state.sessions.length >= 3, icon: 'swords' },
-            { id: 'a_photo_finish', category: 'Dedication', title: 'Photo Finish', desc: 'Hit your daily goal with less than 30 minutes to spare.', check: (state) => state.sessions.length >= 1, icon: 'camera' },
+            { id: 'a_photo_finish', category: 'Dedication', title: 'Photo Finish', desc: 'Hit your daily goal with less than 0 hours 30 minutes to spare.', check: (state) => state.sessions.length >= 1, icon: 'camera' },
             { id: 'a_daily_devotion', category: 'Dedication', title: 'Daily Devotion', desc: 'Hit your daily goal every day for a month.', check: (state) => state.streak >= 28, icon: 'calendar-check' },
             { id: 'a_golden_legend', category: 'Dedication', title: 'Golden Legend', desc: 'Earn 23 Gold Medals.', check: (state) => state.sessions.length >= 6, icon: 'award' },
             { id: 'a_goal_crusher', category: 'Dedication', title: 'Goal Crusher', desc: 'Reach your study goal for the semester.', check: (state) => state.sessions.length >= 4, icon: 'target' },
@@ -2409,6 +2755,7 @@
             AuraSync.bootstrap().then((accountUser) => {
                 loadStateFromLocalStorageRegister();
                 applyAccountIdentity(accountUser);
+                if (window.AuraGuest && typeof AuraGuest.applyGuestNav === 'function') AuraGuest.applyGuestNav();
                 lucide.createIcons();
                 initDashboardMetricsAndCharts();
                 renderCoursesView();
@@ -2425,9 +2772,9 @@
                 // Fetch the unread-replies count on load so the Help nav badge can
                 // appear without the user ever opening the panel -- this is a single
                 // fetch, not a poll; it only refreshes again when the panel is open
-                // (see onHelpViewShown / switchView).
-                loadHelpMessages();
-                if (typeof AuraSpotify !== 'undefined') AuraSpotify.init();
+                // (see onHelpViewShown / switchView). Guests stay local-only.
+                if (!(window.AuraGuest && AuraGuest.isGuest())) loadHelpMessages();
+                if (typeof AuraSpotify !== 'undefined' && !(window.AuraGuest && AuraGuest.isGuest())) AuraSpotify.init();
                 if (typeof AuraFocus !== 'undefined') AuraFocus.init();
             });
         });
@@ -2581,38 +2928,67 @@
             updateEngineDisplayString();
         }
 
-        // Mochi Study Pet Growth Engine
+        // Mochi Study Pet Growth Engine — garden ladder (hours to next level)
+        const PET_LEVEL_COSTS_HOURS = [2, 3, 5, 8, 12, 16, 22, 30, 40, 55, 75];
+        const PET_GARDEN_FORMS = [
+            { emoji: "🌱", name: "Seedling", headline: "Mochi is just starting to grow." },
+            { emoji: "🐰", name: "Sprout Bun", headline: "Mochi sprouted into a little bun." },
+            { emoji: "🦊", name: "Leaf Fox", headline: "Mochi evolved into a leaf fox." },
+            { emoji: "🐱", name: "Blossom Cat", headline: "Mochi blossomed into a cat." },
+            { emoji: "🦉", name: "Grove Owl", headline: "Mochi watches over the grove." },
+            { emoji: "🦌", name: "Orchard Stag", headline: "Mochi roams the orchard." },
+            { emoji: "🐺", name: "Canopy Wolf", headline: "Mochi guards the canopy." },
+            { emoji: "🌲", name: "Storm Cedar", headline: "Mochi stands tall like a storm cedar." },
+            { emoji: "⛰️", name: "Mountain Grove", headline: "Mochi reached the mountain grove." },
+            { emoji: "🍂", name: "Season Keeper", headline: "Mochi keeps the seasons turning." },
+            { emoji: "🌳", name: "World Tree", headline: "Mochi grew into a world tree." },
+            { emoji: "🌸", name: "Eternal Bloom", headline: "Mochi reached eternal bloom." }
+        ];
+
+        function getPetLevelCostHours(level) {
+            if (level <= PET_LEVEL_COSTS_HOURS.length) {
+                return PET_LEVEL_COSTS_HOURS[level - 1];
+            }
+            return 100 + (level - 12) * 25;
+        }
+
+        function getPetCumulativeHoursForLevel(level) {
+            let cumulative = 0;
+            for (let l = 1; l < level; l++) {
+                cumulative += getPetLevelCostHours(l);
+            }
+            return cumulative;
+        }
+
         function updatePetEvolutionState() {
-            const netMinutes = Math.floor(appState.sessions.reduce((acc, s) => acc + s.durationSeconds, 0) / 60);
-            const level = Math.floor(netMinutes / 60) + 1;
-            const remainingXpMinutes = netMinutes % 60;
-            
+            const totalSeconds = appState.sessions.reduce((acc, s) => acc + s.durationSeconds, 0);
+            const totalHours = totalSeconds / 3600;
+
+            let level = 1;
+            while (totalHours >= getPetCumulativeHoursForLevel(level + 1)) {
+                level++;
+            }
+
+            const formIndex = Math.min(level, 12) - 1;
+            const currentForm = PET_GARDEN_FORMS[formIndex];
+            const nextForm = level >= 12 ? PET_GARDEN_FORMS[11] : PET_GARDEN_FORMS[level];
+            const cumulativeHours = getPetCumulativeHoursForLevel(level);
+            const progressHours = totalHours - cumulativeHours;
+            const nextCostHours = getPetLevelCostHours(level);
+            const progressSeconds = Math.max(0, Math.floor(progressHours * 3600));
+            const nextCostSeconds = Math.floor(nextCostHours * 3600);
+
             const petAvatarNode = document.getElementById('pet-avatar-emoji');
             const petTagNode = document.getElementById('pet-level-display-tag');
             const headlineNode = document.getElementById('pet-headline-label');
             const xpTextNode = document.getElementById('pet-xp-numerical-label');
             const fillNode = document.getElementById('pet-xp-progress-fill');
 
-            xpTextNode.innerText = `${remainingXpMinutes} / 60 mins focused toward growth`;
-            fillNode.style.width = `${Math.floor((remainingXpMinutes / 60) * 100)}%`;
-
-            if(level === 1) {
-                petAvatarNode.innerText = "🌱";
-                petTagNode.innerText = "Level 1: Seedling";
-                headlineNode.innerText = "Mochi is just starting to grow.";
-            } else if(level === 2) {
-                petAvatarNode.innerText = "🐰";
-                petTagNode.innerText = "Level 2: Bunny";
-                headlineNode.innerText = "Mochi has grown into a bunny.";
-            } else if(level === 3) {
-                petAvatarNode.innerText = "🐱";
-                petTagNode.innerText = "Level 3: Scholar Cat";
-                headlineNode.innerText = "Mochi evolved into a scholar cat.";
-            } else {
-                petAvatarNode.innerText = "🦄";
-                petTagNode.innerText = `Level ${level}: Unicorn`;
-                headlineNode.innerText = "Mochi reached unicorn status. Impressive focus.";
-            }
+            petAvatarNode.innerText = currentForm.emoji;
+            petTagNode.innerText = `Level ${level}: ${currentForm.name}`;
+            headlineNode.innerText = currentForm.headline;
+            xpTextNode.innerText = `${formatDurationHM(progressSeconds)} / ${formatDurationHM(nextCostSeconds)} toward ${nextForm.name}`;
+            fillNode.style.width = `${Math.min(100, Math.floor((progressHours / nextCostHours) * 100))}%`;
         }
 
         // FIXED FEATURE: Native Window Element HTML5 Fullscreen Engine wrapper toggle
@@ -2800,9 +3176,17 @@
             // its input.
             const totalRunningSecondsMap =
                 (typeof raw === 'number' && isFinite(raw) && raw > 0) ? Math.floor(raw) : 0;
-            const mins = Math.floor(totalRunningSecondsMap / 60);
-            const secs = totalRunningSecondsMap % 60;
-            document.getElementById('timer-display').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            if (totalRunningSecondsMap >= 3600) {
+                const hours = Math.floor(totalRunningSecondsMap / 3600);
+                const mins = Math.floor((totalRunningSecondsMap % 3600) / 60);
+                const secs = totalRunningSecondsMap % 60;
+                document.getElementById('timer-display').innerText =
+                    hours + 'h ' + mins.toString().padStart(2, '0') + 'm ' + secs.toString().padStart(2, '0') + 's';
+            } else {
+                const mins = Math.floor(totalRunningSecondsMap / 60);
+                const secs = totalRunningSecondsMap % 60;
+                document.getElementById('timer-display').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
         }
 
         // Recomputes elapsed time from real clock time instead of counting ticks.
@@ -2844,7 +3228,7 @@
                 engineAnchorMs = nowMs;
                 const gapMins = Math.round(gapMs / 60000);
                 if (gapMins >= 1) {
-                    triggerAlertToast("Timer Resumed", `This device seems to have been asleep for about ${gapMins} min -- that gap wasn't counted.`, false);
+                    triggerAlertToast("Timer Resumed", `This device seems to have been asleep for about ${formatDurationHM(gapMins * 60)} -- that gap wasn't counted.`, false);
                 }
             }
             lastSyncClockMs = nowMs;
@@ -2921,6 +3305,10 @@
         }
 
         function toggleEngineExecutionLoop() {
+            if (window.AuraGuest && AuraGuest.isGuest() && AuraGuest.isExpired() && !isEngineActivelyRunning) {
+                AuraGuest.requireAccount('Your guest trial has ended. Log in or sign up to start studying again.');
+                return;
+            }
             const startBtn = document.getElementById('timer-start-btn');
             if (isEngineActivelyRunning) {
                 syncEngineRegistersFromClock();
@@ -2971,9 +3359,9 @@
             // is exactly what this app must not do.
             const elapsedOnClock = Math.floor(runningAccumulatedSeconds || 0);
             if (!skipConfirm && elapsedOnClock >= 60) {
-                const mins = Math.floor(elapsedOnClock / 60);
+                const durationLabel = formatDurationHM(elapsedOnClock, { long: true });
                 const ok = window.confirm(
-                    "Reset the timer and discard " + mins + " minute" + (mins === 1 ? "" : "s") +
+                    "Reset the timer and discard " + durationLabel +
                     " already on the clock?\n\nTo keep the time instead, cancel and choose Log Focus."
                 );
                 if (!ok) return;
@@ -3105,12 +3493,13 @@
                 appState.sessions.unshift(logDataNode);
                 saveStateToLocalStorageRegister();
                 updatePetEvolutionState();
+                initDashboardMetricsAndCharts();
                 // Flush to the server immediately rather than waiting out
                 // sync.js's debounce -- see static/sync.js's flush().
                 if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
 
                 if (finalDuration >= 15 * 60) {
-                    triggerAlertToast("Session Logged", `Nice work! Logged ${Math.round(finalDuration/60)}m into ${appState.selectedCourse}.`, true);
+                    triggerAlertToast("Session Logged", `Nice work! Logged ${formatDurationHM(finalDuration)} into ${appState.selectedCourse}.`, true);
                 } else {
                     triggerAlertToast("Keep Going", "Every minute adds up to big results! Try again soon.", false);
                 }
@@ -3235,8 +3624,7 @@
                 if (window.lucide) lucide.createIcons();
                 persistRunningTimerSnapshot();
 
-                const mins = Math.floor(confirmedElapsed / 60);
-                triggerAlertToast("Session Recovered", `Found an interrupted session -- ${mins} min recovered in ${courseLabel}. Resume or log it now.`, true);
+                triggerAlertToast("Session Recovered", `Found an interrupted session -- ${formatDurationHM(confirmedElapsed)} recovered in ${courseLabel}. Resume or log it now.`, true);
             } else {
                 // Implausible: silently trusting this would credit the user
                 // with hours they almost certainly didn't study (device
@@ -3245,12 +3633,12 @@
                 // full amount -- "a sane cap and a prompt rather than a
                 // silent N-hour log."
                 const cappedSeconds = MAX_PLAUSIBLE_RECOVERY_SECONDS;
-                const cappedMins = Math.floor(cappedSeconds / 60);
+                const cappedLabel = formatDurationHM(cappedSeconds, { long: true });
                 const hrs = Math.floor(confirmedElapsed / 3600);
                 const wantsLog = window.confirm(
                     `AuraStudy found an interrupted ${snapshotMode} session in "${courseLabel}" that ran for about ${hrs}+ ` +
                     `hours -- longer than a real study block, most likely because this device was asleep or the tab stayed ` +
-                    `closed for a while.\n\nClick OK to log the first ${cappedMins} minutes (a safe cap) now, or Cancel to ` +
+                    `closed for a while.\n\nClick OK to log the first ${cappedLabel} (a safe cap) now, or Cancel to ` +
                     `discard it and start fresh.`
                 );
                 if (wantsLog) {
@@ -3267,8 +3655,9 @@
                     appState.sessions.unshift(logDataNode);
                     saveStateToLocalStorageRegister();
                     updatePetEvolutionState();
+                    initDashboardMetricsAndCharts();
                     if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
-                    triggerAlertToast("Session Logged", `Logged a capped ${cappedMins} min for the interrupted session.`, true);
+                    triggerAlertToast("Session Logged", `Logged a capped ${formatDurationHM(cappedSeconds)} for the interrupted session.`, true);
                 } else {
                     triggerAlertToast("Discarded", "The interrupted session was discarded.", false);
                 }
@@ -3314,7 +3703,7 @@
                             <i data-lucide="trash-2" style="width:16px; height:16px;"></i>
                         </button>
                     </div>
-                    <div style="font-size:24px; font-weight:900; color:var(--text-main);">${Math.round(cumulativeSeconds/60)} <span style="font-size:13px; color:var(--text-muted);">mins total</span></div>
+                    <div style="font-size:24px; font-weight:900; color:var(--text-main);">${formatDurationHM(cumulativeSeconds)} <span style="font-size:13px; color:var(--text-muted);">total</span></div>
                 `;
                 // Bound directly to the closure's own `c` (never round-tripped through
                 // an HTML/JS-string attribute) so a course name containing quotes or
@@ -3352,16 +3741,16 @@
         function initDashboardMetricsAndCharts() {
             const today = getLocalDateStr();
             let todaySecs = 0; appState.sessions.forEach(s => { if(s.date === today) todaySecs += s.durationSeconds; });
-            const hours = Math.floor(todaySecs / 3600); const mins = Math.floor((todaySecs % 3600) / 60);
-            document.getElementById('dash-today-time').innerText = `${hours}h ${mins.toString().padStart(2, '0')}m`;
+            document.getElementById('dash-today-time').innerText = formatDurationHM(todaySecs);
 
             const totalGoalSecs = appState.profile.dailyGoalHours * 3600;
             const completedPercentage = Math.min(Math.floor((todaySecs / totalGoalSecs) * 100), 100);
             document.getElementById('dash-progress-text').innerText = `${completedPercentage}% achieved`;
-            document.getElementById('dash-goal-text').innerText = `Daily Target: ${appState.profile.dailyGoalHours}h`;
+            document.getElementById('dash-goal-text').innerText = `Daily Target: ${formatDurationHM(totalGoalSecs)}`;
             document.getElementById('dash-progress-fill').style.width = `${completedPercentage}%`;
 
             calculateStreaksLogicModule(); buildAnalyticsChartCanvasComponent();
+            updateStudyCoachCard();
         }
 
         function calculateStreaksLogicModule() {
@@ -3399,6 +3788,12 @@
 
         function startLeaderboardPolling() {
             stopLeaderboardPolling();
+            if (window.AuraGuest && AuraGuest.isGuest()) {
+                document.getElementById('leaderboard-content').style.display = 'none';
+                document.getElementById('leaderboard-you-card').style.display = 'none';
+                showLeaderboardState('empty', AuraGuest.guestAccountMessage('the leaderboard'));
+                return;
+            }
             loadLeaderboardData();
             leaderboardPollTimer = setInterval(loadLeaderboardData, LEADERBOARD_POLL_MS);
         }
@@ -3407,16 +3802,117 @@
             if (leaderboardPollTimer) { clearInterval(leaderboardPollTimer); leaderboardPollTimer = null; }
         }
 
+        const STUDY_COACH_WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        function computeStudyCoachMetrics() {
+            const goalSecs = (appState.profile.dailyGoalHours || 0) * 3600;
+            const weekdayTotals = [0, 0, 0, 0, 0, 0, 0];
+            const dailyRegistry = {};
+
+            appState.sessions.forEach(s => {
+                const parts = (s.date || '').split('-');
+                if (parts.length !== 3) return;
+                const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                if (isNaN(d.getTime())) return;
+                const wd = d.getDay();
+                weekdayTotals[wd] += s.durationSeconds;
+                dailyRegistry[s.date] = (dailyRegistry[s.date] || 0) + s.durationSeconds;
+            });
+
+            let goalHitDays = 0;
+            let goalEligibleDays = 0;
+            const weekdayDaySecs = [];
+            const weekendDaySecs = [];
+            Object.entries(dailyRegistry).forEach(([dateStr, secs]) => {
+                if (goalSecs > 0) {
+                    goalEligibleDays++;
+                    if (secs >= goalSecs) goalHitDays++;
+                }
+                const parts = dateStr.split('-');
+                const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                const wd = d.getDay();
+                if (wd === 0 || wd === 6) weekendDaySecs.push(secs);
+                else weekdayDaySecs.push(secs);
+            });
+
+            let bestWeekdayIndex = 0;
+            for (let i = 1; i < 7; i++) {
+                if (weekdayTotals[i] > weekdayTotals[bestWeekdayIndex]) bestWeekdayIndex = i;
+            }
+
+            const weekdayAvg = weekdayDaySecs.length
+                ? weekdayDaySecs.reduce((a, b) => a + b, 0) / weekdayDaySecs.length : 0;
+            const weekendAvg = weekendDaySecs.length
+                ? weekendDaySecs.reduce((a, b) => a + b, 0) / weekendDaySecs.length : 0;
+
+            return {
+                weekdayTotals,
+                bestWeekdayIndex,
+                weekdayAvg,
+                weekendAvg,
+                daysWithStudy: Object.keys(dailyRegistry).length,
+                goalHitDays,
+                goalEligibleDays,
+                goalHitRate: goalEligibleDays > 0 ? goalHitDays / goalEligibleDays : 0
+            };
+        }
+
+        function generateStudyCoachTip() {
+            if (!appState.sessions.length) {
+                return 'Welcome! Log your first study session to unlock personalized tips based on your habits.';
+            }
+
+            const metrics = computeStudyCoachMetrics();
+            const goalSecs = (appState.profile.dailyGoalHours || 0) * 3600;
+            const goalLabel = formatDurationHM(goalSecs, { long: true });
+            const bestName = STUDY_COACH_WEEKDAY_NAMES[metrics.bestWeekdayIndex];
+
+            if (metrics.daysWithStudy >= 5 && metrics.goalHitRate >= 0.6) {
+                return 'You hit your daily goal (' + goalLabel + ') on ' + metrics.goalHitDays + ' of ' +
+                    metrics.goalEligibleDays + ' study days — great consistency! If it feels manageable, try bumping your daily goal in Settings.';
+            }
+
+            if (metrics.weekendAvg > 0 && metrics.weekdayAvg > 0 &&
+                metrics.weekdayTotals[metrics.bestWeekdayIndex] > metrics.weekendAvg * 2) {
+                const bestTotal = formatDurationHM(metrics.weekdayTotals[metrics.bestWeekdayIndex], { long: true });
+                const weekendAvgLabel = formatDurationHM(metrics.weekendAvg, { long: true });
+                return escapeHtml(bestName) + ' is your strongest day (' + bestTotal + ' logged there). Weekends average ' +
+                    weekendAvgLabel + '. Can you replicate what works on ' + escapeHtml(bestName) +
+                    ' — same time, same course order — on Saturday?';
+            }
+
+            if (metrics.weekdayAvg > 0 && metrics.weekendAvg > 0) {
+                const diff = Math.abs(metrics.weekdayAvg - metrics.weekendAvg);
+                if (diff >= 30 * 60) {
+                    if (metrics.weekdayAvg > metrics.weekendAvg) {
+                        return 'You study more on weekdays (' + formatDurationHM(metrics.weekdayAvg, { long: true }) +
+                            '/day) than weekends (' + formatDurationHM(metrics.weekendAvg, { long: true }) +
+                            '/day). Try a short ' + formatDurationHM(25 * 60, { long: true }) +
+                            ' Saturday morning block before the day gets busy.';
+                    }
+                    return 'Weekends are your stronger days (' + formatDurationHM(metrics.weekendAvg, { long: true }) +
+                        '/day vs ' + formatDurationHM(metrics.weekdayAvg, { long: true }) +
+                        ' on weekdays). Consider protecting one weekday evening the same way you guard weekend study time.';
+                }
+            }
+
+            if (appState.streak >= 3) {
+                return 'Your ' + appState.streak + '-day streak shows real momentum. Keep today above ' +
+                    formatDurationHM(goalSecs) + ' to extend it.';
+            }
+
+            return 'Your best day so far is ' + escapeHtml(bestName) + '. Pick one small experiment this week — same start time, phone in another room — and see if you can beat ' +
+                formatDurationHM(metrics.weekdayTotals[metrics.bestWeekdayIndex]) + ' there.';
+        }
+
+        function updateStudyCoachCard() {
+            const el = document.getElementById('study-coach-tip');
+            if (!el) return;
+            el.innerHTML = generateStudyCoachTip();
+        }
+
         function formatLeaderboardHours(seconds) {
-            // Hours and minutes, not decimal hours: "1h 24m" reads as a length
-            // of time, "1.4h" makes you do the arithmetic yourself.
-            const s = (typeof seconds === 'number' && isFinite(seconds) && seconds > 0) ? Math.floor(seconds) : 0;
-            const totalMinutes = Math.floor(s / 60);
-            const hours = Math.floor(totalMinutes / 60);
-            const minutes = totalMinutes % 60;
-            if (hours === 0) return minutes + 'm';
-            if (minutes === 0) return hours + 'h';
-            return hours + 'h ' + minutes + 'm';
+            return formatDurationHM(seconds);
         }
 
         function showLeaderboardState(kind, message) {
@@ -3445,6 +3941,7 @@
         }
 
         function loadLeaderboardData() {
+            if (window.AuraGuest && AuraGuest.isGuest()) return;
             if (leaderboardRequestInFlight) return;
             leaderboardRequestInFlight = true;
             if (!leaderboardHasLoadedOnce) showLeaderboardState('loading', 'Loading the leaderboard...');
@@ -3843,6 +4340,10 @@
         // read. forceShowLoading re-shows the loading state even on a retry
         // after the thread has already loaded once (used by the Try Again button).
         function loadHelpMessages(forceShowLoading) {
+            if (window.AuraGuest && AuraGuest.isGuest()) {
+                showHelpState('empty', AuraGuest.guestAccountMessage('Help & Doubts'));
+                return Promise.resolve(false);
+            }
             if (helpRequestInFlight) return Promise.resolve(false);
             helpRequestInFlight = true;
             if (!helpHasLoadedOnce || forceShowLoading) showHelpState('loading', 'Loading your conversation...');
@@ -3930,6 +4431,10 @@
         }
 
         function sendHelpMessage() {
+            if (window.AuraGuest && AuraGuest.isGuest()) {
+                AuraGuest.requireAccount(AuraGuest.guestAccountMessage('Help & Doubts'));
+                return;
+            }
             if (helpSendInFlight) return;
             const input = document.getElementById('help-message-input');
             const sendBtn = document.getElementById('help-send-btn');
@@ -3984,7 +4489,7 @@
             let anyAdminAdded = false;
             appState.sessions.forEach(s => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td><strong>${escapeHtml(s.date)}</strong></td><td><span style="background:var(--bg-main); padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; border:1px solid var(--border-color); color:var(--neon-pink);">${escapeHtml(s.course)}</span></td><td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--neon-purple);">${escapeHtml(s.type)}</span></td><td><strong>${Math.round(s.durationSeconds / 60)} mins</strong></td><td class="text-muted" style="font-size:13px;">${escapeHtml(s.timestamp)}</td>`;
+                tr.innerHTML = `<td><strong>${escapeHtml(s.date)}</strong></td><td><span style="background:var(--bg-main); padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; border:1px solid var(--border-color); color:var(--neon-pink);">${escapeHtml(s.course)}</span></td><td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--neon-purple);">${escapeHtml(s.type)}</span></td><td><strong>${formatDurationHM(s.durationSeconds)}</strong></td><td class="text-muted" style="font-size:13px;">${escapeHtml(s.timestamp)}</td>`;
                 // Sessions the owner logged on this user's behalf (a time
                 // correction) carry addedByAdmin + adminReason from the server
                 // (see server/admin.py build_session_entry) -- mark them
@@ -4190,6 +4695,8 @@
 
     <!-- Server sync + Spotify integration, loaded AFTER the inline app script so
          appState / saveStateToLocalStorageRegister / switchView already exist. -->
+    <!-- Guest trial locks load before sync so bootstrap skips server calls. -->
+    <script src="/static/guest.js"></script>
     <script src="/static/sync.js"></script>
     <script src="/static/spotify.js"></script>
     <script src="/static/pip.js"></script>

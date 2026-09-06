@@ -28,6 +28,8 @@ def test_root_serves_landing_page_unauthenticated(client):
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert 'data-authenticated="false"' in body
+    assert "Continue as guest" in body
+    assert "/app?guest=1" in body
     # The landing page, not the study app.
     assert 'id="view-timer"' not in body
 

@@ -112,6 +112,15 @@ body {
   font-weight: 600;
 }
 
+.guest-trial-copy {
+  font-size: clamp(0.78rem, 2.1vw, 0.95rem);
+  color: var(--text-muted);
+  font-weight: 500;
+  line-height: 1.55;
+  max-width: 34rem;
+  margin-top: 4px;
+}
+
 /* ---------- Buttons ---------- */
 
 .cta-row {
@@ -207,9 +216,14 @@ html.js-enabled .tagline {
   animation: fade-up 0.45s ease-out 1.05s forwards;
 }
 
+html.js-enabled .guest-trial-copy {
+  opacity: 0;
+  animation: fade-up 0.45s ease-out 1.12s forwards;
+}
+
 html.js-enabled .cta-row {
   opacity: 0;
-  animation: fade-up 0.45s ease-out 1.15s forwards;
+  animation: fade-up 0.45s ease-out 1.22s forwards;
 }
 
 @keyframes word-fallback-in {
@@ -233,6 +247,7 @@ html.js-enabled .cta-row {
   html.js-enabled .wordmark .letters,
   html.js-enabled .wordmark .letters.is-split .letter,
   html.js-enabled .tagline,
+  html.js-enabled .guest-trial-copy,
   html.js-enabled .cta-row {
     opacity: 1 !important;
     transform: none !important;
@@ -248,6 +263,7 @@ html.js-enabled .cta-row {
 html.skip-anim .wordmark .letters,
 html.skip-anim .wordmark .letters.is-split .letter,
 html.skip-anim .tagline,
+html.skip-anim .guest-trial-copy,
 html.skip-anim .cta-row {
   opacity: 1 !important;
   transform: none !important;

@@ -245,6 +245,18 @@ def test_default_timer_minutes_from_profile_cannot_inject_a_bad_countdown_total(
     assert len(guarded) == 4, "expected all 4 call sites (load, changeEngineMode, start-fresh, reset) to be guarded, found {}".format(len(guarded))
 
 
+def test_timer_display_still_floors_before_rendering():
+    """The >= 3600 branch must not bypass the floor that prevents fractional
+    second strings from reaching the timer display after sleep/wake."""
+    html = _read("index.html")
+    body = _extract_function_body(html, "updateEngineDisplayString")
+    assert "Math.floor(raw)" in body
+    assert "totalRunningSecondsMap >= 3600" in body
+    floor_pos = body.index("Math.floor(raw)")
+    branch_pos = body.index("totalRunningSecondsMap >= 3600")
+    assert floor_pos < branch_pos
+
+
 # ------------------------------------------------------------ pip.js: Reset
 
 

@@ -344,9 +344,21 @@
     });
   }
 
+  function isGuestMode() {
+    return (
+      window.AuraGuest &&
+      typeof window.AuraGuest.isGuest === "function" &&
+      window.AuraGuest.isGuest()
+    );
+  }
+
   // -------------------------------------------------------------- bootstrap
 
   function bootstrap() {
+    if (isGuestMode()) {
+      setSyncStatus("");
+      return Promise.resolve(null);
+    }
     setSyncStatus("Syncing...");
     return authedFetch("/api/auth/me")
       .then(function (meResult) {
@@ -442,6 +454,7 @@
   // -------------------------------------------------------------- push
 
   function doPush() {
+    if (isGuestMode()) return;
     if (state.pushInFlight) {
       state.pushAgainAfter = true;
       return;
@@ -517,6 +530,7 @@
   // See the DURABILITY comment at the top of this file for why this is a
   // keepalive fetch and not navigator.sendBeacon.
   function keepaliveFlush() {
+    if (isGuestMode()) return;
     var payload = readLocalPayload();
     if (!payload) return;
     if (state.debounceTimer) {

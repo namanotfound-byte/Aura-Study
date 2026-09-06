@@ -8,6 +8,7 @@ import sys
 
 import flask
 from werkzeug.exceptions import HTTPException
+from urllib.parse import quote
 
 from .auth import bp as auth_bp
 from .state import bp as state_bp
@@ -32,6 +33,7 @@ from .security import (
     set_session_cookie,
 )
 from .db import iso_or_none, utcnow, utcnow_iso
+from . import guest as guest_module
 
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
@@ -140,12 +142,34 @@ def _register_page_routes(app: flask.Flask) -> None:
         # instead of making them click "Log in" again.
         return flask.render_template("landing.html", authenticated=current_user() is not None)
 
+    def _serve_study_app(guest_ctx):
+        index_path = os.path.join(root_dir, "index.html")
+        with open(index_path, "r", encoding="utf-8") as handle:
+            html = handle.read()
+        html = guest_module.inject_guest_context(html, guest_ctx)
+        return flask.Response(html, mimetype="text/html")
+
     @app.route("/app")
-    @login_required
     def index():
-        # This is what "/" used to serve directly; the study app now lives
-        # behind /app, gated exactly as it always was.
-        return flask.send_from_directory(root_dir, "index.html")
+        # Logged-in users always get the app. Guests with a trial cookie get
+        # it too (even after the 7-day window -- soft lock lives in the frontend).
+        # Starting a trial: /app?guest=1 sets the cookie then redirects here.
+        user = current_user()
+        if user is not None:
+            if flask.request.args.get("guest") == "1":
+                return flask.redirect("/app")
+            return _serve_study_app(guest_module.logged_out_context_dict())
+
+        if flask.request.args.get("guest") == "1":
+            resp = flask.redirect("/app")
+            guest_module.set_guest_cookie(resp)
+            return resp
+
+        started_at = guest_module.guest_started_at_from_request()
+        if started_at is not None:
+            return _serve_study_app(guest_module.guest_context_dict(started_at))
+
+        return flask.redirect("/login?next=" + quote("/app", safe=""))
 
     @app.route("/login")
     def login_page():

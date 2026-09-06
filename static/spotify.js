@@ -88,6 +88,8 @@
     selectedPlaylistId: null,
     isPlaying: false,
     accessRequest: null,
+    connectFailed: false,
+    connectFailedReason: '',
     // Timer-view "Music" popover -- see initTimerMusicPopover.
     musicPopoverEl: null,
     musicPopoverTriggerEl: null,
@@ -196,7 +198,23 @@
       '.as-icon-btn.as-play{width:52px;height:52px}' +
       '.as-volume input{min-height:24px}' +
       '}' +
-      /* -- access-request form (Music tab, always visible) -- */
+      /* -- connect flow + demoted access-request disclosure -- */
+      '.as-connect-steps{margin:14px 0 16px;padding-left:20px;font-size:13px;line-height:1.6;color:var(--text-main)}' +
+      '.as-connect-steps li{margin-bottom:8px}' +
+      '.as-connect-steps li:last-child{margin-bottom:0}' +
+      '.as-connect-failed{margin:14px 0 0;padding:10px 12px;border-radius:12px;background:rgba(245,185,66,.12);border:1px solid rgba(245,185,66,.35);font-size:12px;line-height:1.5;color:var(--text-main)}' +
+      '.as-play-hint{margin-top:10px;font-weight:600;color:var(--text-main)}' +
+      '.as-cant-connect{margin-top:18px;border-top:1px solid var(--border-color);padding-top:14px}' +
+      '.as-cant-connect summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--text-muted);list-style:none;display:inline-flex;align-items:center;gap:6px}' +
+      '.as-cant-connect summary::-webkit-details-marker{display:none}' +
+      '.as-cant-connect summary::before{content:"";display:inline-block;width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:5px solid var(--text-muted);transition:transform .15s ease}' +
+      '.as-cant-connect[open] summary::before{transform:rotate(90deg)}' +
+      '.as-cant-connect summary:hover{color:var(--text-main)}' +
+      '.as-cant-connect-body{margin-top:12px}' +
+      '.tmp-connect-steps{margin:0 0 10px;padding-left:18px;font-size:11px;line-height:1.5;color:var(--text-muted);text-align:left}' +
+      '.tmp-connect-steps li{margin-bottom:6px}' +
+      '.tmp-connect-btn{display:block;width:100%;margin-top:8px}' +
+      /* -- access-request form (fallback, inside disclosure) -- */
       '.as-access-note{font-size:12px;color:var(--text-muted);line-height:1.6;margin:0 0 14px}' +
       '.as-access-form{display:flex;gap:10px;flex-wrap:wrap}' +
       '.as-access-form input[type=email]{flex:1;min-width:180px}' +
@@ -217,9 +235,17 @@
     if (!params.has('spotify')) return;
     var val = params.get('spotify');
     if (val === 'connected') {
-      toast('Spotify Connected ✨', 'Your account is linked. Enjoy the tunes!', true);
+      STATE.connectFailed = false;
+      STATE.connectFailedReason = '';
+      toast('Spotify Connected ✨', 'Open Spotify and play a song — it appears here.', true);
     } else if (val === 'error') {
-      toast('Spotify Connection Failed', 'Reason: ' + (params.get('reason') || 'unknown') + '. Please try again.', false);
+      STATE.connectFailed = true;
+      STATE.connectFailedReason = params.get('reason') || 'unknown';
+      toast(
+        'Spotify Connection Failed',
+        'Reason: ' + STATE.connectFailedReason + '. Try Connect Spotify again, or use “Can’t connect?” below if you need allow-list access.',
+        false
+      );
     }
     params.delete('spotify');
     params.delete('reason');
@@ -228,7 +254,52 @@
     window.history.replaceState({}, document.title, newUrl);
   }
 
-  // -- main panel rendering ------------------------------------------------
+  // -- connect-flow copy (Music panel + timer popover) --------------------
+
+  function renderConnectStepsList(className) {
+    return (
+      '<ol class="' + className + '">' +
+      '<li>Tap <strong>Connect Spotify</strong> (you need an AuraStudy account first).</li>' +
+      '<li>Approve Spotify’s permission screen once — so we can see what’s playing.</li>' +
+      '<li>Open the Spotify app on your phone or computer and start a song — it will show up here automatically.</li>' +
+      '</ol>'
+    );
+  }
+
+  function renderCantConnectDisclosure(openByDefault) {
+    return (
+      '<details class="as-cant-connect"' + (openByDefault ? ' open' : '') + ' id="as-cant-connect">' +
+      '<summary>Can’t connect?</summary>' +
+      '<div class="as-cant-connect-body">' +
+      '<p class="as-access-note">AuraStudy’s Spotify app is in developer mode, so only accounts the owner has allow-listed can connect. ' +
+      'If Connect Spotify fails even after approving permissions, share the email on your Spotify account below — ' +
+      'the AuraStudy owner can add you to that list. You can withdraw this request at any time.</p>' +
+      '<div id="as-access-body"><p class="as-note">Loading…</p></div>' +
+      '</div></details>'
+    );
+  }
+
+  function renderNotConnectedCard() {
+    var failedNote = STATE.connectFailed
+      ? '<p class="as-connect-failed">Connection didn’t work' +
+        (STATE.connectFailedReason ? ' (' + esc(STATE.connectFailedReason) + ')' : '') +
+        '. Try <strong>Connect Spotify</strong> again. If you’re not on the app’s allow-list yet, use the form below.</p>'
+      : '';
+    return (
+      '<div class="card as-card">' +
+      '<h3 style="margin-top:0;color:var(--text-main);">Connect Spotify 🎧</h3>' +
+      '<p class="as-note">There’s only one way to link your music — connect once, then play in Spotify.</p>' +
+      renderConnectStepsList('as-connect-steps') +
+      '<button class="btn btn-neon-pink" data-action="connect">Connect Spotify</button>' +
+      failedNote +
+      renderCantConnectDisclosure(!!STATE.connectFailed) +
+      '</div>'
+    );
+  }
+
+  function renderPlayHint(className) {
+    return '<p class="' + className + '">Open Spotify and play a song — it appears here.</p>';
+  }
 
   function renderInto(containerEl) {
     if (!containerEl) return;
@@ -263,19 +334,11 @@
         '<p class="as-note">The AuraStudy owner needs to add <code>SPOTIFY_CLIENT_ID</code> and ' +
         '<code>SPOTIFY_CLIENT_SECRET</code> to their <code>.env</code> file. See the ' +
         '"Create your Spotify app" section of the README for step-by-step instructions.</p>' +
-        '</div>' +
-        renderAccessRequestCardSkeleton();
-      loadAccessRequest();
+        '</div>';
       return;
     }
     if (!s.connected) {
-      STATE.viewEl.innerHTML =
-        '<div class="card as-card">' +
-        '<h3 style="margin-top:0;color:var(--text-main);">Bring your music into AuraStudy 🎧</h3>' +
-        '<p class="as-note">Connect your Spotify account to see what’s playing and control playback without leaving your study session.</p>' +
-        '<button class="btn btn-neon-pink" data-action="connect" style="margin-top:12px;">Connect Spotify</button>' +
-        '</div>' +
-        renderAccessRequestCardSkeleton();
+      STATE.viewEl.innerHTML = renderNotConnectedCard();
       loadAccessRequest();
       return;
     }
@@ -290,6 +353,7 @@
       '<div style="flex:1;min-width:0;">' +
       '<div class="as-track-name" id="as-track-name">Nothing playing right now</div>' +
       '<div class="as-track-artist" id="as-track-artist"></div>' +
+      renderPlayHint('as-note as-play-hint') +
       '<div class="as-progress"><div class="as-progress-fill" id="as-progress-fill" style="width:0%;"></div></div>' +
       '<div class="as-time-row"><span id="as-time-cur">0:00</span><span id="as-time-dur">0:00</span></div>' +
       '</div></div>' +
@@ -308,8 +372,7 @@
       '<div class="card-title">Your Playlists</div>' +
       '<div class="as-playlist-grid" id="as-playlist-grid"><p class="as-note">Loading playlists…</p></div>' +
       (premium ? '' : '<div class="as-embed-wrap" id="as-embed-wrap"></div>') +
-      '</div>' +
-      renderAccessRequestCardSkeleton();
+      '</div>';
 
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
 
@@ -323,29 +386,9 @@
     loadPlaylists();
     if (premium) initPremiumPlayer();
     pollNowPlaying();
-    loadAccessRequest();
   }
 
-  // -- Spotify access-request form (Music tab, always visible) -------------
-  //
-  // Spotify apps start in Development Mode: only accounts the AuraStudy
-  // owner has explicitly allow-listed (max 25) can connect at all, whether
-  // or not the app itself is configured or the user already tried and
-  // failed to connect. So this card is appended in every renderPanel()
-  // branch above, not gated behind a failed connection attempt.
-
-  function renderAccessRequestCardSkeleton() {
-    return (
-      '<div class="card as-card" id="as-access-card">' +
-      '<div class="card-title">Request Spotify Access</div>' +
-      '<p class="as-access-note">Spotify only allows a small allow-list of accounts to connect while ' +
-      'AuraStudy is in developer mode. Share the email on your Spotify account below and it will be ' +
-      'seen only by the person who runs AuraStudy, so they can add you to that list. You can withdraw ' +
-      'this request at any time.</p>' +
-      '<div id="as-access-body"><p class="as-note">Loading…</p></div>' +
-      '</div>'
-    );
-  }
+  // -- Spotify access-request form (fallback inside “Can’t connect?”) ----
 
   function accessBody() {
     return document.getElementById('as-access-body');
@@ -730,7 +773,10 @@
       return;
     }
     if (!s.connected) {
-      el.innerHTML = '<p class="tmp-note">Not connected. Open the <strong>Music</strong> tab to connect Spotify.</p>';
+      el.innerHTML =
+        '<p class="tmp-note">Connect Spotify to see what’s playing.</p>' +
+        renderConnectStepsList('tmp-connect-steps') +
+        '<button class="btn btn-neon-pink tmp-connect-btn" type="button" data-action="connect">Connect Spotify</button>';
       return;
     }
     el.innerHTML =
@@ -741,6 +787,7 @@
       '<div class="tmp-track-artist" id="tmp-track-artist"></div>' +
       '</div>' +
       '</div>' +
+      renderPlayHint('tmp-note') +
       (s.premium
         ? '<div class="tmp-controls">' +
           '<button class="as-icon-btn" type="button" role="menuitem" data-action="prev" title="Previous track" aria-label="Previous track"><i data-lucide="skip-back"></i></button>' +
@@ -844,6 +891,10 @@
     if (!btn) return;
     e.preventDefault();
     var action = btn.getAttribute('data-action');
+    if (action === 'connect') {
+      window.location = '/api/spotify/login';
+      return;
+    }
     if (action === 'playpause') togglePlayPause();
     else if (action === 'next') nextTrack();
     else if (action === 'prev') previousTrack();
