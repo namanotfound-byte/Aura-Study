@@ -148,3 +148,27 @@ def test_timer_meta_has_transparent_backdrop_not_dark_chip():
     assert "rgba(0, 0, 0" not in dark_meta
     assert "background: transparent !important" in dark_meta
     assert "var(--text-muted)" in html[html.index(".timer-fullscreen-view:not(.dark-mode-active) .timer-meta"):html.index(".timer-fullscreen-view:not(.dark-mode-active) .timer-meta") + 120]
+
+
+def test_timer_view_hides_global_header():
+    html = _read("index.html")
+    assert 'id="global-header"' in html
+    assert "function syncGlobalHeaderForView" in html
+    assert "timer-view-active" in html
+    assert "body.timer-view-active #global-header" in html
+    switch_body = html[html.index("function switchView"):html.index("function getActiveEngineModeKey")]
+    assert "syncGlobalHeaderForView(targetPanelKey)" in switch_body
+
+
+def test_sidebar_collapse_toggle_persisted():
+    html = _read("index.html")
+    assert "aurastudy_sidebar_collapsed" in html
+    assert "sidebar-collapsed" in html
+    assert 'id="sidebar-collapse-toggle"' in html
+    assert "function toggleSidebarCollapsed" in html
+    assert "function applySidebarCollapsedState" in html
+    assert "localStorage.getItem('aurastudy_sidebar_collapsed')" in html
+    sidebar_block = html[html.index('id="app-sidebar"'):html.index("<!-- Main Workspace Container -->")]
+    assert 'title="Dashboard"' in sidebar_block
+    assert 'title="Timer"' in sidebar_block
+    assert "html.sidebar-collapsed .nav-item > span:not(.nav-unread-badge)" in html

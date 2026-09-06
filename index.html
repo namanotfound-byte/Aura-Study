@@ -15,6 +15,13 @@
                 if (theme === 'blue') document.documentElement.setAttribute('data-theme', 'blue');
             } catch (e) { /* first paint stays default */ }
         })();
+        (function () {
+            try {
+                if (localStorage.getItem('aurastudy_sidebar_collapsed') === '1') {
+                    document.documentElement.classList.add('sidebar-collapsed');
+                }
+            } catch (e) { /* first paint stays expanded */ }
+        })();
         document.documentElement.classList.add('boot-pending');
     </script>
     <!-- Chart.js for data analytics -->
@@ -329,6 +336,15 @@
             padding: 24px 16px;
             z-index: 10;
             box-shadow: 4px 0 15px rgba(var(--accent-rgb), 0.08);
+            transition: width 0.25s ease, background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
+        }
+
+        .sidebar-brand-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 32px;
         }
 
         .brand {
@@ -341,9 +357,77 @@
             background: linear-gradient(to right, var(--neon-pink), var(--neon-purple));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 32px;
+            margin-bottom: 0;
             padding-left: 8px;
             filter: drop-shadow(0 2px 4px rgba(var(--accent-rgb), 0.2));
+            min-width: 0;
+        }
+
+        .sidebar-collapse-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            flex-shrink: 0;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.5);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-collapse-btn:hover {
+            color: var(--neon-pink);
+            border-color: var(--neon-pink);
+        }
+
+        @media (min-width: 1025px) {
+            html.sidebar-collapsed .sidebar {
+                width: 68px;
+                padding: 24px 10px;
+            }
+
+            html.sidebar-collapsed .sidebar-brand-row {
+                flex-direction: column;
+                margin-bottom: 24px;
+            }
+
+            html.sidebar-collapsed .brand span {
+                display: none;
+            }
+
+            html.sidebar-collapsed .brand {
+                padding-left: 0;
+                justify-content: center;
+            }
+
+            html.sidebar-collapsed .nav-item > span:not(.nav-unread-badge) {
+                display: none;
+            }
+
+            html.sidebar-collapsed .user-profile > span {
+                display: none;
+            }
+
+            html.sidebar-collapsed .nav-item {
+                justify-content: center;
+                padding: 12px;
+                gap: 0;
+            }
+
+            html.sidebar-collapsed .nav-item:hover {
+                transform: none;
+            }
+
+            html.sidebar-collapsed .user-profile {
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar-collapse-btn { display: none; }
         }
 
         .nav-group {
@@ -441,6 +525,24 @@
             flex-direction: column;
             overflow: hidden;
             position: relative;
+        }
+
+        body.timer-view-active #global-header {
+            display: none;
+        }
+
+        body.timer-view-active #view-timer.view-panel.active {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        body.timer-view-active #view-timer.view-panel.active .timer-fullscreen-view {
+            flex: 1;
+            min-height: 0;
+            height: auto;
         }
 
         /* Top Header Navigation Panel Bar */
@@ -2627,40 +2729,45 @@
     <!-- Sidebar Layout Navigation Shell -->
     <div class="sidebar" id="app-sidebar" role="navigation" aria-label="Main navigation">
         <div>
-            <div class="brand">
-                <i data-lucide="sparkles" style="color: var(--neon-pink);"></i>
-                <span>AuraStudy</span>
+            <div class="sidebar-brand-row">
+                <div class="brand">
+                    <i data-lucide="sparkles" style="color: var(--neon-pink);"></i>
+                    <span>AuraStudy</span>
+                </div>
+                <button type="button" class="sidebar-collapse-btn" id="sidebar-collapse-toggle" aria-label="Collapse sidebar" title="Collapse sidebar" onclick="toggleSidebarCollapsed()">
+                    <i data-lucide="panel-left-close"></i>
+                </button>
             </div>
             <div class="nav-group">
-                <div class="nav-item active" onclick="switchView('dashboard', this); closeMobileNav();">
+                <div class="nav-item active" title="Dashboard" onclick="switchView('dashboard', this); closeMobileNav();">
                     <i data-lucide="layout-dashboard"></i>
                     <span>Dashboard</span>
                 </div>
-                <div class="nav-item" id="nav-item-timer-toggle" onclick="switchView('timer', this); closeMobileNav();">
+                <div class="nav-item" id="nav-item-timer-toggle" title="Timer" onclick="switchView('timer', this); closeMobileNav();">
                     <i data-lucide="clock"></i>
                     <span>Timer</span>
                 </div>
-                <div class="nav-item" onclick="switchView('courses', this); closeMobileNav();">
+                <div class="nav-item" title="Courses" onclick="switchView('courses', this); closeMobileNav();">
                     <i data-lucide="book-heart"></i>
                     <span>Courses</span>
                 </div>
-                <div class="nav-item" onclick="switchView('sessions', this); closeMobileNav();">
+                <div class="nav-item" title="Sessions" onclick="switchView('sessions', this); closeMobileNav();">
                     <i data-lucide="scroll"></i>
                     <span>Sessions</span>
                 </div>
-                <div class="nav-item" onclick="switchView('trophies', this); closeMobileNav();">
+                <div class="nav-item" title="Achievements" onclick="switchView('trophies', this); closeMobileNav();">
                     <i data-lucide="star"></i>
                     <span>Achievements</span>
                 </div>
-                <div class="nav-item" id="nav-item-music-toggle" onclick="switchView('spotify', this); closeMobileNav();">
+                <div class="nav-item" id="nav-item-music-toggle" title="Music" onclick="switchView('spotify', this); closeMobileNav();">
                     <i data-lucide="music"></i>
                     <span>Music</span>
                 </div>
-                <div class="nav-item" onclick="switchView('leaderboard', this); closeMobileNav();">
+                <div class="nav-item" title="Leaderboard" onclick="switchView('leaderboard', this); closeMobileNav();">
                     <i data-lucide="bar-chart-3"></i>
                     <span>Leaderboard</span>
                 </div>
-                <div class="nav-item" id="nav-item-help-toggle" onclick="switchView('help', this); closeMobileNav();">
+                <div class="nav-item" id="nav-item-help-toggle" title="Help" onclick="switchView('help', this); closeMobileNav();">
                     <i data-lucide="life-buoy"></i>
                     <span>Help</span>
                     <span class="nav-unread-badge" id="help-unread-badge" hidden>0</span>
@@ -2669,7 +2776,7 @@
         </div>
 
         <div class="sidebar-footer">
-            <div class="nav-item" onclick="switchView('settings', this); closeMobileNav();">
+            <div class="nav-item" title="Settings" onclick="switchView('settings', this); closeMobileNav();">
                 <i data-lucide="settings-2"></i>
                 <span>Settings</span>
             </div>
@@ -2677,7 +2784,7 @@
                 <i data-lucide="heart" style="color: var(--neon-pink); fill: var(--neon-pink);"></i>
                 <span id="user-email-display">you@example.com</span>
             </div>
-            <div class="nav-item" id="nav-item-logout" onclick="AuraSync.logout()">
+            <div class="nav-item" id="nav-item-logout" title="Log out" onclick="AuraSync.logout()">
                 <i data-lucide="log-out"></i>
                 <span>Log out</span>
             </div>
@@ -3651,6 +3758,7 @@
                 initTimerColourPopover();
                 if (typeof AuraFocus !== 'undefined') AuraFocus.init();
                 syncFullscreenIcon();
+                applySidebarCollapsedState(isSidebarCollapsed());
                 restorePersistedActiveView();
                 if (window.AuraGuest && typeof AuraGuest.maybePromptGuestLogin === 'function') {
                     const guestStudySecs = appState.sessions.reduce((acc, s) => acc + s.durationSeconds, 0);
@@ -3704,6 +3812,36 @@
         // ---- Mobile off-canvas navigation drawer (<=1024px) -----------------
         // The sidebar is repositioned fixed + translated off-screen by CSS at that
         // breakpoint; these helpers just toggle the classes/attributes that drive it.
+        const SIDEBAR_COLLAPSED_STORAGE_KEY = 'aurastudy_sidebar_collapsed';
+
+        function isSidebarCollapsed() {
+            return document.documentElement.classList.contains('sidebar-collapsed');
+        }
+
+        function applySidebarCollapsedState(collapsed) {
+            document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
+            const btn = document.getElementById('sidebar-collapse-toggle');
+            const icon = btn && btn.querySelector('[data-lucide]');
+            if (btn) {
+                const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+                btn.setAttribute('aria-label', label);
+                btn.title = label;
+            }
+            if (icon) {
+                icon.setAttribute('data-lucide', collapsed ? 'panel-left-open' : 'panel-left-close');
+                if (window.lucide) lucide.createIcons();
+            }
+            try { localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, collapsed ? '1' : '0'); } catch (e) { /* ignore */ }
+        }
+
+        function toggleSidebarCollapsed() {
+            applySidebarCollapsedState(!isSidebarCollapsed());
+        }
+
+        function syncGlobalHeaderForView(viewKey) {
+            document.body.classList.toggle('timer-view-active', viewKey === 'timer');
+        }
+
         function toggleMobileNav() {
             const sidebar = document.getElementById('app-sidebar');
             if (!sidebar) return;
@@ -4148,6 +4286,7 @@
             else if (targetPanelKey === 'leaderboard') startLeaderboardPolling();
             else if (targetPanelKey === 'help') onHelpViewShown();
 
+            syncGlobalHeaderForView(targetPanelKey);
             persistActiveView(targetPanelKey);
         }
 
