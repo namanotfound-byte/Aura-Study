@@ -131,3 +131,16 @@ def test_custom_404_template_exists():
     assert "404.html" in app_py
     assert "Page not found" in template
     assert 'href="/app"' in template
+
+
+def test_timer_meta_has_transparent_backdrop_not_dark_chip():
+    html = _read("index.html")
+    assert 'class="timer-meta" id="timer-start-timestamp"' in html
+    assert ".timer-fullscreen-view.dark-mode-active .timer-header-badge,\n        .timer-fullscreen-view.dark-mode-active .timer-meta" not in html
+    dark_meta = html[
+        html.index(".timer-fullscreen-view.dark-mode-active .timer-meta"):
+        html.index(".timer-fullscreen-view.dark-mode-active .timer-meta") + 320
+    ]
+    assert "rgba(0, 0, 0" not in dark_meta
+    assert "background: transparent !important" in dark_meta
+    assert "var(--text-muted)" in html[html.index(".timer-fullscreen-view:not(.dark-mode-active) .timer-meta"):html.index(".timer-fullscreen-view:not(.dark-mode-active) .timer-meta") + 120]

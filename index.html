@@ -1359,8 +1359,7 @@
             background: rgba(255, 255, 255, 0.38);
             border-color: rgba(255, 255, 255, 0.55);
         }
-        .timer-fullscreen-view.dark-mode-active .timer-header-badge,
-        .timer-fullscreen-view.dark-mode-active .timer-meta {
+        .timer-fullscreen-view.dark-mode-active .timer-header-badge {
             background: rgba(0, 0, 0, 0.32) !important;
             color: rgba(255, 255, 255, 0.82) !important;
             border-color: rgba(255, 255, 255, 0.1) !important;
@@ -1404,11 +1403,13 @@
             color: rgba(255, 255, 255, 0.72);
             margin-bottom: 0;
             font-weight: 600;
-            background: none !important;
+            background: transparent !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
             box-shadow: none !important;
             outline: none;
             padding: 8px 0 0;
-            border: none;
+            border: none !important;
             border-radius: 0;
             letter-spacing: 0.02em;
             -webkit-tap-highlight-color: transparent;
@@ -1416,6 +1417,15 @@
         }
         .timer-fullscreen-view:not(.dark-mode-active) .timer-meta {
             color: var(--text-muted);
+            background: transparent !important;
+        }
+        .timer-fullscreen-view.dark-mode-active .timer-meta {
+            color: rgba(255, 255, 255, 0.72);
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
         }
 
         /* Compact pill controls under the clock */
