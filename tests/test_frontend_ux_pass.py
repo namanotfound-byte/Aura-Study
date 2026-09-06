@@ -67,6 +67,10 @@ def test_reset_flow_uses_branded_confirm_modal_not_window_confirm():
     reset_block = html[html.index("function resetEngineDisplayState"):html.index("function sessionSignature")]
     assert "window.confirm(" not in reset_block
     assert "showAuraConfirmDialog" in reset_block
+    assert "mode: 'reset'" in reset_block
+    assert "Yes logs your study time then resets" in reset_block
+    assert "choice === null" in reset_block
+    assert "saveEngineWorkspaceBlockData()" in reset_block
 
 
 def test_theme_and_timer_colors_live_in_settings_not_sidebar():

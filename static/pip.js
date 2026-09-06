@@ -1024,6 +1024,17 @@
 
   // -- lifecycle listeners ---------------------------------------------
 
+  function isTimerViewActive() {
+    var panel = document.getElementById("view-timer");
+    return !!(panel && panel.classList.contains("active"));
+  }
+
+  function closePipIfTimerViewVisible() {
+    if (!document.hidden && isTimerViewActive() && STATE.pipMode) {
+      closeFloatingWindow();
+    }
+  }
+
   function onVisibilityChange() {
     if (document.hidden) {
       if (isEngineActivelyRunning) {
@@ -1043,6 +1054,7 @@
       clearTitleFallback();
       clearActiveNotification();
       reacquireWakeLockIfNeeded();
+      closePipIfTimerViewVisible();
     }
   }
 
@@ -1138,6 +1150,7 @@
   });
 
   document.addEventListener("visibilitychange", onVisibilityChange);
+  window.addEventListener("focus", closePipIfTimerViewVisible);
   window.addEventListener("beforeunload", function () {
     closeFloatingWindow();
   });

@@ -1259,6 +1259,7 @@
             padding: 0;
             border: none;
             margin-bottom: clamp(12px, 2.5vw, 20px);
+            overflow: hidden;
         }
         .mode-tab-btn {
             padding: 9px 18px;
@@ -1272,9 +1273,29 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            transition: all 0.2s;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
             letter-spacing: 0.02em;
             text-transform: lowercase;
+            outline: none;
+            box-shadow: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mode-tab-btn:focus {
+            outline: none;
+            box-shadow: none;
+        }
+        .mode-tab-btn:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.85);
+            outline-offset: 2px;
+            box-shadow: none;
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .mode-tab-btn:focus-visible {
+            outline-color: var(--neon-pink);
+        }
+        .mode-tab-btn svg,
+        .mode-tab-btn i {
+            overflow: hidden;
+            flex-shrink: 0;
         }
         .timer-fullscreen-view:not(.dark-mode-active) .mode-tab-btn {
             border-color: rgba(255, 255, 255, 0.75);
@@ -1812,9 +1833,19 @@
             border-radius: 999px;
             border: 1.5px solid rgba(255, 255, 255, 0.5);
             background: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            box-shadow: none;
         }
         .timer-break-stepper.visible {
             display: inline-flex;
+        }
+        .timer-break-stepper:not(.visible) {
+            visibility: hidden;
+            height: 0;
+            margin: 0;
+            padding: 0;
+            border: none;
+            overflow: hidden;
         }
         .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper {
             border-color: rgba(255, 255, 255, 0.75);
@@ -1871,7 +1902,17 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
+            outline: none;
+            box-shadow: none;
+        }
+        .timer-break-stepper-btn:focus {
+            outline: none;
+            box-shadow: none;
+        }
+        .timer-break-stepper-btn:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.85);
+            outline-offset: 2px;
         }
         .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper-btn {
             border-color: var(--border-color);
@@ -3986,6 +4027,7 @@
         }
 
         let auraConfirmResolver = null;
+        let auraConfirmMode = 'binary';
 
         function showAuraConfirmDialog(options) {
             const modal = document.getElementById('aura-confirm-modal');
@@ -3996,6 +4038,7 @@
             if (!modal || !titleEl || !messageEl || !cancelBtn || !okBtn) {
                 return Promise.resolve(false);
             }
+            auraConfirmMode = options.mode || 'binary';
             titleEl.innerText = options.title || 'Are you sure?';
             messageEl.innerText = options.message || '';
             okBtn.innerText = options.confirmLabel || 'Confirm';
@@ -4013,7 +4056,8 @@
             if (auraConfirmResolver) {
                 const resolve = auraConfirmResolver;
                 auraConfirmResolver = null;
-                resolve(!!confirmed);
+                auraConfirmMode = 'binary';
+                resolve(confirmed);
             }
         }
 
@@ -4025,12 +4069,14 @@
             cancelBtn.addEventListener('click', () => closeAuraConfirmDialog(false));
             okBtn.addEventListener('click', () => closeAuraConfirmDialog(true));
             modal.addEventListener('click', (e) => {
-                if (e.target === modal) closeAuraConfirmDialog(false);
+                if (e.target === modal) {
+                    closeAuraConfirmDialog(auraConfirmMode === 'reset' ? null : false);
+                }
             });
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && modal && !modal.hidden) {
                     e.preventDefault();
-                    closeAuraConfirmDialog(false);
+                    closeAuraConfirmDialog(auraConfirmMode === 'reset' ? null : false);
                 }
             });
         })();
@@ -4085,7 +4131,24 @@
             persistActiveView(targetPanelKey);
         }
 
-        function changeEngineMode(modeKey) {
+        function getActiveEngineModeKey() {
+            return isEngineInBreakPhase() ? 'break' : appState.selectedMode;
+        }
+
+        function stopBreakTimerWithoutLogging() {
+            clearInterval(engineIntervalRegister);
+            engineIntervalRegister = null;
+            isEngineActivelyRunning = false;
+            engineAnchorMs = null;
+            lastSyncClockMs = null;
+            enginePhase = 'study';
+            isBreakBlock = false;
+            bankedElapsedSeconds = 0;
+            runningAccumulatedSeconds = 0;
+            clearRunningTimerSnapshot();
+        }
+
+        function applyEngineModeSwitch(modeKey) {
             if (modeKey === 'break') {
                 enterBreakMode({ autoStart: false });
                 return;
@@ -4117,6 +4180,29 @@
             updateEngineDisplayString();
             lucide.createIcons();
             syncTimerBreakStepperVisibility();
+        }
+
+        async function changeEngineMode(modeKey) {
+            if (modeKey === getActiveEngineModeKey()) return;
+
+            if (isEngineActivelyRunning) {
+                const shouldLogAndSwitch = await showAuraConfirmDialog({
+                    title: 'Stop this timer?',
+                    message: 'You are switching mode. Log this session first?',
+                    confirmLabel: 'Yes / Log',
+                    cancelLabel: 'No / Keep going',
+                    destructive: false
+                });
+                if (!shouldLogAndSwitch) return;
+
+                if (isEngineInBreakPhase()) {
+                    stopBreakTimerWithoutLogging();
+                } else {
+                    saveEngineWorkspaceBlockData({ deferReset: true });
+                }
+            }
+
+            applyEngineModeSwitch(modeKey);
         }
 
         function enterBreakMode(options) {
@@ -4414,15 +4500,21 @@
             if (!skipConfirm && elapsedOnClock >= 60) {
                 const durationLabel = formatDurationHM(elapsedOnClock, { long: true });
                 showAuraConfirmDialog({
+                    mode: 'reset',
                     title: isEngineInBreakPhase() ? 'Reset break?' : 'Reset timer?',
                     message: (isEngineInBreakPhase()
-                        ? 'Reset the break and discard ' + durationLabel + ' already on the clock?'
-                        : 'Reset the timer and discard ' + durationLabel + ' already on the clock?\n\nTo keep the time instead, cancel and choose Log Focus.'),
-                    confirmLabel: isEngineInBreakPhase() ? 'Reset break' : 'Reset timer',
-                    cancelLabel: 'Keep time',
+                        ? 'Reset the break? Time on the clock will be lost.'
+                        : 'Reset the timer? ' + durationLabel + ' will be lost unless you log first.\n\nYes logs your study time then resets. No resets without logging.'),
+                    confirmLabel: 'Yes',
+                    cancelLabel: 'No',
                     destructive: true
-                }).then((ok) => {
-                    if (ok) resetEngineDisplayState(true);
+                }).then((choice) => {
+                    if (choice === null) return;
+                    if (!isEngineInBreakPhase() && choice === true) {
+                        saveEngineWorkspaceBlockData();
+                        return;
+                    }
+                    resetEngineDisplayState(true);
                 });
                 return;
             }

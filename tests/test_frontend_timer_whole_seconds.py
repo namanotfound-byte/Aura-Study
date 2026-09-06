@@ -57,7 +57,10 @@ def _extract_function_body(source, func_name):
     """Return the `{ ... }` body of a top-level `function funcName(...) {`
     declaration, found by counting braces from the opening one so an inner
     `if { ... }` block can't be mistaken for the end of the function."""
-    m = re.search(r"function\s+" + re.escape(func_name) + r"\s*\([^)]*\)\s*\{", source)
+    m = re.search(
+        r"(?:async\s+)?function\s+" + re.escape(func_name) + r"\s*\([^)]*\)\s*\{",
+        source,
+    )
     assert m, "function {} not found in source".format(func_name)
     start = m.end()
     depth = 1
@@ -374,3 +377,41 @@ def test_break_completion_does_not_log_sessions():
     pip_js = _read("static", "pip.js")
     pip_sub = re.search(r"function pipSubtitleText\(\)\s*\{([^}]+)\}", pip_js, re.DOTALL)
     assert pip_sub and "Break" in pip_sub.group(1)
+
+
+def test_mode_switch_while_running_confirms_before_switching():
+    """Switching Countdown/Stopwatch/Break while the engine is running must
+    await showAuraConfirmDialog; Yes logs study time (deferReset) then switches,
+    No keeps the current mode unchanged."""
+    html = _read("index.html")
+    assert re.search(r"async function changeEngineMode", html)
+    body = _extract_function_body(html, "changeEngineMode")
+    assert "getActiveEngineModeKey()" in body
+    assert "isEngineActivelyRunning" in body
+    assert "showAuraConfirmDialog" in body
+    assert "Stop this timer?" in body
+    assert "Yes / Log" in body
+    assert "No / Keep going" in body
+    assert "saveEngineWorkspaceBlockData({ deferReset: true })" in body
+    assert "stopBreakTimerWithoutLogging()" in body
+    assert "applyEngineModeSwitch(modeKey)" in body
+    assert re.search(r"if\s*\(!shouldLogAndSwitch\)\s*return", body)
+
+
+def test_pip_closes_when_returning_to_timer_view():
+    """PiP must close on tab focus/visibility when #view-timer is active."""
+    pip_js = _read("static", "pip.js")
+    assert "function isTimerViewActive()" in pip_js
+    assert "function closePipIfTimerViewVisible()" in pip_js
+    assert "closePipIfTimerViewVisible()" in pip_js
+    assert 'window.addEventListener("focus", closePipIfTimerViewVisible)' in pip_js
+    assert 'panel.classList.contains("active")' in pip_js
+    assert 'id === "view-timer"' in pip_js or "id === 'view-timer'" in pip_js
+
+
+def test_mode_tab_buttons_suppress_default_focus_ring():
+    html = _read("index.html")
+    mode_css = html[html.index(".mode-tab-btn {"):html.index(".timer-fullscreen-view:not(.dark-mode-active) .mode-tab-btn {")]
+    assert "outline: none" in mode_css
+    assert ".mode-tab-btn:focus-visible" in html
+    assert ".engine-mode-tabs" in html and "overflow: hidden" in html[html.index(".engine-mode-tabs {"):html.index(".mode-tab-btn {")]
