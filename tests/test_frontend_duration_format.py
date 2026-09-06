@@ -59,13 +59,27 @@ def test_badge_descriptions_no_longer_use_bare_minute_totals():
     assert "3 hours 0 minutes in a single day" in html
 
 
-def test_timer_display_switches_to_hms_at_one_hour():
+def test_timer_display_switches_to_hours_minutes_at_one_hour():
     html = _read("index.html")
     body = _extract_function_body(html, "updateEngineDisplayString")
     assert "Math.floor(raw)" in body or "Math.floor(totalRunningSecondsMap" in body
     assert "totalRunningSecondsMap >= 3600" in body
-    assert "'h '" in body and "'m '" in body and "'s'" in body
+    hour_branch = body.split("totalRunningSecondsMap >= 3600", 1)[1].split("} else", 1)[0]
+    assert "'h '" in hour_branch and "'m'" in hour_branch
+    assert "+ 's'" not in hour_branch
     assert "padStart(2, '0')" in body
+    assert "timer-clock-display--hours" in body
+    assert "white-space: nowrap" in html
+
+
+def test_pip_timer_hides_seconds_and_keeps_one_line_at_one_hour():
+    pip_js = _read("static", "pip.js")
+    assert "function isHourLongDisplay()" in pip_js
+    assert "af-time--hours" in pip_js
+    assert "white-space:nowrap" in pip_js
+    paint_block = pip_js[pip_js.index("function paintDocumentPip"):pip_js.index("function paintDocumentPipCompletion")]
+    assert "isHourLongDisplay()" in paint_block
+    assert 'classList.add("af-time--hours")' in paint_block
 
 
 def test_study_coach_is_local_and_deterministic():

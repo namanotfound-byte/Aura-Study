@@ -187,6 +187,16 @@
     return el ? el.innerText : "00:00";
   }
 
+  function isHourLongDisplay() {
+    var raw =
+      appState.selectedMode === "countdown" ||
+      (typeof enginePhase !== "undefined" && enginePhase === "break")
+        ? countdownSecondsRemainingRegister
+        : runningAccumulatedSeconds;
+    var total = typeof raw === "number" && isFinite(raw) && raw > 0 ? Math.floor(raw) : 0;
+    return total >= 3600;
+  }
+
   function pipSubtitleText() {
     if (typeof enginePhase !== "undefined" && enginePhase === "break") {
       return "Break";
@@ -503,7 +513,9 @@
       ".af-ring-bg{fill:none;stroke:var(--border-color);stroke-width:8;}",
       ".af-ring-fg{fill:none;stroke:var(--neon-pink);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .25s linear;}",
       ".af-time{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;" +
-        "font-size:25px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--text-main);}",
+        "font-size:25px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--text-main);" +
+        "white-space:nowrap;padding:0 6px;}",
+      ".af-time--hours{font-size:19px;letter-spacing:-0.02em;}",
       ".af-mode{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;}",
       ".af-controls{display:flex;gap:10px;width:100%;}",
       ".af-btn{flex:1;border:2px solid var(--border-color);background:#fff;color:var(--neon-pink);" +
@@ -693,6 +705,11 @@
     els.course.textContent = appState.selectedCourse || "";
     els.mode.textContent = appState.selectedMode === "countdown" ? "Countdown Block" : "Continuous Stopwatch";
     els.time.textContent = currentDisplayText();
+    if (isHourLongDisplay()) {
+      els.time.classList.add("af-time--hours");
+    } else {
+      els.time.classList.remove("af-time--hours");
+    }
 
     var frac = computeProgressFraction();
     els.ringFg.style.strokeDasharray = String(RING_CIRCUMFERENCE);
@@ -805,7 +822,9 @@
 
     ctx.fillStyle = textColor;
     ctx.textAlign = "center";
-    ctx.font = "700 32px 'Segoe UI', Roboto, sans-serif";
+    ctx.font = isHourLongDisplay()
+      ? "700 24px 'Segoe UI', Roboto, sans-serif"
+      : "700 32px 'Segoe UI', Roboto, sans-serif";
     ctx.fillText(currentDisplayText(), cx, cy + 11);
 
     ctx.font = "700 14px 'Segoe UI', Roboto, sans-serif";

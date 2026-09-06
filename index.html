@@ -1374,6 +1374,7 @@
             letter-spacing: -0.045em;
             line-height: 0.95;
             margin: 4px 0 2px;
+            white-space: nowrap;
             color: #FFFFFF;
             text-shadow:
                 0 2px 28px rgba(0, 0, 0, 0.38),
@@ -1392,6 +1393,10 @@
             text-shadow:
                 0 2px 32px rgba(0, 0, 0, 0.55),
                 0 0 80px rgba(255, 255, 255, 0.1);
+        }
+        .timer-clock-display--hours {
+            font-size: clamp(3.25rem, 13vw, 8.5rem);
+            letter-spacing: -0.035em;
         }
 
         .timer-meta {
@@ -4190,16 +4195,17 @@
             // its input.
             const totalRunningSecondsMap =
                 (typeof raw === 'number' && isFinite(raw) && raw > 0) ? Math.floor(raw) : 0;
+            const timerEl = document.getElementById('timer-display');
             if (totalRunningSecondsMap >= 3600) {
                 const hours = Math.floor(totalRunningSecondsMap / 3600);
                 const mins = Math.floor((totalRunningSecondsMap % 3600) / 60);
-                const secs = totalRunningSecondsMap % 60;
-                document.getElementById('timer-display').innerText =
-                    hours + 'h ' + mins.toString().padStart(2, '0') + 'm ' + secs.toString().padStart(2, '0') + 's';
+                timerEl.innerText = hours + 'h ' + mins.toString().padStart(2, '0') + 'm';
+                timerEl.classList.add('timer-clock-display--hours');
             } else {
                 const mins = Math.floor(totalRunningSecondsMap / 60);
                 const secs = totalRunningSecondsMap % 60;
-                document.getElementById('timer-display').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                timerEl.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                timerEl.classList.remove('timer-clock-display--hours');
             }
         }
 
