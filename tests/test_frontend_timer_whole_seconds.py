@@ -124,6 +124,8 @@ def test_whole_seconds_helper_exists_and_floors_validates_and_clamps():
         "resetEngineDisplayState",
         "loadStateFromLocalStorageRegister",
         "attemptRunningTimerRecovery",
+        "enterBreakMode",
+        "exitBreakMode",
     ],
 )
 def test_every_register_write_in_function_is_provably_whole(func_name):
@@ -242,7 +244,7 @@ def test_default_timer_minutes_from_profile_cannot_inject_a_bad_countdown_total(
         r"countdownTotalSeconds = wholeSeconds\(appState\.profile\.defaultTimerMinutes \* 60,\s*25 \* 60\)",
         html,
     )
-    assert len(guarded) == 4, "expected all 4 call sites (load, changeEngineMode, start-fresh, reset) to be guarded, found {}".format(len(guarded))
+    assert len(guarded) == 5, "expected all 5 call sites (load, changeEngineMode, start-fresh, reset, exitBreakMode) to be guarded, found {}".format(len(guarded))
 
 
 def test_timer_display_still_floors_before_rendering():
@@ -299,3 +301,24 @@ def test_pip_reset_confirms_inside_the_floating_window_when_something_is_at_stak
     # A cancelled confirm must return without ever calling reset -- never a
     # silent discard the other way either.
     assert re.search(r"if\s*\(!ok\)\s*return;", body)
+
+
+def test_break_completion_does_not_log_sessions():
+    """Break finish must never call saveEngineWorkspaceBlockData or touch appState.sessions."""
+    html = _read("index.html")
+    complete_body = _extract_function_body(html, "completeBreakTimer")
+    assert "saveEngineWorkspaceBlockData" not in complete_body
+    assert "appState.sessions" not in complete_body
+    tick_body = _extract_function_body(html, "engineTickHandler")
+    break_branch = tick_body[tick_body.index("isEngineInBreakPhase()"):tick_body.index("return;", tick_body.index("isEngineInBreakPhase()")) + 7]
+    assert "completeBreakTimer()" in break_branch
+    assert "saveEngineWorkspaceBlockData" not in break_branch
+    save_body = _extract_function_body(html, "saveEngineWorkspaceBlockData")
+    assert re.search(r"if\s*\(\s*isEngineInBreakPhase\(\)\s*\)\s*return", save_body)
+    assert 'id="mode-tab-break"' in html
+    assert "enginePhase === 'break'" in html or 'enginePhase === "break"' in html
+    assert "autoBreakAfterPomodoro" in html
+    assert "POMODORO_DURATION_SECONDS" in html
+    pip_js = _read("static", "pip.js")
+    pip_sub = re.search(r"function pipSubtitleText\(\)\s*\{([^}]+)\}", pip_js, re.DOTALL)
+    assert pip_sub and "Break" in pip_sub.group(1)

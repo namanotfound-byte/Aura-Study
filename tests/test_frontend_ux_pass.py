@@ -54,6 +54,10 @@ def test_active_view_is_persisted_and_restored_after_bootstrap():
     assert "trophy-medal-emoji" in html
     assert "maybePromptGuestLogin" in _read("static", "guest.js")
     assert "function isViewAccessible" in html
+    assert 'id="app-boot-overlay"' in html
+    assert "boot-pending" in html
+    assert "function finishAppBoot" in html
+    assert "finishAppBoot()" in html
 
 
 def test_reset_flow_uses_branded_confirm_modal_not_window_confirm():

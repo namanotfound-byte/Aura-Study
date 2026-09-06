@@ -15,6 +15,7 @@
                 if (theme === 'blue') document.documentElement.setAttribute('data-theme', 'blue');
             } catch (e) { /* first paint stays default */ }
         })();
+        document.documentElement.classList.add('boot-pending');
     </script>
     <!-- Chart.js for data analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -205,6 +206,54 @@
             height: 100vh;
             height: 100dvh; /* modern browsers: real visible viewport, avoids mobile browser-chrome jump */
             overflow: hidden;
+        }
+
+        /* Boot overlay — hides default dashboard flash until persisted view + state hydrate */
+        html.boot-pending #app-sidebar,
+        html.boot-pending .main-container {
+            visibility: hidden;
+        }
+        #app-boot-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 25000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            background: var(--bg-main);
+            color: var(--text-main);
+        }
+        #app-boot-overlay[hidden] { display: none !important; }
+        .app-boot-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            background: linear-gradient(to right, var(--neon-pink), var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 2px 4px rgba(var(--accent-rgb), 0.2));
+        }
+        .app-boot-spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-solid);
+            border-radius: 50%;
+            animation: appBootSpin 0.85s linear infinite;
+        }
+        .app-boot-caption {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.04em;
+        }
+        @keyframes appBootSpin {
+            to { transform: rotate(360deg); }
         }
         body::before {
             content: "";
@@ -2355,6 +2404,15 @@
 </head>
 <body>
 
+    <div id="app-boot-overlay" role="status" aria-live="polite" aria-label="Loading AuraStudy">
+        <div class="app-boot-logo">
+            <span aria-hidden="true">✦</span>
+            <span>AuraStudy</span>
+        </div>
+        <div class="app-boot-spinner" aria-hidden="true"></div>
+        <p class="app-boot-caption">Loading your workspace…</p>
+    </div>
+
     <canvas id="confetti-canvas"></canvas>
     <div id="achievement-celebrate" hidden>
         <div class="achievement-celebrate-card" role="status">
@@ -2602,6 +2660,9 @@
                             </button>
                             <button class="mode-tab-btn" id="mode-tab-stopwatch" onclick="changeEngineMode('stopwatch')">
                                 <i data-lucide="timer"></i> stopwatch
+                            </button>
+                            <button class="mode-tab-btn" id="mode-tab-break" onclick="changeEngineMode('break')">
+                                <i data-lucide="coffee"></i> break
                             </button>
                         </div>
 
@@ -2865,9 +2926,16 @@
                     <input type="number" class="form-control" id="settings-daily-goal" value="3" onchange="updateProfileSettings()">
                 </div>
 
-                <div class="input-group" style="margin-bottom:24px;">
+                <div class="input-group" style="margin-bottom:16px;">
                     <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Default Timer Length (Minutes)</label>
                     <input type="number" class="form-control" id="settings-timer-duration" value="25" onchange="updateProfileSettings()">
+                </div>
+
+                <div class="input-group" style="margin-bottom:24px;">
+                    <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; font-weight:600; color:var(--text-main); cursor:pointer; line-height:1.45;">
+                        <input type="checkbox" id="settings-auto-break" onchange="updateProfileSettings()" checked style="margin-top:3px; accent-color:var(--accent-solid);">
+                        <span>Start a 5-minute break when a 25-minute countdown finishes.</span>
+                    </label>
                 </div>
 
                 <button class="btn btn-neon-pink" onclick="triggerManualSaveNotification()">Save Changes</button>
@@ -3033,7 +3101,7 @@
 
         // Core State Engine Allocation
         let appState = {
-            profile: { email: "you@example.com", dailyGoalHours: 3, defaultTimerMinutes: 25 },
+            profile: { email: "you@example.com", dailyGoalHours: 3, defaultTimerMinutes: 25, autoBreakAfterPomodoro: true },
             courses: ["Math", "Physics", "Chemistry", "Literature"],
             sessions: [],
             todoItems: [
@@ -3057,6 +3125,11 @@
         let engineAnchorMs = null;            // Date.now() when the current run segment started
         let bankedElapsedSeconds = 0;         // elapsed seconds banked from earlier segments (before a pause)
         let countdownTotalSeconds = 25 * 60;  // length of the current countdown block
+        let enginePhase = 'study';            // 'study' | 'break' — break never logs sessions
+        let isBreakBlock = false;
+        const BREAK_DURATION_SECONDS = 5 * 60;
+        const POMODORO_DURATION_SECONDS = 25 * 60;
+        let appBootFinished = false;
 
         // ---- Running-timer durability (never lose an in-flight session) ------
         // The timer engine above only ever lived in JS variables: closing the
@@ -3217,8 +3290,21 @@
             window.history.replaceState({}, document.title, newUrl);
         }
 
+        function isEngineInBreakPhase() {
+            return enginePhase === 'break' || isBreakBlock;
+        }
+
+        function finishAppBoot() {
+            if (appBootFinished) return;
+            appBootFinished = true;
+            document.documentElement.classList.remove('boot-pending');
+            const overlay = document.getElementById('app-boot-overlay');
+            if (overlay) overlay.hidden = true;
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             handleVerifiedRedirectParam();
+            const bootFinishTimer = setTimeout(finishAppBoot, 8000);
             // Auth gate + account state hydration must resolve BEFORE the app reads
             // localStorage, so that if the server has a saved copy of this account's
             // state it lands in localStorage first and the app boots from account data
@@ -3255,6 +3341,11 @@
                     const guestStudySecs = appState.sessions.reduce((acc, s) => acc + s.durationSeconds, 0);
                     AuraGuest.maybePromptGuestLogin(guestStudySecs);
                 }
+                clearTimeout(bootFinishTimer);
+                finishAppBoot();
+            }).catch(() => {
+                clearTimeout(bootFinishTimer);
+                finishAppBoot();
             });
             document.addEventListener('fullscreenchange', syncFullscreenIcon);
             document.addEventListener('webkitfullscreenchange', syncFullscreenIcon);
@@ -3422,6 +3513,8 @@
             document.getElementById('settings-user-email').value = appState.profile.email;
             document.getElementById('settings-daily-goal').value = appState.profile.dailyGoalHours;
             document.getElementById('settings-timer-duration').value = appState.profile.defaultTimerMinutes;
+            const autoBreakEl = document.getElementById('settings-auto-break');
+            if (autoBreakEl) autoBreakEl.checked = appState.profile.autoBreakAfterPomodoro !== false;
             document.getElementById('user-email-display').innerText = appState.profile.email;
             // appState.profile was just overwritten wholesale from whatever
             // JSON was in localStorage/synced from the server above -- it may
@@ -3736,6 +3829,14 @@
         }
 
         function changeEngineMode(modeKey) {
+            if (modeKey === 'break') {
+                enterBreakMode({ autoStart: false });
+                return;
+            }
+            if (isEngineInBreakPhase()) {
+                enginePhase = 'study';
+                isBreakBlock = false;
+            }
             clearInterval(engineIntervalRegister);
             engineIntervalRegister = null;
             isEngineActivelyRunning = false;
@@ -3760,8 +3861,82 @@
             lucide.createIcons();
         }
 
+        function enterBreakMode(options) {
+            options = options || {};
+            clearInterval(engineIntervalRegister);
+            engineIntervalRegister = null;
+            isEngineActivelyRunning = false;
+            engineAnchorMs = null;
+            lastSyncClockMs = null;
+            enginePhase = 'break';
+            isBreakBlock = true;
+            bankedElapsedSeconds = 0;
+            runningAccumulatedSeconds = 0;
+            countdownTotalSeconds = wholeSeconds(BREAK_DURATION_SECONDS, BREAK_DURATION_SECONDS);
+            countdownSecondsRemainingRegister = countdownTotalSeconds;
+            clearRunningTimerSnapshot();
+            document.querySelectorAll('.mode-tab-btn').forEach(b => b.classList.remove('active'));
+            const breakTab = document.getElementById('mode-tab-break');
+            if (breakTab) breakTab.classList.add('active');
+            document.getElementById('timer-start-btn').innerHTML = '<i data-lucide="play-circle"></i> Start Break';
+            document.getElementById('timer-start-timestamp').innerText = 'Take a short break — no study time logged.';
+            updateEngineDisplayString();
+            lucide.createIcons();
+            if (options.autoStart) toggleEngineExecutionLoop();
+        }
+
+        function exitBreakMode() {
+            enginePhase = 'study';
+            isBreakBlock = false;
+            clearInterval(engineIntervalRegister);
+            engineIntervalRegister = null;
+            isEngineActivelyRunning = false;
+            engineAnchorMs = null;
+            lastSyncClockMs = null;
+            bankedElapsedSeconds = 0;
+            runningAccumulatedSeconds = 0;
+            appState.selectedMode = 'countdown';
+            countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
+            countdownSecondsRemainingRegister = countdownTotalSeconds;
+            document.querySelectorAll('.mode-tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('mode-tab-countdown').classList.add('active');
+            document.getElementById('timer-start-btn').innerHTML = '<i data-lucide="play-circle"></i> Start Block';
+            document.getElementById('timer-start-timestamp').innerText = 'Break over — ready for your next study block.';
+            updateEngineDisplayString();
+            clearRunningTimerSnapshot();
+            lucide.createIcons();
+        }
+
+        function notifyBreakOver() {
+            if (typeof AuraFocus !== 'undefined' && typeof AuraFocus.playCompletionChime === 'function') {
+                AuraFocus.playCompletionChime();
+            }
+            triggerAlertToast("Break over", "Time to get back to studying.", true);
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                try {
+                    const n = new Notification("AuraStudy", {
+                        body: "Break over — time to get back to studying.",
+                        tag: "aurastudy-break-over",
+                        silent: true,
+                    });
+                    n.onclick = function () {
+                        try { window.focus(); } catch (e) {}
+                        if (typeof switchView === 'function') {
+                            try { switchView('timer', document.getElementById('nav-item-timer-toggle')); } catch (e) {}
+                        }
+                        try { n.close(); } catch (e) {}
+                    };
+                } catch (e) { /* toast fallback already shown */ }
+            }
+        }
+
+        function completeBreakTimer() {
+            notifyBreakOver();
+            exitBreakMode();
+        }
+
         function updateEngineDisplayString() {
-            let raw = (appState.selectedMode === "countdown") ? countdownSecondsRemainingRegister : runningAccumulatedSeconds;
+            let raw = (appState.selectedMode === "countdown" || isEngineInBreakPhase()) ? countdownSecondsRemainingRegister : runningAccumulatedSeconds;
             // Floor and sanity-check here as well as at every source. A
             // fractional value reaching this line renders its whole decimal
             // expansion (0.5030000000000001 -> "00:0.5030000000000001"),
@@ -3815,7 +3990,7 @@
                 // before the display (which now defends itself) ever sees
                 // it. wholeSeconds() floors it here, at the source, instead.
                 const priorElapsed = bankedElapsedSeconds + Math.max(0, (lastSyncClockMs - engineAnchorMs) / 1000);
-                bankedElapsedSeconds = wholeSeconds((appState.selectedMode === "countdown")
+                bankedElapsedSeconds = wholeSeconds((appState.selectedMode === "countdown" || isEngineInBreakPhase())
                     ? Math.min(priorElapsed, countdownTotalSeconds)
                     : priorElapsed);
                 const gapMs = nowMs - lastSyncClockMs;
@@ -3831,7 +4006,7 @@
             // always an integer, so `elapsed` is whole too -- wholeSeconds()
             // here is belt-and-braces, not the primary fix.
             const elapsed = wholeSeconds(bankedElapsedSeconds + Math.floor((nowMs - engineAnchorMs) / 1000));
-            if (appState.selectedMode === "countdown") {
+            if (appState.selectedMode === "countdown" || isEngineInBreakPhase()) {
                 runningAccumulatedSeconds = wholeSeconds(Math.min(elapsed, countdownTotalSeconds));
                 countdownSecondsRemainingRegister = wholeSeconds(Math.max(0, countdownTotalSeconds - elapsed));
             } else {
@@ -3846,13 +4021,27 @@
             if (Date.now() - lastTimerPersistMs >= TIMER_PERSIST_THROTTLE_MS) {
                 persistRunningTimerSnapshot();
             }
+            if (isEngineInBreakPhase()) {
+                if (countdownSecondsRemainingRegister <= 0) {
+                    clearInterval(engineIntervalRegister);
+                    engineIntervalRegister = null;
+                    isEngineActivelyRunning = false;
+                    engineAnchorMs = null;
+                    completeBreakTimer();
+                }
+                return;
+            }
             if (appState.selectedMode === "countdown" && countdownSecondsRemainingRegister <= 0) {
                 clearInterval(engineIntervalRegister);
                 engineIntervalRegister = null;
                 isEngineActivelyRunning = false;
                 engineAnchorMs = null;
                 executeHighImpactConfettiFXParticleBurst();
-                saveEngineWorkspaceBlockData();
+                const shouldAutoBreak = countdownTotalSeconds === POMODORO_DURATION_SECONDS && appState.profile.autoBreakAfterPomodoro !== false;
+                saveEngineWorkspaceBlockData({ deferReset: shouldAutoBreak });
+                if (shouldAutoBreak) {
+                    enterBreakMode({ autoStart: true });
+                }
             }
         }
 
@@ -3870,6 +4059,10 @@
         // below) so a closed tab's snapshot is current to the moment it closed.
         function persistRunningTimerSnapshot() {
             try {
+                if (isEngineInBreakPhase()) {
+                    localStorage.removeItem(RUNNING_TIMER_STORAGE_KEY);
+                    return;
+                }
                 if (engineAnchorMs === null && !isEngineActivelyRunning && bankedElapsedSeconds < 5) {
                     // Nothing worth recovering (idle/freshly-reset timer) -- don't
                     // leave a stale snapshot around to be "recovered" later.
@@ -3909,23 +4102,28 @@
                 engineIntervalRegister = null;
                 isEngineActivelyRunning = false;
                 updateEngineDisplayString();
-                startBtn.innerHTML = '<i data-lucide="play-circle"></i> Resume Block';
+                startBtn.innerHTML = '<i data-lucide="play-circle"></i> ' + (isEngineInBreakPhase() ? 'Resume Break' : 'Resume Block');
                 persistRunningTimerSnapshot();
             } else {
-                if (runningAccumulatedSeconds === 0) {
+                if (runningAccumulatedSeconds === 0 && !isEngineInBreakPhase()) {
                     if (appState.selectedMode === "countdown") {
                         countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
                         countdownSecondsRemainingRegister = countdownTotalSeconds;
                     }
                     bankedElapsedSeconds = 0;
                     initialBlockTimestampString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    document.getElementById('timer-start-timestamp').innerText = `Started at: ${initialBlockTimestampString}`;
+                    document.getElementById('timer-start-timestamp').innerText = isEngineInBreakPhase()
+                        ? 'Break started.'
+                        : `Started at: ${initialBlockTimestampString}`;
+                } else if (runningAccumulatedSeconds === 0 && isEngineInBreakPhase()) {
+                    bankedElapsedSeconds = 0;
+                    document.getElementById('timer-start-timestamp').innerText = 'Break started.';
                 }
 
                 engineAnchorMs = Date.now();
                 lastSyncClockMs = null; // fresh start/resume -- the next sync must not compare against a stale pre-pause timestamp (see syncEngineRegistersFromClock's gap guard)
                 isEngineActivelyRunning = true;
-                startBtn.innerHTML = '<i data-lucide="pause-circle"></i> Pause Cycle';
+                startBtn.innerHTML = '<i data-lucide="pause-circle"></i> ' + (isEngineInBreakPhase() ? 'Pause Break' : 'Pause Cycle');
 
                 clearInterval(engineIntervalRegister);
                 engineIntervalRegister = setInterval(engineTickHandler, 250);
@@ -3947,13 +4145,17 @@
             // Reset throws away time already on the clock, so confirm when
             // there is something to lose. Silent loss of a running session
             // is exactly what this app must not do.
-            const elapsedOnClock = Math.floor(runningAccumulatedSeconds || 0);
+            const elapsedOnClock = isEngineInBreakPhase()
+                ? Math.floor(Math.max(0, countdownTotalSeconds - countdownSecondsRemainingRegister))
+                : Math.floor(runningAccumulatedSeconds || 0);
             if (!skipConfirm && elapsedOnClock >= 60) {
                 const durationLabel = formatDurationHM(elapsedOnClock, { long: true });
                 showAuraConfirmDialog({
-                    title: 'Reset timer?',
-                    message: 'Reset the timer and discard ' + durationLabel + ' already on the clock?\n\nTo keep the time instead, cancel and choose Log Focus.',
-                    confirmLabel: 'Reset timer',
+                    title: isEngineInBreakPhase() ? 'Reset break?' : 'Reset timer?',
+                    message: (isEngineInBreakPhase()
+                        ? 'Reset the break and discard ' + durationLabel + ' already on the clock?'
+                        : 'Reset the timer and discard ' + durationLabel + ' already on the clock?\n\nTo keep the time instead, cancel and choose Log Focus.'),
+                    confirmLabel: isEngineInBreakPhase() ? 'Reset break' : 'Reset timer',
                     cancelLabel: 'Keep time',
                     destructive: true
                 }).then((ok) => {
@@ -3961,6 +4163,7 @@
                 });
                 return;
             }
+            const wasBreak = isEngineInBreakPhase();
             clearInterval(engineIntervalRegister);
             engineIntervalRegister = null;
             isEngineActivelyRunning = false;
@@ -3968,6 +4171,10 @@
             lastSyncClockMs = null;
             bankedElapsedSeconds = 0;
             runningAccumulatedSeconds = 0;
+            if (wasBreak) {
+                exitBreakMode();
+                return;
+            }
             countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
             countdownSecondsRemainingRegister = countdownTotalSeconds;
             updateEngineDisplayString();
@@ -4052,7 +4259,8 @@
             }
         };
 
-        function saveEngineWorkspaceBlockData() {
+        function saveEngineWorkspaceBlockData(options) {
+            if (isEngineInBreakPhase()) return;
             syncEngineRegistersFromClock();
             clearInterval(engineIntervalRegister);
             engineIntervalRegister = null;
@@ -4104,8 +4312,10 @@
             }
             // skipConfirm: the session has just been logged (or was too short
             // to log), so there is nothing left on the clock to lose and no
-            // reason to ask.
-            resetEngineDisplayState(true);
+            // reason to ask. deferReset: pomodoro auto-break will enter break mode.
+            if (!(options && options.deferReset)) {
+                resetEngineDisplayState(true);
+            }
         }
 
         // Runs once on boot (see DOMContentLoaded below), after the app's own
@@ -5423,7 +5633,14 @@
         }
 
         function triggerManualSaveNotification() { updateProfileSettings(); triggerAlertToast("Settings Updated", "Your changes have been saved.", true); }
-        function updateProfileSettings() { appState.profile.dailyGoalHours = parseFloat(document.getElementById('settings-daily-goal').value) || 3; appState.profile.defaultTimerMinutes = parseInt(document.getElementById('settings-timer-duration').value) || 25; localStorage.setItem('aurastudy_tinkered_flag', 'true'); saveStateToLocalStorageRegister(); }
+        function updateProfileSettings() {
+            appState.profile.dailyGoalHours = parseFloat(document.getElementById('settings-daily-goal').value) || 3;
+            appState.profile.defaultTimerMinutes = parseInt(document.getElementById('settings-timer-duration').value) || 25;
+            const autoBreakEl = document.getElementById('settings-auto-break');
+            appState.profile.autoBreakAfterPomodoro = autoBreakEl ? autoBreakEl.checked : true;
+            localStorage.setItem('aurastudy_tinkered_flag', 'true');
+            saveStateToLocalStorageRegister();
+        }
 
         // Account password change -- posts to the auth API added in server/auth.py.
         // The email field itself is now read-only (see applyAccountIdentity), so this

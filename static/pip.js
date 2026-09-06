@@ -188,13 +188,16 @@
   }
 
   function pipSubtitleText() {
+    if (typeof enginePhase !== "undefined" && enginePhase === "break") {
+      return "Break";
+    }
     var course = (appState.selectedCourse || "").trim();
     var modeLabel = appState.selectedMode === "countdown" ? "Countdown Block" : "Continuous Stopwatch";
     return course ? course + " · " + modeLabel : modeLabel;
   }
 
   function computeProgressFraction() {
-    if (appState.selectedMode === "countdown") {
+    if (appState.selectedMode === "countdown" || (typeof enginePhase !== "undefined" && enginePhase === "break")) {
       if (!countdownTotalSeconds) return 0;
       return Math.max(0, Math.min(1, (countdownTotalSeconds - countdownSecondsRemainingRegister) / countdownTotalSeconds));
     }
@@ -211,6 +214,9 @@
 
   function buildNotificationBody() {
     var timeText = currentDisplayText();
+    if (typeof enginePhase !== "undefined" && enginePhase === "break") {
+      return timeText + " left on your break";
+    }
     var course = appState.selectedCourse || "your session";
     return appState.selectedMode === "countdown"
       ? timeText + " left on " + course
@@ -1133,5 +1139,6 @@
   window.AuraFocus = {
     init: init,
     onPreferenceToggle: onPreferenceToggle,
+    playCompletionChime: playCompletionChime,
   };
 })();
