@@ -1743,6 +1743,126 @@
             box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.15);
         }
 
+        /* Settings number fields — large +/- steppers instead of native spinners */
+        .number-stepper-row {
+            display: flex;
+            align-items: stretch;
+            gap: 8px;
+        }
+        .number-stepper-btn {
+            flex-shrink: 0;
+            min-width: 44px;
+            min-height: 44px;
+            padding: 0 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 14px;
+            background: var(--bg-card);
+            color: var(--text-main);
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .number-stepper-btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.15);
+        }
+        .number-stepper-input {
+            flex: 1;
+            min-width: 0;
+            text-align: center;
+        }
+        .number-stepper-input::-webkit-outer-spin-button,
+        .number-stepper-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .number-stepper-input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        /* Break length stepper — visible on Timer when Break tab is active */
+        .timer-break-stepper {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: clamp(8px, 2vw, 14px);
+            padding: 6px 14px;
+            border-radius: 999px;
+            border: 1.5px solid rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .timer-break-stepper.visible {
+            display: inline-flex;
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper {
+            border-color: rgba(255, 255, 255, 0.75);
+            background: rgba(255, 255, 255, 0.32);
+        }
+        .timer-break-stepper-label {
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: lowercase;
+            color: rgba(255, 255, 255, 0.88);
+            letter-spacing: 0.02em;
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper-label {
+            color: var(--text-muted);
+        }
+        .timer-break-stepper-value {
+            font-size: 16px;
+            font-weight: 800;
+            min-width: 1.5ch;
+            text-align: center;
+            color: #fff;
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper-value {
+            color: var(--text-main);
+        }
+        .timer-break-stepper-unit {
+            font-size: 12px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.75);
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper-unit {
+            color: var(--text-muted);
+        }
+        .timer-break-stepper-btn {
+            min-width: 44px;
+            min-height: 44px;
+            border-radius: 999px;
+            border: 1.5px solid rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper-btn {
+            border-color: var(--border-color);
+            background: #fff;
+            color: var(--text-main);
+        }
+        .timer-break-stepper-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+        }
+        .timer-break-stepper-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
         .data-table {
             width: 100%;
             border-collapse: collapse;
@@ -2666,6 +2786,14 @@
                             </button>
                         </div>
 
+                        <div class="timer-break-stepper" id="timer-break-stepper" aria-label="Break length">
+                            <span class="timer-break-stepper-label">Break</span>
+                            <button type="button" class="timer-break-stepper-btn" id="timer-break-stepper-minus" aria-label="Decrease break length" onclick="stepTimerBreakMinutes(-1)">−</button>
+                            <span class="timer-break-stepper-value" id="timer-break-stepper-value">5</span>
+                            <span class="timer-break-stepper-unit">min</span>
+                            <button type="button" class="timer-break-stepper-btn" id="timer-break-stepper-plus" aria-label="Increase break length" onclick="stepTimerBreakMinutes(1)">+</button>
+                        </div>
+
                         <div class="timer-clock-display" id="timer-display">25:00</div>
                         <div class="timer-meta" id="timer-start-timestamp">Pick a course and start your session</div>
 
@@ -2923,17 +3051,29 @@
 
                 <div class="input-group" style="margin-bottom:16px;">
                     <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Daily Study Goal (Hours)</label>
-                    <input type="number" class="form-control" id="settings-daily-goal" value="3" onchange="updateProfileSettings()">
+                    <div class="number-stepper-row">
+                        <button type="button" class="number-stepper-btn" aria-label="Decrease daily study goal" onclick="stepSettingsField('settings-daily-goal', -1)">−</button>
+                        <input type="number" class="form-control number-stepper-input" id="settings-daily-goal" value="3" min="1" max="24" step="1" onchange="updateProfileSettings()">
+                        <button type="button" class="number-stepper-btn" aria-label="Increase daily study goal" onclick="stepSettingsField('settings-daily-goal', 1)">+</button>
+                    </div>
                 </div>
 
                 <div class="input-group" style="margin-bottom:16px;">
                     <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Default Timer Length (Minutes)</label>
-                    <input type="number" class="form-control" id="settings-timer-duration" value="25" min="1" max="180" onchange="updateProfileSettings()">
+                    <div class="number-stepper-row">
+                        <button type="button" class="number-stepper-btn" aria-label="Decrease default timer length" onclick="stepSettingsField('settings-timer-duration', -1)">−</button>
+                        <input type="number" class="form-control number-stepper-input" id="settings-timer-duration" value="25" min="1" max="180" step="1" onchange="updateProfileSettings()">
+                        <button type="button" class="number-stepper-btn" aria-label="Increase default timer length" onclick="stepSettingsField('settings-timer-duration', 1)">+</button>
+                    </div>
                 </div>
 
                 <div class="input-group" style="margin-bottom:16px;">
                     <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Default Break Length (Minutes)</label>
-                    <input type="number" class="form-control" id="settings-break-duration" value="5" min="1" max="90" onchange="updateProfileSettings()">
+                    <div class="number-stepper-row">
+                        <button type="button" class="number-stepper-btn" aria-label="Decrease default break length" onclick="stepSettingsField('settings-break-duration', -1)">−</button>
+                        <input type="number" class="form-control number-stepper-input" id="settings-break-duration" value="5" min="1" max="90" step="1" onchange="updateProfileSettings()">
+                        <button type="button" class="number-stepper-btn" aria-label="Increase default break length" onclick="stepSettingsField('settings-break-duration', 1)">+</button>
+                    </div>
                 </div>
 
                 <div class="input-group" style="margin-bottom:24px;">
@@ -3175,6 +3315,69 @@
             const n = parseInt(value, 10);
             if (!Number.isFinite(n)) return 5;
             return Math.min(90, Math.max(1, n));
+        }
+
+        function sanitizeDailyGoalHours(value) {
+            const n = parseFloat(value);
+            if (!Number.isFinite(n)) return 3;
+            return Math.min(24, Math.max(1, Math.round(n)));
+        }
+
+        function sanitizeTimerMinutes(value) {
+            const n = parseInt(value, 10);
+            if (!Number.isFinite(n)) return 25;
+            return Math.min(180, Math.max(1, n));
+        }
+
+        function stepSettingsField(inputId, delta) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            let next;
+            if (inputId === 'settings-daily-goal') {
+                next = sanitizeDailyGoalHours((parseFloat(input.value) || 3) + delta);
+            } else if (inputId === 'settings-timer-duration') {
+                next = sanitizeTimerMinutes((parseInt(input.value, 10) || 25) + delta);
+            } else if (inputId === 'settings-break-duration') {
+                next = sanitizeBreakMinutes((parseInt(input.value, 10) || 5) + delta);
+            } else {
+                return;
+            }
+            input.value = next;
+            updateProfileSettings();
+        }
+
+        function syncTimerBreakStepperVisibility() {
+            const row = document.getElementById('timer-break-stepper');
+            if (row) row.classList.toggle('visible', isEngineInBreakPhase());
+            updateTimerBreakStepperDisabled();
+        }
+
+        function updateTimerBreakStepperDisabled() {
+            const disabled = isEngineActivelyRunning;
+            const minusBtn = document.getElementById('timer-break-stepper-minus');
+            const plusBtn = document.getElementById('timer-break-stepper-plus');
+            if (minusBtn) minusBtn.disabled = disabled;
+            if (plusBtn) plusBtn.disabled = disabled;
+            const valueEl = document.getElementById('timer-break-stepper-value');
+            if (valueEl) valueEl.textContent = sanitizeBreakMinutes(appState.profile.defaultBreakMinutes);
+        }
+
+        function applyBreakMinutes(minutes) {
+            const mins = sanitizeBreakMinutes(minutes);
+            appState.profile.defaultBreakMinutes = mins;
+            countdownTotalSeconds = wholeSeconds(mins * 60, 5 * 60) || 5 * 60;
+            countdownSecondsRemainingRegister = countdownTotalSeconds;
+            const settingsInput = document.getElementById('settings-break-duration');
+            if (settingsInput) settingsInput.value = mins;
+            refreshAutoBreakLabel();
+            updateEngineDisplayString();
+            updateTimerBreakStepperDisabled();
+            saveStateToLocalStorageRegister();
+        }
+
+        function stepTimerBreakMinutes(delta) {
+            if (isEngineActivelyRunning) return;
+            applyBreakMinutes(appState.profile.defaultBreakMinutes + delta);
         }
 
         function refreshAutoBreakLabel() {
@@ -3879,6 +4082,7 @@
             }
             updateEngineDisplayString();
             lucide.createIcons();
+            syncTimerBreakStepperVisibility();
         }
 
         function enterBreakMode(options) {
@@ -3902,6 +4106,7 @@
             document.getElementById('timer-start-timestamp').innerText = 'Take a short break — no study time logged.';
             updateEngineDisplayString();
             lucide.createIcons();
+            syncTimerBreakStepperVisibility();
             if (options.autoStart) toggleEngineExecutionLoop();
         }
 
@@ -3925,6 +4130,7 @@
             updateEngineDisplayString();
             clearRunningTimerSnapshot();
             lucide.createIcons();
+            syncTimerBreakStepperVisibility();
         }
 
         function notifyBreakOver() {
@@ -4124,6 +4330,7 @@
                 updateEngineDisplayString();
                 startBtn.innerHTML = '<i data-lucide="play-circle"></i> ' + (isEngineInBreakPhase() ? 'Resume Break' : 'Resume Block');
                 persistRunningTimerSnapshot();
+                updateTimerBreakStepperDisabled();
             } else {
                 if (runningAccumulatedSeconds === 0 && !isEngineInBreakPhase()) {
                     if (appState.selectedMode === "countdown") {
@@ -4149,6 +4356,7 @@
                 engineIntervalRegister = setInterval(engineTickHandler, 250);
                 engineTickHandler();
                 persistRunningTimerSnapshot();
+                updateTimerBreakStepperDisabled();
             }
             lucide.createIcons();
         }
@@ -5654,8 +5862,10 @@
 
         function triggerManualSaveNotification() { updateProfileSettings(); triggerAlertToast("Settings Updated", "Your changes have been saved.", true); }
         function updateProfileSettings() {
-            appState.profile.dailyGoalHours = parseFloat(document.getElementById('settings-daily-goal').value) || 3;
-            appState.profile.defaultTimerMinutes = parseInt(document.getElementById('settings-timer-duration').value) || 25;
+            appState.profile.dailyGoalHours = sanitizeDailyGoalHours(document.getElementById('settings-daily-goal').value);
+            document.getElementById('settings-daily-goal').value = appState.profile.dailyGoalHours;
+            appState.profile.defaultTimerMinutes = sanitizeTimerMinutes(document.getElementById('settings-timer-duration').value);
+            document.getElementById('settings-timer-duration').value = appState.profile.defaultTimerMinutes;
             appState.profile.defaultBreakMinutes = sanitizeBreakMinutes(document.getElementById('settings-break-duration').value);
             document.getElementById('settings-break-duration').value = appState.profile.defaultBreakMinutes;
             const autoBreakEl = document.getElementById('settings-auto-break');

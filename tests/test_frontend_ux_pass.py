@@ -79,6 +79,10 @@ def test_theme_and_timer_colors_live_in_settings_not_sidebar():
     assert 'id="settings-ambient-picker"' not in html
     assert 'id="settings-break-duration"' in html
     assert "Default Break Length (Minutes)" in html
+    assert "function stepSettingsField" in html
+    assert "number-stepper-row" in html
+    assert "stepSettingsField('settings-break-duration'" in html
+    assert "-moz-appearance: textfield" in html
     timer_view = html[html.index('<!-- VIEW: TIMER -->'):html.index("<!-- VIEW: COURSES -->")]
     assert "ambient-selector-bar" in timer_view
     assert 'id="timer-colour-control-wrap"' in timer_view
@@ -93,6 +97,20 @@ def test_theme_and_timer_colors_live_in_settings_not_sidebar():
     blue_theme_block = html[html.index(":root[data-theme=\"blue\"]"):html.index("/* Theme switch control")]
     assert "--timer-grad-" not in blue_theme_block
     assert "--ambient-grad-" not in blue_theme_block
+
+
+def test_timer_break_length_editable_on_break_tab():
+    html = _read("index.html")
+    assert 'id="timer-break-stepper"' in html
+    assert 'id="timer-break-stepper-minus"' in html
+    assert 'id="timer-break-stepper-plus"' in html
+    assert "function stepTimerBreakMinutes" in html
+    assert "function applyBreakMinutes" in html
+    assert "function syncTimerBreakStepperVisibility" in html
+    timer_view = html[html.index('<!-- VIEW: TIMER -->'):html.index("<!-- VIEW: COURSES -->")]
+    assert 'id="timer-break-stepper"' in timer_view
+    step_body = html[html.index("function stepTimerBreakMinutes"):html.index("function refreshAutoBreakLabel")]
+    assert "isEngineActivelyRunning" in step_body
 
 
 def test_custom_404_template_exists():

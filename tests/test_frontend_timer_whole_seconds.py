@@ -126,6 +126,7 @@ def test_whole_seconds_helper_exists_and_floors_validates_and_clamps():
         "attemptRunningTimerRecovery",
         "enterBreakMode",
         "exitBreakMode",
+        "applyBreakMinutes",
     ],
 )
 def test_every_register_write_in_function_is_provably_whole(func_name):
@@ -270,6 +271,27 @@ def test_default_break_minutes_exists_and_enter_break_mode_uses_whole_seconds():
     assert "refreshAutoBreakLabel()" in update_body
     assert "5-minute break when a 25-minute countdown finishes" not in html
     assert 'id="settings-auto-break-label"' in html
+
+
+def test_timer_break_stepper_syncs_profile_settings_and_registers():
+    """On-timer break +/- must route register writes through wholeSeconds and
+    keep Settings + profile in sync."""
+    html = _read("index.html")
+    assert "function applyBreakMinutes" in html
+    apply_body = _extract_function_body(html, "applyBreakMinutes")
+    assert re.search(
+        r"countdownTotalSeconds = wholeSeconds\(mins \* 60,\s*5 \* 60\)",
+        apply_body,
+    )
+    assert "countdownSecondsRemainingRegister = countdownTotalSeconds" in apply_body
+    assert "settings-break-duration" in apply_body
+    assert "saveStateToLocalStorageRegister()" in apply_body
+    step_body = _extract_function_body(html, "stepTimerBreakMinutes")
+    assert "isEngineActivelyRunning" in step_body
+    assert "applyBreakMinutes" in step_body
+    assert "syncTimerBreakStepperVisibility" in html
+    enter_body = _extract_function_body(html, "enterBreakMode")
+    assert "syncTimerBreakStepperVisibility()" in enter_body
 
 
 def test_timer_display_still_floors_before_rendering():
