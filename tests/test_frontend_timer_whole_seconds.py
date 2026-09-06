@@ -262,7 +262,7 @@ def test_timer_display_still_floors_before_rendering():
 
 def test_pip_reset_button_does_not_call_reset_unconditionally():
     """The bug: the floating window's Reset button called
-    resetEngineDisplayState() directly, which shows a window.confirm() on
+    resetEngineDisplayState() directly, which shows a branded confirm modal on
     the MAIN window -- easy to miss entirely when the floating window is on
     top of (or the only thing the user can see over) the main one, making
     Reset look like it silently did nothing."""

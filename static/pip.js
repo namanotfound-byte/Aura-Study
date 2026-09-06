@@ -603,15 +603,15 @@
     };
   }
 
-  // resetEngineDisplayState() in index.html shows a window.confirm() when
-  // there's a minute or more on the clock -- but that dialog is spawned on
-  // the MAIN window's `window` object. The floating window is a separate
-  // top-level browsing context (Document Picture-in-Picture), typically
-  // sitting ON TOP of the main window precisely because the user has
-  // switched away from it, so the main window's confirm() either appears
-  // behind the floating window (invisible, easy to miss entirely) or steals
-  // focus in a confusing way. Either way, clicking Reset in the floating
-  // window can look like it did nothing.
+  // resetEngineDisplayState() in index.html shows a branded confirm modal
+  // (#aura-confirm-modal via showAuraConfirmDialog) when there's a minute or
+  // more on the clock -- but that dialog is spawned on the MAIN window's
+  // document. The floating window is a separate top-level browsing context
+  // (Document Picture-in-Picture), typically sitting ON TOP of the main
+  // window precisely because the user has switched away from it, so the main
+  // window's modal either appears behind the floating window (invisible, easy
+  // to miss entirely) or steals focus in a confusing way. Either way,
+  // clicking Reset in the floating window can look like it did nothing.
   //
   // Fix: do the same "is there something to lose" check here, and if so,
   // show the confirm INSIDE the floating window (STATE.pipWindow.confirm),
