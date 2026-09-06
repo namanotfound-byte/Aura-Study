@@ -198,9 +198,28 @@ def test_sidebar_collapse_toggle_persisted():
     assert "function applySidebarCollapsedState" in html
     assert "localStorage.getItem('aurastudy_sidebar_collapsed')" in html
     sidebar_block = html[html.index('id="app-sidebar"'):html.index("<!-- Main Workspace Container -->")]
+    brand_snippet = html[
+        html.index('id="sidebar-brand-home"') : html.index('id="sidebar-brand-home"') + 320
+    ]
+    assert 'title="Dashboard"' not in brand_snippet
+    assert 'aria-label="Go to Dashboard"' in brand_snippet
     assert 'title="Dashboard"' in sidebar_block
     assert 'title="Timer"' in sidebar_block
     assert "html.sidebar-collapsed .nav-item > span:not(.nav-unread-badge)" in html
+    brand_span_block = html[html.index(".brand span {") : html.index(".brand span {") + 260]
+    assert "-webkit-background-clip: text" in brand_span_block
+    assert "html.sidebar-collapsed .brand span" in html
+    collapsed_brand_span = html[
+        html.index("html.sidebar-collapsed .brand span")
+        : html.index("html.sidebar-collapsed .brand span") + 80
+    ]
+    assert "display: none" in collapsed_brand_span
+    collapsed_brand_row = html[
+        html.index("html.sidebar-collapsed .sidebar-brand-row")
+        : html.index("html.sidebar-collapsed .brand span")
+    ]
+    assert "gap: 8px" in collapsed_brand_row
+    assert "margin-bottom: 8px" in collapsed_brand_row
 
 
 def test_switchview_wrap_opens_float_before_original_when_leaving_timer():
