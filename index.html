@@ -1818,12 +1818,21 @@
         .timer-break-stepper-value {
             font-size: 16px;
             font-weight: 800;
-            min-width: 1.5ch;
+            min-width: 2.5ch;
+            width: 2.75ch;
             text-align: center;
             color: #fff;
+            border: none;
+            background: transparent;
+            padding: 4px 0;
+            -moz-appearance: textfield;
         }
         .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper-value {
             color: var(--text-main);
+        }
+        .timer-break-stepper-value:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
         }
         .timer-break-stepper-unit {
             font-size: 12px;
@@ -2789,7 +2798,7 @@
                         <div class="timer-break-stepper" id="timer-break-stepper" aria-label="Break length">
                             <span class="timer-break-stepper-label">Break</span>
                             <button type="button" class="timer-break-stepper-btn" id="timer-break-stepper-minus" aria-label="Decrease break length" onclick="stepTimerBreakMinutes(-1)">−</button>
-                            <span class="timer-break-stepper-value" id="timer-break-stepper-value">5</span>
+                            <input type="number" class="timer-break-stepper-value number-stepper-input" id="timer-break-stepper-input" value="5" min="1" max="90" step="1" aria-label="Break length in minutes" onchange="commitTimerBreakMinutesFromInput()" onblur="commitTimerBreakMinutesFromInput()" onkeydown="if(event.key==='Enter'){event.preventDefault();commitTimerBreakMinutesFromInput();this.blur();}">
                             <span class="timer-break-stepper-unit">min</span>
                             <button type="button" class="timer-break-stepper-btn" id="timer-break-stepper-plus" aria-label="Increase break length" onclick="stepTimerBreakMinutes(1)">+</button>
                         </div>
@@ -3358,8 +3367,18 @@
             const plusBtn = document.getElementById('timer-break-stepper-plus');
             if (minusBtn) minusBtn.disabled = disabled;
             if (plusBtn) plusBtn.disabled = disabled;
-            const valueEl = document.getElementById('timer-break-stepper-value');
-            if (valueEl) valueEl.textContent = sanitizeBreakMinutes(appState.profile.defaultBreakMinutes);
+            const inputEl = document.getElementById('timer-break-stepper-input');
+            if (inputEl) {
+                inputEl.disabled = disabled;
+                inputEl.value = sanitizeBreakMinutes(appState.profile.defaultBreakMinutes);
+            }
+        }
+
+        function commitTimerBreakMinutesFromInput() {
+            if (isEngineActivelyRunning) return;
+            const input = document.getElementById('timer-break-stepper-input');
+            if (!input) return;
+            applyBreakMinutes(input.value);
         }
 
         function applyBreakMinutes(minutes) {

@@ -290,6 +290,11 @@ def test_timer_break_stepper_syncs_profile_settings_and_registers():
     assert "isEngineActivelyRunning" in step_body
     assert "applyBreakMinutes" in step_body
     assert "syncTimerBreakStepperVisibility" in html
+    assert 'id="timer-break-stepper-input"' in html
+    disabled_body = html[html.index("function updateTimerBreakStepperDisabled"):html.index("function commitTimerBreakMinutesFromInput")]
+    assert "timer-break-stepper-input" in disabled_body
+    assert "inputEl.disabled" in disabled_body
+    assert "function commitTimerBreakMinutesFromInput" in html
     enter_body = _extract_function_body(html, "enterBreakMode")
     assert "syncTimerBreakStepperVisibility()" in enter_body
 

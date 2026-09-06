@@ -104,13 +104,25 @@ def test_timer_break_length_editable_on_break_tab():
     assert 'id="timer-break-stepper"' in html
     assert 'id="timer-break-stepper-minus"' in html
     assert 'id="timer-break-stepper-plus"' in html
+    assert 'id="timer-break-stepper-input"' in html
+    input_snippet = html[html.index('<input type="number" class="timer-break-stepper-value'):html.index('<input type="number" class="timer-break-stepper-value') + 250]
+    assert 'id="timer-break-stepper-input"' in input_snippet
+    assert 'type="number"' in input_snippet
     assert "function stepTimerBreakMinutes" in html
     assert "function applyBreakMinutes" in html
+    assert "function commitTimerBreakMinutesFromInput" in html
     assert "function syncTimerBreakStepperVisibility" in html
     timer_view = html[html.index('<!-- VIEW: TIMER -->'):html.index("<!-- VIEW: COURSES -->")]
     assert 'id="timer-break-stepper"' in timer_view
+    assert 'id="timer-break-stepper-input"' in timer_view
     step_body = html[html.index("function stepTimerBreakMinutes"):html.index("function refreshAutoBreakLabel")]
     assert "isEngineActivelyRunning" in step_body
+    commit_body = html[html.index("function commitTimerBreakMinutesFromInput"):html.index("function applyBreakMinutes")]
+    assert "isEngineActivelyRunning" in commit_body
+    assert "applyBreakMinutes" in commit_body
+    disabled_body = html[html.index("function updateTimerBreakStepperDisabled"):html.index("function commitTimerBreakMinutesFromInput")]
+    assert "timer-break-stepper-input" in disabled_body
+    assert "inputEl.disabled" in disabled_body
 
 
 def test_custom_404_template_exists():
