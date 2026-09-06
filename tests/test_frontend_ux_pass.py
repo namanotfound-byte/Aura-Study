@@ -77,6 +77,8 @@ def test_theme_and_timer_colors_live_in_settings_not_sidebar():
     assert "settings-theme-btn-pink" in html
     assert "settings-theme-btn-blue" in html
     assert 'id="settings-ambient-picker"' not in html
+    assert 'id="settings-break-duration"' in html
+    assert "Default Break Length (Minutes)" in html
     timer_view = html[html.index('<!-- VIEW: TIMER -->'):html.index("<!-- VIEW: COURSES -->")]
     assert "ambient-selector-bar" in timer_view
     assert 'id="timer-colour-control-wrap"' in timer_view

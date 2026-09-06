@@ -2928,13 +2928,18 @@
 
                 <div class="input-group" style="margin-bottom:16px;">
                     <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Default Timer Length (Minutes)</label>
-                    <input type="number" class="form-control" id="settings-timer-duration" value="25" onchange="updateProfileSettings()">
+                    <input type="number" class="form-control" id="settings-timer-duration" value="25" min="1" max="180" onchange="updateProfileSettings()">
+                </div>
+
+                <div class="input-group" style="margin-bottom:16px;">
+                    <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Default Break Length (Minutes)</label>
+                    <input type="number" class="form-control" id="settings-break-duration" value="5" min="1" max="90" onchange="updateProfileSettings()">
                 </div>
 
                 <div class="input-group" style="margin-bottom:24px;">
                     <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; font-weight:600; color:var(--text-main); cursor:pointer; line-height:1.45;">
                         <input type="checkbox" id="settings-auto-break" onchange="updateProfileSettings()" checked style="margin-top:3px; accent-color:var(--accent-solid);">
-                        <span>Start a 5-minute break when a 25-minute countdown finishes.</span>
+                        <span id="settings-auto-break-label">Start a break when a 25-minute countdown finishes.</span>
                     </label>
                 </div>
 
@@ -3101,7 +3106,7 @@
 
         // Core State Engine Allocation
         let appState = {
-            profile: { email: "you@example.com", dailyGoalHours: 3, defaultTimerMinutes: 25, autoBreakAfterPomodoro: true },
+            profile: { email: "you@example.com", dailyGoalHours: 3, defaultTimerMinutes: 25, defaultBreakMinutes: 5, autoBreakAfterPomodoro: true },
             courses: ["Math", "Physics", "Chemistry", "Literature"],
             sessions: [],
             todoItems: [
@@ -3127,7 +3132,6 @@
         let countdownTotalSeconds = 25 * 60;  // length of the current countdown block
         let enginePhase = 'study';            // 'study' | 'break' — break never logs sessions
         let isBreakBlock = false;
-        const BREAK_DURATION_SECONDS = 5 * 60;
         const POMODORO_DURATION_SECONDS = 25 * 60;
         let appBootFinished = false;
 
@@ -3165,6 +3169,19 @@
             const fb = (typeof fallback === 'number' && isFinite(fallback) && fallback >= 0) ? Math.floor(fallback) : 0;
             if (typeof value !== 'number' || !isFinite(value)) return fb;
             return Math.max(0, Math.floor(value));
+        }
+
+        function sanitizeBreakMinutes(value) {
+            const n = parseInt(value, 10);
+            if (!Number.isFinite(n)) return 5;
+            return Math.min(90, Math.max(1, n));
+        }
+
+        function refreshAutoBreakLabel() {
+            const labelEl = document.getElementById('settings-auto-break-label');
+            if (!labelEl) return;
+            const breakMins = sanitizeBreakMinutes(appState.profile.defaultBreakMinutes);
+            labelEl.textContent = 'Start a ' + breakMins + '-minute break when a 25-minute countdown finishes.';
         }
 
         // Shared hours+minutes formatter for every study-duration display in the
@@ -3510,11 +3527,14 @@
             appState.isDarkAmbient = ambientPresetIsDark(appState.ambientKey);
             applyColourTheme(appState.colourTheme, true);
             applyAmbientEnvironmentPreset(appState.ambientKey, appState.isDarkAmbient);
+            appState.profile.defaultBreakMinutes = sanitizeBreakMinutes(appState.profile.defaultBreakMinutes);
             document.getElementById('settings-user-email').value = appState.profile.email;
             document.getElementById('settings-daily-goal').value = appState.profile.dailyGoalHours;
             document.getElementById('settings-timer-duration').value = appState.profile.defaultTimerMinutes;
+            document.getElementById('settings-break-duration').value = appState.profile.defaultBreakMinutes;
             const autoBreakEl = document.getElementById('settings-auto-break');
             if (autoBreakEl) autoBreakEl.checked = appState.profile.autoBreakAfterPomodoro !== false;
+            refreshAutoBreakLabel();
             document.getElementById('user-email-display').innerText = appState.profile.email;
             // appState.profile was just overwritten wholesale from whatever
             // JSON was in localStorage/synced from the server above -- it may
@@ -3872,7 +3892,7 @@
             isBreakBlock = true;
             bankedElapsedSeconds = 0;
             runningAccumulatedSeconds = 0;
-            countdownTotalSeconds = wholeSeconds(BREAK_DURATION_SECONDS, BREAK_DURATION_SECONDS);
+            countdownTotalSeconds = wholeSeconds(appState.profile.defaultBreakMinutes * 60, 5 * 60) || 5 * 60;
             countdownSecondsRemainingRegister = countdownTotalSeconds;
             clearRunningTimerSnapshot();
             document.querySelectorAll('.mode-tab-btn').forEach(b => b.classList.remove('active'));
@@ -5636,8 +5656,11 @@
         function updateProfileSettings() {
             appState.profile.dailyGoalHours = parseFloat(document.getElementById('settings-daily-goal').value) || 3;
             appState.profile.defaultTimerMinutes = parseInt(document.getElementById('settings-timer-duration').value) || 25;
+            appState.profile.defaultBreakMinutes = sanitizeBreakMinutes(document.getElementById('settings-break-duration').value);
+            document.getElementById('settings-break-duration').value = appState.profile.defaultBreakMinutes;
             const autoBreakEl = document.getElementById('settings-auto-break');
             appState.profile.autoBreakAfterPomodoro = autoBreakEl ? autoBreakEl.checked : true;
+            refreshAutoBreakLabel();
             localStorage.setItem('aurastudy_tinkered_flag', 'true');
             saveStateToLocalStorageRegister();
         }

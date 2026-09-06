@@ -247,6 +247,31 @@ def test_default_timer_minutes_from_profile_cannot_inject_a_bad_countdown_total(
     assert len(guarded) == 5, "expected all 5 call sites (load, changeEngineMode, start-fresh, reset, exitBreakMode) to be guarded, found {}".format(len(guarded))
 
 
+def test_default_break_minutes_exists_and_enter_break_mode_uses_whole_seconds():
+    """Break length is user-configurable via profile.defaultBreakMinutes and
+    enterBreakMode must never use a hardcoded duration -- wholeSeconds() with
+    a 5-minute fallback is the only allowed path."""
+    html = _read("index.html")
+    assert "defaultBreakMinutes: 5" in html
+    assert "BREAK_DURATION_SECONDS" not in html
+    assert 'id="settings-break-duration"' in html
+    assert "sanitizeBreakMinutes" in html
+    enter_body = _extract_function_body(html, "enterBreakMode")
+    assert re.search(
+        r"countdownTotalSeconds = wholeSeconds\(appState\.profile\.defaultBreakMinutes \* 60,\s*5 \* 60\)",
+        enter_body,
+    )
+    load_body = _extract_function_body(html, "loadStateFromLocalStorageRegister")
+    assert "sanitizeBreakMinutes(appState.profile.defaultBreakMinutes)" in load_body
+    assert "settings-break-duration" in load_body
+    update_body = _extract_function_body(html, "updateProfileSettings")
+    assert "defaultBreakMinutes" in update_body
+    assert "settings-break-duration" in update_body
+    assert "refreshAutoBreakLabel()" in update_body
+    assert "5-minute break when a 25-minute countdown finishes" not in html
+    assert 'id="settings-auto-break-label"' in html
+
+
 def test_timer_display_still_floors_before_rendering():
     """The >= 3600 branch must not bypass the floor that prevents fractional
     second strings from reaching the timer display after sleep/wake."""
