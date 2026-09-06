@@ -3309,6 +3309,26 @@
             return `${y}-${m}-${day}`;
         }
 
+        // Session History displays stored YYYY-MM-DD strings as a local
+        // calendar date (day + ordinal + full month + year). Parsed from
+        // components only -- never new Date('YYYY-MM-DD'), which is UTC and
+        // can shift the day in negative-offset time zones.
+        function formatSessionHistoryDate(isoDate) {
+            if (!isoDate || typeof isoDate !== 'string') return isoDate || '';
+            const m = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!m) return isoDate;
+            const year = parseInt(m[1], 10);
+            const monthIndex = parseInt(m[2], 10) - 1;
+            const day = parseInt(m[3], 10);
+            if (monthIndex < 0 || monthIndex > 11 || day < 1 || day > 31) return isoDate;
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            let suffix = 'th';
+            if (day % 10 === 1 && day !== 11) suffix = 'st';
+            else if (day % 10 === 2 && day !== 12) suffix = 'nd';
+            else if (day % 10 === 3 && day !== 13) suffix = 'rd';
+            return day + suffix + ' ' + monthNames[monthIndex] + ' ' + year;
+        }
+
         // Core State Engine Allocation
         let appState = {
             profile: { email: "you@example.com", dailyGoalHours: 3, defaultTimerMinutes: 25, defaultBreakMinutes: 5, autoBreakAfterPomodoro: true },
@@ -5711,7 +5731,7 @@
             let anyAdminAdded = false;
             appState.sessions.forEach(s => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td><strong>${escapeHtml(s.date)}</strong></td><td><span style="background:var(--bg-main); padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; border:1px solid var(--border-color); color:var(--neon-pink);">${escapeHtml(s.course)}</span></td><td><strong>${formatDurationHM(s.durationSeconds)}</strong></td><td class="text-muted" style="font-size:13px;">${escapeHtml(s.timestamp)}</td>`;
+                tr.innerHTML = `<td><strong>${escapeHtml(formatSessionHistoryDate(s.date))}</strong></td><td><span style="background:var(--bg-main); padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; border:1px solid var(--border-color); color:var(--neon-pink);">${escapeHtml(s.course)}</span></td><td><strong>${formatDurationHM(s.durationSeconds)}</strong></td><td class="text-muted" style="font-size:13px;">${escapeHtml(s.timestamp)}</td>`;
                 // Sessions the owner logged on this user's behalf (a time
                 // correction) carry addedByAdmin + adminReason from the server
                 // (see server/admin.py build_session_entry) -- mark them

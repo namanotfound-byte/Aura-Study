@@ -45,6 +45,19 @@ def test_format_duration_hm_helper_exists_and_emits_hours_and_minutes():
     assert "' minute'" in body or "'minutes'" in body
 
 
+def test_format_session_history_date_helper_exists_and_formats_ordinals():
+    html = _read("index.html")
+    assert "function formatSessionHistoryDate(isoDate)" in html
+    body = _extract_function_body(html, "formatSessionHistoryDate")
+    assert "new Date(" not in body
+    assert "'st'" in body and "'nd'" in body and "'rd'" in body and "'th'" in body
+    assert "September" in body
+    assert "July" in body
+    sessions_body = _extract_function_body(html, "renderSessionsTable")
+    assert "escapeHtml(formatSessionHistoryDate(s.date))" in sessions_body
+    assert "escapeHtml(s.date)" not in sessions_body
+
+
 def test_format_leaderboard_hours_delegates_to_shared_helper():
     html = _read("index.html")
     body = _extract_function_body(html, "formatLeaderboardHours")
