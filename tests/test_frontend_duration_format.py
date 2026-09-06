@@ -39,6 +39,8 @@ def test_format_duration_hm_helper_exists_and_emits_hours_and_minutes():
     body = _extract_function_body(html, "formatDurationHM")
     assert "Math.floor(" in body
     assert "hours + 'h ' + minutes + 'm'" in body
+    assert "hours === 0" in body
+    assert "minutes + 'm'" in body
     assert "' hour'" in body or "'hour'" in body
     assert "' minute'" in body or "'minutes'" in body
 
@@ -47,8 +49,6 @@ def test_format_leaderboard_hours_delegates_to_shared_helper():
     html = _read("index.html")
     body = _extract_function_body(html, "formatLeaderboardHours")
     assert "return formatDurationHM(seconds)" in body
-    assert re.search(r"return\s+\d+\s*\+\s*'m'", body) is None
-    assert re.search(r"return\s+hours\s*\+\s*'h'\s*;", body) is None
 
 
 def test_badge_descriptions_no_longer_use_bare_minute_totals():

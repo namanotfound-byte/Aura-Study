@@ -24,6 +24,11 @@ def test_leaderboard_has_daily_weekly_toggle_and_no_auto_open_name_editor():
     assert "aurastudy_theme" in html
     assert "Reach at " in html
     assert "text-decoration: none" in html
+    assert "hue-sun" in html and "trophyHueClass" in html
+    assert "viewIn" in html
+    sessions_block = html[html.index("VIEW: SESSIONS LOG"):html.index("VIEW: ACHIEVEMENTS")]
+    assert "<th>Mode</th>" not in sessions_block
+    assert "<th>Duration</th>" in sessions_block
 
 
 def test_spotify_timer_bar_is_horizontal():

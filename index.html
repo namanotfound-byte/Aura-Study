@@ -145,6 +145,30 @@
             height: 100dvh; /* modern browsers: real visible viewport, avoids mobile browser-chrome jump */
             overflow: hidden;
         }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 3;
+            opacity: 0.045;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            mix-blend-mode: multiply;
+        }
+        .sidebar, .main-container, .card, .pet-container-card, .trophy-item-pod {
+            transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 32px rgba(var(--accent-rgb), 0.1);
+        }
+        .view-panel.active {
+            animation: viewIn 0.38s ease;
+        }
+        @keyframes viewIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: none; }
+        }
 
         #achievement-celebrate {
             position: fixed;
@@ -158,13 +182,18 @@
         #achievement-celebrate[hidden] { display: none !important; }
         .achievement-celebrate-card {
             pointer-events: auto;
-            background: var(--bg-card);
+            background: linear-gradient(160deg, #FFF7E8, #FFE0F0 50%, #E8F4FF);
             border: 2px solid var(--neon-pink);
             border-radius: 24px;
             padding: 22px 26px;
             text-align: center;
             max-width: 360px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            box-shadow: 0 20px 60px rgba(var(--accent-rgb), 0.28);
+            animation: celebratePop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes celebratePop {
+            from { transform: scale(0.86); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
         }
         .achievement-celebrate-card h3 { margin: 8px 0 4px; font-size: 20px; }
         .achievement-celebrate-card p { margin: 0; color: var(--text-muted); font-size: 13px; font-weight: 600; }
@@ -1341,21 +1370,60 @@
             border-radius: 24px;
             padding: 20px;
             text-align: center;
-            transition: all 0.3s ease;
+            transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
             position: relative;
+            overflow: hidden;
+            animation: trophyIn 0.45s ease both;
+            animation-delay: calc(var(--i, 0) * 35ms);
+        }
+        .trophy-item-pod::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: repeating-linear-gradient(-18deg, transparent, transparent 10px, rgba(255,255,255,0.14) 10px, rgba(255,255,255,0.14) 11px);
+            opacity: 0.35;
+        }
+        @keyframes trophyIn {
+            from { opacity: 0; transform: translateY(12px) scale(0.98); }
+            to { opacity: 1; transform: none; }
         }
 
         .trophy-item-pod.locked {
-            opacity: 0.45;
-            filter: grayscale(1);
+            opacity: 0.55;
+            filter: saturate(0.35);
         }
 
         .trophy-item-pod.unlocked {
             opacity: 1;
             filter: none;
-            background: linear-gradient(145deg, #FFFFFF 0%, var(--bg-main) 100%);
-            box-shadow: 0 6px 18px rgba(255,102,178,0.05);
+            box-shadow: 0 10px 24px rgba(0,0,0,0.06);
         }
+        .trophy-item-pod.unlocked:hover {
+            transform: translateY(-4px) rotate(-0.4deg);
+            box-shadow: 0 16px 32px rgba(0,0,0,0.1);
+        }
+        .trophy-item-pod.unlocked .trophy-avatar-ring {
+            animation: ringPulse 2.8s ease-in-out infinite;
+        }
+        @keyframes ringPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+        }
+
+        .trophy-item-pod.hue-sun.unlocked { background: linear-gradient(165deg, #FFF6D8, #FFD9A8 60%, #FFC4A8); border-color: #FFB347; }
+        .trophy-item-pod.hue-mint.unlocked { background: linear-gradient(165deg, #E8FFF4, #C4F5E0 60%, #B5F0FF); border-color: #52E5A3; }
+        .trophy-item-pod.hue-gold.unlocked { background: linear-gradient(165deg, #FFF4C8, #FFE08A 55%, #FFC44D); border-color: #E0A72E; }
+        .trophy-item-pod.hue-sky.unlocked { background: linear-gradient(165deg, #E8F4FF, #C8E4FF 60%, #D8C8FF); border-color: #33C6FF; }
+        .trophy-item-pod.hue-violet.unlocked { background: linear-gradient(165deg, #F3E8FF, #E0C8FF 60%, #FFD0F0); border-color: #B57CFF; }
+        .trophy-item-pod.hue-rose.unlocked { background: linear-gradient(165deg, #FFE8F4, #FFC8E0 60%, #FFD0C8); border-color: #FF66B2; }
+        .trophy-item-pod.hue-coral.unlocked { background: linear-gradient(165deg, #FFE8E0, #FFC8B8 60%, #FFD080); border-color: #FF7A59; }
+        .trophy-item-pod.hue-lime.unlocked { background: linear-gradient(165deg, #F3FFD8, #D4FC79 60%, #96E6A1); border-color: #7BC96F; }
+        .trophy-item-pod.hue-ink.unlocked { background: linear-gradient(165deg, #EEE8FF, #D0C8F0 60%, #C8D8FF); border-color: #6C8CFF; }
+        .trophy-item-pod.hue-mystery.unlocked { background: linear-gradient(165deg, #2A0845, #6441A5 60%, #FF007F); border-color: #B57CFF; color: #fff; }
+        .trophy-item-pod.hue-mystery.unlocked h4,
+        .trophy-item-pod.hue-mystery.unlocked p,
+        .trophy-item-pod.hue-mystery.unlocked .trophy-meta-tag { color: #fff; }
 
         .trophy-avatar-ring {
             width: 64px;
@@ -1369,23 +1437,39 @@
             color: var(--text-muted);
             border: 1px solid var(--border-color);
             font-size: 22px;
+            position: relative;
+            z-index: 1;
         }
         .trophy-item-pod.unlocked .trophy-avatar-ring {
-            background: linear-gradient(135deg, var(--bg-sidebar), var(--bg-card-hover));
-            color: var(--neon-pink);
-            border-color: var(--border-color);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.12);
         }
+        .trophy-item-pod.hue-sun.unlocked .trophy-avatar-ring { background: linear-gradient(135deg, #FFB347, #FF7A59); }
+        .trophy-item-pod.hue-mint.unlocked .trophy-avatar-ring { background: linear-gradient(135deg, #52E5A3, #33C6FF); }
+        .trophy-item-pod.hue-gold.unlocked .trophy-avatar-ring { background: linear-gradient(135deg, #FFC44D, #FF8A00); }
+        .trophy-item-pod.hue-sky.unlocked .trophy-avatar-ring { background: linear-gradient(135deg, #33C6FF, #6C8CFF); }
+        .trophy-item-pod.hue-violet.unlocked .trophy-avatar-ring { background: linear-gradient(135deg, #B57CFF, #FF66B2); }
+        .trophy-item-pod.hue-rose.unlocked .trophy-avatar-ring { background: linear-gradient(135deg, #FF66B2, #FF4D9C); }
+        .trophy-item-pod.hue-coral.unlocked .trophy-avatar-ring { background: linear-gradient(135deg, #FF7A59, #FFB347); }
+        .trophy-item-pod.hue-lime.unlocked .trophy-avatar-ring { background: linear-gradient(135deg, #96E6A1, #52E5A3); }
+        .trophy-item-pod.hue-ink.unlocked .trophy-avatar-ring { background: linear-gradient(135deg, #6C8CFF, #B57CFF); }
+        .trophy-item-pod.hue-mystery.unlocked .trophy-avatar-ring { background: linear-gradient(135deg, #FF007F, #6441A5); }
 
         .trophy-item-pod h4 {
             font-size: 15px;
             font-weight: 800;
             margin-bottom: 6px;
             color: var(--text-main);
+            position: relative;
+            z-index: 1;
         }
         .trophy-item-pod p {
             font-size: 12px;
             color: var(--text-muted);
             line-height: 1.4;
+            position: relative;
+            z-index: 1;
         }
 
         .trophy-meta-tag {
@@ -1399,6 +1483,12 @@
             width: fit-content;
             margin: 0 auto 10px auto;
             letter-spacing: 0.5px;
+            position: relative;
+            z-index: 1;
+        }
+        .trophy-item-pod.unlocked .trophy-meta-tag {
+            background: rgba(255,255,255,0.55);
+            color: var(--text-main);
         }
 
         .trophy-card-progress-track {
@@ -2428,7 +2518,6 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Course</th>
-                                <th>Mode</th>
                                 <th>Duration</th>
                                 <th>Time</th>
                             </tr>
@@ -2778,7 +2867,7 @@
 
         // Shared hours+minutes formatter for every study-duration display in the
         // app (dashboard, leaderboard, badges, coach, toasts, session log).
-        // Never shows minutes alone — always both hours and minutes.
+        // Hours when there is at least one; minutes only below 60 minutes.
         function formatDurationHM(totalSeconds, options) {
             options = options || {};
             const long = !!options.long;
@@ -2790,8 +2879,12 @@
             if (long) {
                 const hourWord = hours === 1 ? 'hour' : 'hours';
                 const minWord = minutes === 1 ? 'minute' : 'minutes';
+                if (hours === 0) return minutes + ' ' + minWord;
+                if (minutes === 0) return hours + ' ' + hourWord;
                 return hours + ' ' + hourWord + ' ' + minutes + ' ' + minWord;
             }
+            if (hours === 0) return minutes + 'm';
+            if (minutes === 0) return hours + 'h';
             return hours + 'h ' + minutes + 'm';
         }
 
@@ -4682,7 +4775,7 @@
             let anyAdminAdded = false;
             appState.sessions.forEach(s => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td><strong>${escapeHtml(s.date)}</strong></td><td><span style="background:var(--bg-main); padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; border:1px solid var(--border-color); color:var(--neon-pink);">${escapeHtml(s.course)}</span></td><td><span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--neon-purple);">${escapeHtml(s.type)}</span></td><td><strong>${formatDurationHM(s.durationSeconds)}</strong></td><td class="text-muted" style="font-size:13px;">${escapeHtml(s.timestamp)}</td>`;
+                tr.innerHTML = `<td><strong>${escapeHtml(s.date)}</strong></td><td><span style="background:var(--bg-main); padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; border:1px solid var(--border-color); color:var(--neon-pink);">${escapeHtml(s.course)}</span></td><td><strong>${formatDurationHM(s.durationSeconds)}</strong></td><td class="text-muted" style="font-size:13px;">${escapeHtml(s.timestamp)}</td>`;
                 // Sessions the owner logged on this user's behalf (a time
                 // correction) carry addedByAdmin + adminReason from the server
                 // (see server/admin.py build_session_entry) -- mark them
@@ -4752,18 +4845,36 @@
                 b_weekly_goal: appState.sessions.length >= 3, b_bronze_week: appState.streak >= 3, b_silver_week: appState.streak >= 5, b_golden_week: appState.streak >= 7, b_monthly_goal: appState.sessions.length >= 10, b_course_goal: appState.sessions.length >= 4, b_school_year: getTotalFocusHours(appState) >= 15
             };
 
-            fullBadgesDatabase.forEach(b => {
+            function trophyHueClass(category) {
+                const map = {
+                    'Daily': 'hue-sun',
+                    'Weekly': 'hue-mint',
+                    'Milestone': 'hue-gold',
+                    'Getting Started': 'hue-sky',
+                    'Time Milestones': 'hue-violet',
+                    'Consistency': 'hue-rose',
+                    'Dedication': 'hue-coral',
+                    'Variety': 'hue-lime',
+                    'Organization': 'hue-ink',
+                    'Hidden': 'hue-mystery'
+                };
+                return map[category] || 'hue-rose';
+            }
+
+            fullBadgesDatabase.forEach((b, idx) => {
                 const unlocked = badgeStatus[b.id] || false; if(unlocked) unlockedCount++;
                 if (unlocked) newlyUnlocked.push({ id: b.id, title: b.title, desc: b.desc });
-                const el = document.createElement('div'); el.className = `trophy-item-pod ${unlocked ? 'unlocked' : 'locked'}`;
+                const el = document.createElement('div'); el.className = `trophy-item-pod ${unlocked ? 'unlocked' : 'locked'} ${trophyHueClass(b.category)}`;
+                el.style.setProperty('--i', String(idx));
                 el.innerHTML = `<div class="trophy-meta-tag">${b.category}</div><div class="trophy-avatar-ring"><i data-lucide="${b.icon}"></i></div><h4>${b.title}</h4><p>${b.desc}</p>`;
                 badgesContainer.appendChild(el);
             });
 
-            fullAchievementsDatabase.forEach(a => {
+            fullAchievementsDatabase.forEach((a, idx) => {
                 const unlocked = a.check(appState); if(unlocked) unlockedCount++;
                 if (unlocked) newlyUnlocked.push({ id: a.id, title: a.title, desc: a.desc });
-                const el = document.createElement('div'); el.className = `trophy-item-pod ${unlocked ? 'unlocked' : 'locked'}`;
+                const el = document.createElement('div'); el.className = `trophy-item-pod ${unlocked ? 'unlocked' : 'locked'} ${trophyHueClass(a.category)}`;
+                el.style.setProperty('--i', String(idx));
                 let progressTrackHtml = ""; if(a.progress) { let currentVal = a.max === 100 ? appState.streak : a.max === 300 ? appState.sessions.length : getTotalFocusHours(appState); let ratio = Math.min(Math.floor((currentVal / a.max) * 100), 100); progressTrackHtml = `<div style="font-size:11px; font-weight:700; margin-top:10px; color:var(--text-muted);">${currentVal} / ${a.max} ${a.unit}</div><div class="trophy-card-progress-track"><div class="trophy-card-progress-fill" style="width: ${ratio}%"></div></div>`; }
                 el.innerHTML = `<div class="trophy-meta-tag">${a.category}</div><div class="trophy-avatar-ring"><i data-lucide="${unlocked ? a.icon : (a.secret ? 'help-circle' : 'lock-keyhole')}"></i></div><h4>${a.title}</h4><p>${a.desc}</p>${progressTrackHtml}`;
                 achContainer.appendChild(el);
