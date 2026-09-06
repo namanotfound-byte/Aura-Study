@@ -172,3 +172,66 @@ def test_sidebar_collapse_toggle_persisted():
     assert 'title="Dashboard"' in sidebar_block
     assert 'title="Timer"' in sidebar_block
     assert "html.sidebar-collapsed .nav-item > span:not(.nav-unread-badge)" in html
+
+
+def test_switchview_wrap_opens_float_before_original_when_leaving_timer():
+    """PiP must open on the nav gesture before heavy switchView work runs."""
+    pip_js = _read("static", "pip.js")
+    assert "suppressPipClose" in pip_js
+    m = re.search(r'wrapGlobalFn\("switchView", function \(original, thisArg, args\) \{', pip_js)
+    assert m, "switchView wrap not found"
+    start = m.end()
+    depth = 1
+    i = start
+    while i < len(pip_js) and depth:
+        if pip_js[i] == "{":
+            depth += 1
+        elif pip_js[i] == "}":
+            depth -= 1
+        i += 1
+    body = pip_js[start : i - 1]
+    float_idx = body.index("maybeFloatOnLeavingTimer()")
+    original_idx = body.index("original.apply(thisArg, args)")
+    assert float_idx < original_idx, "maybeFloatOnLeavingTimer must run before original.apply"
+    assert "leavingTimer" in body
+    assert "STATE.suppressPipClose = true" in body
+    assert re.search(r"STATE\.suppressPipClose\s*=\s*false", body)
+
+
+def test_close_pip_if_timer_view_respects_suppress_flag():
+    pip_js = _read("static", "pip.js")
+    m = re.search(r"function closePipIfTimerViewVisible\(\)\s*\{", pip_js)
+    assert m
+    start = m.end()
+    depth = 1
+    i = start
+    while i < len(pip_js) and depth:
+        if pip_js[i] == "{":
+            depth += 1
+        elif pip_js[i] == "}":
+            depth -= 1
+        i += 1
+    body = pip_js[start : i - 1]
+    assert "STATE.suppressPipClose" in body
+    assert body.index("STATE.suppressPipClose") < body.index("closeFloatingWindow()")
+
+
+def test_change_engine_mode_wrap_skips_cleanup_on_cancelled_switch():
+    pip_js = _read("static", "pip.js")
+    m = re.search(r'wrapGlobalFn\("changeEngineMode", function \(original, thisArg, args\) \{', pip_js)
+    assert m
+    start = m.end()
+    depth = 1
+    i = start
+    while i < len(pip_js) and depth:
+        if pip_js[i] == "{":
+            depth += 1
+        elif pip_js[i] == "}":
+            depth -= 1
+        i += 1
+    body = pip_js[start : i - 1]
+    assert "wasRunning" in body
+    assert "isEngineActivelyRunning" in body
+    assert "typeof result.then" in body
+    assert "endSessionCleanup()" in body
+    assert "wasRunning && !isEngineActivelyRunning" in body

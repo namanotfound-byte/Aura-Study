@@ -153,6 +153,10 @@
     // manual "Log Session" button, which calls the same function directly.
     insideAutoTick: false,
     audioCtx: null,
+    // True while switchView() is opening PiP before/just after the heavy
+    // original handler — blocks focus/visibility from closing a just-opened
+    // window while #view-timer may still look active for a moment.
+    suppressPipClose: false,
   };
 
   // -- small helpers ---------------------------------------------------
@@ -1030,6 +1034,7 @@
   }
 
   function closePipIfTimerViewVisible() {
+    if (STATE.suppressPipClose) return;
     if (!document.hidden && isTimerViewActive() && STATE.pipMode) {
       closeFloatingWindow();
     }
@@ -1085,15 +1090,25 @@
     var targetPanelKey = args[0];
     var activePanelBefore = document.querySelector(".view-panel.active");
     var wasOnTimer = !!(activePanelBefore && activePanelBefore.id === "view-timer");
+    var leavingTimer = wasOnTimer && targetPanelKey !== "timer";
+
+    // Open PiP synchronously on the nav click *before* the heavy switchView
+    // body runs (charts, lucide, tables) so transient activation is still live.
+    if (leavingTimer) {
+      STATE.suppressPipClose = true;
+      maybeFloatOnLeavingTimer();
+    }
 
     var result = original.apply(thisArg, args);
 
     if (targetPanelKey === "timer") {
       // Back on the Timer screen -- the floating window must close, per spec.
+      STATE.suppressPipClose = false;
       if (STATE.pipMode) closeFloatingWindow();
-    } else if (wasOnTimer) {
-      // Left the Timer screen via a click -- transient activation is live.
-      maybeFloatOnLeavingTimer();
+    } else if (leavingTimer) {
+      setTimeout(function () {
+        STATE.suppressPipClose = false;
+      }, 50);
     }
 
     return result;
@@ -1138,8 +1153,22 @@
   });
 
   wrapGlobalFn("changeEngineMode", function (original, thisArg, args) {
+    var wasRunning = isEngineActivelyRunning;
     var result = original.apply(thisArg, args);
-    endSessionCleanup();
+    function afterModeChange() {
+      // Async confirm can cancel the switch — only tear down PiP when the
+      // mode change actually stopped a running session.
+      if (wasRunning && !isEngineActivelyRunning) {
+        endSessionCleanup();
+      }
+    }
+    if (result && typeof result.then === "function") {
+      return result.then(function (value) {
+        afterModeChange();
+        return value;
+      });
+    }
+    afterModeChange();
     return result;
   });
 
