@@ -35,6 +35,8 @@ def test_leaderboard_has_daily_weekly_toggle_and_no_auto_open_name_editor():
 def test_spotify_timer_bar_is_horizontal():
     js = _read("static", "spotify.js")
     assert ".tmp-now-playing{display:flex;align-items:center" in js
+    assert "tmp-popover-stack" in js
+    assert "overflow-wrap:anywhere" in js
     assert "as-now-bar" in js
 
 
@@ -75,8 +77,10 @@ def test_reset_flow_uses_branded_confirm_modal_not_window_confirm():
 
 def test_theme_and_timer_colors_live_in_settings_not_sidebar():
     html = _read("index.html")
-    sidebar_footer = html[html.index('<div class="sidebar-footer">'):html.index('<div class="user-profile">')]
+    sidebar_footer = html[html.index('<div class="sidebar-footer">'):html.index('id="nav-item-logout"')]
     assert "theme-switch-row" not in sidebar_footer
+    assert "user-profile" not in sidebar_footer
+    assert 'id="user-email-display"' not in sidebar_footer
     assert "theme-btn-pink" not in sidebar_footer
     assert "settings-theme-btn-pink" in html
     assert "settings-theme-btn-blue" in html
@@ -158,6 +162,31 @@ def test_timer_view_hides_global_header():
     assert "body.timer-view-active #global-header" in html
     switch_body = html[html.index("function switchView"):html.index("function getActiveEngineModeKey")]
     assert "syncGlobalHeaderForView(targetPanelKey)" in switch_body
+
+
+def test_sidebar_brand_navigates_to_dashboard_and_help_uses_question_icon():
+    html = _read("index.html")
+    assert 'id="sidebar-brand-home"' in html
+    assert "switchView('dashboard'" in html[html.index('id="sidebar-brand-home"'):html.index('id="sidebar-brand-home"') + 320]
+    assert 'data-lucide="help-circle"' in html[html.index('id="nav-item-help-toggle"'):html.index('id="nav-item-help-toggle"') + 220]
+    assert 'data-lucide="life-buoy"' not in html[html.index('id="nav-item-help-toggle"'):html.index('id="nav-item-help-toggle"') + 220]
+
+
+def test_session_admin_chip_shares_date_row():
+    html = _read("index.html")
+    assert ".session-date-cell" in html
+    sessions_body = html[html.index("function renderSessionsTable"):html.index("function clearAllLogs")]
+    assert 'class="session-date-cell"' in sessions_body
+    assert "createElement('br')" not in sessions_body
+
+
+def test_timer_target_cluster_centered_with_more_gap():
+    html = _read("index.html")
+    cluster_block = html[html.index(".timer-secondary-cluster {"):html.index(".timer-header-badge {")]
+    badge_block = html[html.index(".timer-header-badge {"):html.index(".timer-fullscreen-view:not(.dark-mode-active) .timer-header-badge")]
+    assert "gap: 16px" in cluster_block
+    assert "align-self: center" in badge_block
+    assert "width: fit-content" in badge_block
 
 
 def test_sidebar_collapse_toggle_persisted():

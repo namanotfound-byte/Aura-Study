@@ -363,6 +363,21 @@
             min-width: 0;
         }
 
+        button.brand {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font: inherit;
+            text-align: left;
+            padding: 0 0 0 8px;
+        }
+
+        button.brand:focus-visible {
+            outline: 2px solid var(--neon-pink);
+            outline-offset: 3px;
+            border-radius: 10px;
+        }
+
         .sidebar-collapse-btn {
             display: inline-flex;
             align-items: center;
@@ -391,6 +406,7 @@
 
             html.sidebar-collapsed .sidebar-brand-row {
                 flex-direction: column;
+                gap: 14px;
                 margin-bottom: 24px;
             }
 
@@ -407,10 +423,6 @@
                 display: none;
             }
 
-            html.sidebar-collapsed .user-profile > span {
-                display: none;
-            }
-
             html.sidebar-collapsed .nav-item {
                 justify-content: center;
                 padding: 12px;
@@ -421,9 +433,6 @@
                 transform: none;
             }
 
-            html.sidebar-collapsed .user-profile {
-                justify-content: center;
-            }
         }
 
         @media (max-width: 1024px) {
@@ -508,15 +517,6 @@
         }
         @media (prefers-reduced-motion: reduce) {
             .mobile-nav-scrim { transition: none; }
-        }
-
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 13px;
-            color: var(--text-muted);
-            font-weight: 600;
         }
 
         .main-container {
@@ -1270,13 +1270,14 @@
             max-width: min(480px, calc(100vw - 24px));
             background: rgba(18, 14, 24, 0.88);
             border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 999px;
-            padding: 8px 12px;
+            border-radius: 20px;
+            padding: 12px 14px;
             box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
             transform-origin: bottom left;
             transition: opacity 0.15s ease, transform 0.15s ease;
             backdrop-filter: blur(14px);
             -webkit-backdrop-filter: blur(14px);
+            overflow: hidden;
         }
         .timer-fullscreen-view:not(.dark-mode-active) .timer-music-popover {
             background: rgba(255, 255, 255, 0.94);
@@ -1456,7 +1457,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
+            gap: 16px;
             width: min(100%, 640px);
             opacity: 0.82;
         }
@@ -1473,9 +1474,13 @@
             color: rgba(255, 255, 255, 0.88);
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
             letter-spacing: 0.03em;
             text-transform: uppercase;
+            align-self: center;
+            width: fit-content;
+            max-width: 100%;
         }
         .timer-fullscreen-view:not(.dark-mode-active) .timer-header-badge {
             color: var(--text-muted);
@@ -1626,6 +1631,8 @@
             margin-bottom: 0;
             flex-wrap: wrap;
             justify-content: center;
+            align-self: stretch;
+            width: 100%;
             max-width: 100%;
         }
         .subject-pill {
@@ -2662,11 +2669,18 @@
         /* "Added by AuraStudy" marker on a session the owner logged on the user's
            behalf (a time correction) -- see renderSessionsTable(). Deliberately
            not a delete/edit control: correction rows are read-only from the client. */
+        .session-date-cell {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
         .admin-added-chip {
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            margin-top: 6px;
+            margin-top: 0;
             padding: 3px 9px;
             border-radius: 999px;
             border: 1px solid var(--border-color);
@@ -2730,10 +2744,10 @@
     <div class="sidebar" id="app-sidebar" role="navigation" aria-label="Main navigation">
         <div>
             <div class="sidebar-brand-row">
-                <div class="brand">
+                <button type="button" class="brand" id="sidebar-brand-home" aria-label="Go to Dashboard" title="Dashboard" onclick="switchView('dashboard', document.querySelector('#app-sidebar .nav-group .nav-item[title=&quot;Dashboard&quot;]')); closeMobileNav();">
                     <i data-lucide="sparkles" style="color: var(--neon-pink);"></i>
                     <span>AuraStudy</span>
-                </div>
+                </button>
                 <button type="button" class="sidebar-collapse-btn" id="sidebar-collapse-toggle" aria-label="Collapse sidebar" title="Collapse sidebar" onclick="toggleSidebarCollapsed()">
                     <i data-lucide="panel-left-close"></i>
                 </button>
@@ -2768,7 +2782,7 @@
                     <span>Leaderboard</span>
                 </div>
                 <div class="nav-item" id="nav-item-help-toggle" title="Help" onclick="switchView('help', this); closeMobileNav();">
-                    <i data-lucide="life-buoy"></i>
+                    <i data-lucide="help-circle"></i>
                     <span>Help</span>
                     <span class="nav-unread-badge" id="help-unread-badge" hidden>0</span>
                 </div>
@@ -2779,10 +2793,6 @@
             <div class="nav-item" title="Settings" onclick="switchView('settings', this); closeMobileNav();">
                 <i data-lucide="settings-2"></i>
                 <span>Settings</span>
-            </div>
-            <div class="user-profile">
-                <i data-lucide="heart" style="color: var(--neon-pink); fill: var(--neon-pink);"></i>
-                <span id="user-email-display">you@example.com</span>
             </div>
             <div class="nav-item" id="nav-item-logout" title="Log out" onclick="AuraSync.logout()">
                 <i data-lucide="log-out"></i>
@@ -3799,8 +3809,6 @@
         function applyAccountIdentity(user) {
             if (!user || !user.email) return;
             appState.profile.email = user.email;
-            const emailDisplay = document.getElementById('user-email-display');
-            if (emailDisplay) emailDisplay.innerText = user.email;
             const emailField = document.getElementById('settings-user-email');
             if (emailField) {
                 emailField.value = user.email;
@@ -3971,7 +3979,6 @@
             const autoBreakEl = document.getElementById('settings-auto-break');
             if (autoBreakEl) autoBreakEl.checked = appState.profile.autoBreakAfterPomodoro !== false;
             refreshAutoBreakLabel();
-            document.getElementById('user-email-display').innerText = appState.profile.email;
             // appState.profile was just overwritten wholesale from whatever
             // JSON was in localStorage/synced from the server above -- it may
             // be stale, hand-edited, or from an older/buggier build, so
@@ -5870,7 +5877,7 @@
             let anyAdminAdded = false;
             appState.sessions.forEach(s => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td><strong>${escapeHtml(formatSessionHistoryDate(s.date))}</strong></td><td><span style="background:var(--bg-main); padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; border:1px solid var(--border-color); color:var(--neon-pink);">${escapeHtml(s.course)}</span></td><td><strong>${formatDurationHM(s.durationSeconds)}</strong></td><td class="text-muted" style="font-size:13px;">${escapeHtml(s.timestamp)}</td>`;
+                tr.innerHTML = `<td class="session-date-cell"><strong>${escapeHtml(formatSessionHistoryDate(s.date))}</strong></td><td><span style="background:var(--bg-main); padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; border:1px solid var(--border-color); color:var(--neon-pink);">${escapeHtml(s.course)}</span></td><td><strong>${formatDurationHM(s.durationSeconds)}</strong></td><td class="text-muted" style="font-size:13px;">${escapeHtml(s.timestamp)}</td>`;
                 // Sessions the owner logged on this user's behalf (a time
                 // correction) carry addedByAdmin + adminReason from the server
                 // (see server/admin.py build_session_entry) -- mark them
@@ -5889,7 +5896,6 @@
                     chip.title = reason;
                     chip.setAttribute('aria-label', 'Added by AuraStudy. Reason: ' + reason);
                     chip.addEventListener('click', () => triggerAlertToast('Added by AuraStudy', reason, true));
-                    dateCell.appendChild(document.createElement('br'));
                     dateCell.appendChild(chip);
                 }
                 tbody.appendChild(tr);

@@ -157,7 +157,7 @@
       '.as-progress{height:6px;border-radius:6px;background:var(--border-color);margin-top:10px;overflow:hidden}' +
       '.as-progress-fill{height:100%;background:linear-gradient(to right,var(--neon-pink),var(--neon-purple));border-radius:6px;transition:width .4s linear}' +
       '.as-time-row{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:4px}' +
-      '.as-now-bar{display:flex;align-items:center;gap:12px;flex-wrap:nowrap}' +
+      '.as-now-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}' +
       '.as-now-bar .as-art{width:48px;height:48px;border-radius:10px}' +
       '.as-now-bar .as-track-name{font-size:13px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.as-now-bar .as-track-artist{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
@@ -170,7 +170,8 @@
       '.as-icon-btn:focus-visible{outline:2px solid var(--neon-pink);outline-offset:2px}' +
       '.as-icon-btn.as-play{background:var(--neon-pink);border-color:var(--neon-pink);color:#fff;width:48px;height:48px}' +
       /* -- Timer-view Music popover: compact self-contained player, no browsing -- */
-      '.tmp-now-playing{display:flex;align-items:center;gap:10px;text-align:left}' +
+      '.tmp-popover-stack{display:flex;flex-direction:column;gap:8px;width:100%;min-width:0}' +
+      '.tmp-now-playing{display:flex;align-items:center;gap:10px;text-align:left;min-width:0;width:100%}' +
       '.tmp-art{width:36px;height:36px;border-radius:8px;object-fit:cover;background:var(--bg-card-hover);flex-shrink:0}' +
       '.tmp-track-meta{min-width:0;flex:1}' +
       '.tmp-track-name{font-weight:800;color:var(--text-main);font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
@@ -178,9 +179,9 @@
       '.tmp-controls{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-shrink:0}' +
       '.tmp-controls .as-icon-btn{width:32px;height:32px}' +
       '.tmp-controls .as-icon-btn.as-play{width:36px;height:36px}' +
-      '.tmp-note{margin:0;font-size:11px;line-height:1.4;color:var(--text-muted);text-align:left;max-width:none}' +
+      '.tmp-note{margin:0;font-size:11px;line-height:1.45;color:var(--text-muted);text-align:left;max-width:none;overflow-wrap:anywhere;word-break:break-word}' +
       '.tmp-note+.tmp-note{margin-top:8px}' +
-      '#tmp-device-note{margin-top:10px}' +
+      '#tmp-device-note{margin-top:0}' +
       '.as-volume{display:flex;align-items:center;gap:10px;margin-top:14px}' +
       '.as-volume input{flex:1;accent-color:var(--neon-pink)}' +
       '.as-note{font-size:12px;color:var(--text-muted);margin-top:10px;line-height:1.5}' +
@@ -792,6 +793,7 @@
       return;
     }
     el.innerHTML =
+      '<div class="tmp-popover-stack">' +
       '<div class="tmp-now-playing">' +
       '<img class="tmp-art" id="tmp-art" alt="" style="display:none;">' +
       '<div class="tmp-track-meta">' +
@@ -806,7 +808,8 @@
           '</div>'
         : '') +
       '</div>' +
-      '<p class="tmp-note" id="tmp-device-note" hidden>No active device — open Spotify on a phone or computer.</p>';
+      '<p class="tmp-note" id="tmp-device-note" hidden>No active device — open Spotify on a phone or computer.</p>' +
+      '</div>';
     if (s.premium) setPlayPauseIcon('tmp-playpause', STATE.isPlaying);
     if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
   }

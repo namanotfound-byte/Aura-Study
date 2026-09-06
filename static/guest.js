@@ -87,10 +87,6 @@
         if (window.lucide) lucide.createIcons();
       }
     }
-    var emailDisplay = document.getElementById("user-email-display");
-    if (emailDisplay) {
-      emailDisplay.textContent = "Guest";
-    }
   }
 
   function guestAccountMessage(featureLabel) {
