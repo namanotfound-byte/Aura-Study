@@ -55,6 +55,21 @@ PET_GARDEN_FORMS = [
     "Elephant",
     "Lion",
 ]
+# Must stay in lockstep with index.html PET_GARDEN_FORMS emoji fields.
+PET_FORM_EMOJIS = {
+    "Ant": "🐜",
+    "Beetle": "🪲",
+    "Frog": "🐸",
+    "Lizard": "🦎",
+    "Snake": "🐍",
+    "Owl": "🦉",
+    "Monkey": "🐒",
+    "Crocodile": "🐊",
+    "Leopard": "🐆",
+    "Tiger": "🐅",
+    "Elephant": "🐘",
+    "Lion": "🦁",
+}
 
 MIN_NAME_LENGTH = 2
 MAX_NAME_LENGTH = 24
@@ -306,6 +321,16 @@ def pet_from_seconds(seconds: int):
     return level, form
 
 
+def pet_fields_from_lifetime_seconds(seconds: int):
+    """Return level, form, and emoji for a lifetime study total."""
+    level, form = pet_from_seconds(seconds)
+    return {
+        "level": level,
+        "form": form,
+        "emoji": PET_FORM_EMOJIS.get(form, ""),
+    }
+
+
 def current_day(local_date=None) -> datetime.date:
     return _parse_client_local_date(local_date) or utcnow().date()
 
@@ -386,11 +411,19 @@ def _board_from_table(db, user, table, date_col, date_value, limit=TOP_N):
     my_seconds = my_row["seconds"] if my_row is not None else 0
     my_opted_in = bool(my_row["opted_in"]) if my_row is not None else True
 
+    my_life = db.execute(
+        "SELECT seconds FROM leaderboard_lifetime WHERE user_id = %s",
+        (user_id,),
+    ).fetchone()
+    my_lifetime_seconds = my_life["seconds"] if my_life is not None else 0
+    my_pet = pet_fields_from_lifetime_seconds(my_lifetime_seconds)
+
     top_rows = db.execute(
         """
-        SELECT t.user_id, t.seconds, u.public_name
+        SELECT t.user_id, t.seconds, u.public_name, COALESCE(ll.seconds, 0) AS lifetime_seconds
         FROM {} t
         JOIN users u ON u.id = t.user_id
+        LEFT JOIN leaderboard_lifetime ll ON ll.user_id = t.user_id
         WHERE t.{} = %s AND t.opted_in = %s AND t.seconds > 0
               AND u.public_name IS NOT NULL
         ORDER BY t.seconds DESC, t.user_id ASC
@@ -402,10 +435,14 @@ def _board_from_table(db, user, table, date_col, date_value, limit=TOP_N):
     entries = []
     my_rank = None
     for idx, row in enumerate(top_rows, start=1):
+        pet = pet_fields_from_lifetime_seconds(row["lifetime_seconds"])
         entries.append({
             "rank": idx,
             "name": row["public_name"],
             "seconds": row["seconds"],
+            "level": pet["level"],
+            "form": pet["form"],
+            "emoji": pet["emoji"],
         })
         if row["user_id"] == user_id:
             my_rank = idx
@@ -443,6 +480,9 @@ def _board_from_table(db, user, table, date_col, date_value, limit=TOP_N):
             "seconds": my_seconds,
             "public_name": my_public_name,
             "opted_in": my_opted_in,
+            "level": my_pet["level"],
+            "form": my_pet["form"],
+            "emoji": my_pet["emoji"],
         },
         "entries": entries,
         "participants": participants_row["c"],
@@ -452,9 +492,10 @@ def _board_from_table(db, user, table, date_col, date_value, limit=TOP_N):
 def _board_guest_view(db, table, date_col, date_value, limit=TOP_N):
     top_rows = db.execute(
         """
-        SELECT t.user_id, t.seconds, u.public_name
+        SELECT t.user_id, t.seconds, u.public_name, COALESCE(ll.seconds, 0) AS lifetime_seconds
         FROM {} t
         JOIN users u ON u.id = t.user_id
+        LEFT JOIN leaderboard_lifetime ll ON ll.user_id = t.user_id
         WHERE t.{} = %s AND t.opted_in = %s AND t.seconds > 0
               AND u.public_name IS NOT NULL
         ORDER BY t.seconds DESC, t.user_id ASC
@@ -465,10 +506,14 @@ def _board_guest_view(db, table, date_col, date_value, limit=TOP_N):
 
     entries = []
     for idx, row in enumerate(top_rows, start=1):
+        pet = pet_fields_from_lifetime_seconds(row["lifetime_seconds"])
         entries.append({
             "rank": idx,
             "name": row["public_name"],
             "seconds": row["seconds"],
+            "level": pet["level"],
+            "form": pet["form"],
+            "emoji": pet["emoji"],
         })
 
     participants_row = db.execute(

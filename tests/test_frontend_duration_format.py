@@ -69,7 +69,10 @@ def test_badge_descriptions_no_longer_use_bare_minute_totals():
     assert "180 minutes in a single day" not in html
     assert "240 minutes in a single day" not in html
     assert "300 minutes in a single day" not in html
-    assert "3 hours 0 minutes in a single day" in html
+    assert "3 hours in a single day" in html
+    assert "3 hours 0 minutes in a single day" not in html
+    assert "30 minutes to spare" in html
+    assert "0 hours 30 minutes to spare" not in html
 
 
 def test_timer_display_switches_to_hours_minutes_at_one_hour():

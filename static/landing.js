@@ -103,6 +103,9 @@
       // nothing to split or stagger.
       markSessionSeen(LANDING_SESSION_KEY);
       if (authenticated) window.setTimeout(goToApp, INSTANT_NAV_DELAY_MS);
+      if (window.AuraTour && typeof window.AuraTour.initLandingTour === 'function') {
+        window.AuraTour.initLandingTour();
+      }
       return;
     }
 
@@ -119,6 +122,10 @@
     markSessionSeen(LANDING_SESSION_KEY);
 
     if (authenticated) window.setTimeout(goToApp, TOTAL_ANIMATION_MS);
+
+    if (window.AuraTour && typeof window.AuraTour.initLandingTour === 'function') {
+      window.AuraTour.initLandingTour();
+    }
   }
 
   // ---------------- 2. Auth pages (mini reveal) ----------------

@@ -125,6 +125,52 @@ def test_theme_and_timer_colors_live_in_settings_not_sidebar():
     assert _read("server", "templates", "landing.html").count("/static/brand/aurastudy-logo.jpg") >= 1
 
 
+def test_dashboard_matches_mock_layout_single_start_session():
+    html = _read("index.html")
+    dash = html[html.index('<!-- VIEW: DASHBOARD -->'):html.index('<!-- VIEW: TIMER -->')]
+    assert dash.count("Start Session") == 1
+    assert 'id="dash-start-session-btn"' in dash
+    assert "btn-dash-start" in dash
+    assert 'id="header-notify-btn"' in html
+    assert 'id="header-avatar-letter"' in html
+    assert 'id="header-greeting-icon"' in html
+    assert "dash-hero-scenery" in dash
+    assert "dash-pet-row" in dash
+    assert "dash-metrics-row" in dash
+    assert "dash-trends-row" in dash
+    assert "dash-chart-period-btn" in dash
+    assert "setAnalyticsChartPeriod" in html
+    assert "type: 'line'" in html or "type:'line'" in html.replace(" ", "")
+    header_actions = html[html.index('id="global-header"'):html.index("<!-- VIEW: DASHBOARD -->")]
+    assert "Start Session" not in header_actions
+
+
+def test_countdown_stepper_and_target_picker_exist():
+    html = _read("index.html")
+    assert 'id="timer-countdown-stepper"' in html
+    assert "stepTimerCountdownMinutes" in html
+    assert 'id="timer-target-trigger"' in html
+    assert "toggleTimerTargetMenu" in html
+    assert 'id="timer-subject-pills"' in html
+    assert "#timer-subject-pills { display: none" in html
+
+
+def test_tour_overlay_and_storage_key_exist():
+    html = _read("index.html")
+    tour_js = _read("static", "tour.js")
+    assert "/static/tour.js" in html
+    assert "/static/tour.css" in html
+    assert "aurastudy_tour_done" in tour_js
+    assert "aura-tour-overlay" in tour_js
+
+
+def test_leaderboard_row_tooltip_helpers_exist():
+    html = _read("index.html")
+    assert "bindLeaderboardHoverTooltip" in html
+    assert "lb-hover-tooltip" in html
+    assert "formatLeaderboardPetLine" in html
+
+
 def test_timer_break_length_editable_on_break_tab():
     html = _read("index.html")
     assert 'id="timer-break-stepper"' in html

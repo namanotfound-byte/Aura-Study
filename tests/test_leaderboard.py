@@ -179,7 +179,11 @@ def test_setting_a_name_makes_the_user_appear(client, outbox):
     assert lb["you"]["public_name"] == "River Blue"
     assert lb["you"]["rank"] == 1
     assert lb["participants"] == 1
-    assert lb["entries"] == [{"rank": 1, "name": "River Blue", "seconds": 3600}]
+    entry = lb["entries"][0]
+    assert entry["rank"] == 1
+    assert entry["name"] == "River Blue"
+    assert entry["seconds"] == 3600
+    assert "level" in entry and "form" in entry and "emoji" in entry
 
 
 def test_state_put_recomputes_weekly_total(client, outbox):
@@ -193,7 +197,10 @@ def test_state_put_recomputes_weekly_total(client, outbox):
     assert lb["you"]["rank"] == 1
     assert lb["participants"] == 1
     assert len(lb["entries"]) == 1
-    assert lb["entries"][0] == {"rank": 1, "name": "Studier", "seconds": 2700}
+    assert lb["entries"][0]["rank"] == 1
+    assert lb["entries"][0]["name"] == "Studier"
+    assert lb["entries"][0]["seconds"] == 2700
+    assert lb["entries"][0]["form"] == "Ant"
 
 
 def test_weekly_total_is_recomputed_wholesale_not_accumulated(client, outbox):
@@ -338,7 +345,9 @@ def test_unnamed_user_does_not_dilute_ranking_of_named_users(client, outbox):
 
     lb = client.get("/api/leaderboard", headers=JSON_HEADERS).get_json()
     assert lb["participants"] == 1
-    assert lb["entries"] == [{"rank": 1, "name": "Second Place", "seconds": 50}]
+    assert lb["entries"][0]["name"] == "Second Place"
+    assert lb["entries"][0]["seconds"] == 50
+    assert "level" in lb["entries"][0]
 
 
 # ---------------------------------------------------------- name validation
@@ -479,9 +488,9 @@ def test_response_exposes_only_rank_name_seconds_in_entries(client, outbox):
 
     assert set(lb.keys()) == {"week_start", "you", "entries", "participants", "period"}
     assert lb["period"] == "week"
-    assert set(lb["you"].keys()) == {"rank", "seconds", "public_name", "opted_in"}
+    assert set(lb["you"].keys()) == {"rank", "seconds", "public_name", "opted_in", "level", "form", "emoji"}
     for entry in lb["entries"]:
-        assert set(entry.keys()) == {"rank", "name", "seconds"}
+        assert set(entry.keys()) == {"rank", "name", "seconds", "level", "form", "emoji"}
 
 
 def test_no_pii_beyond_the_chosen_public_name(client, outbox):
@@ -776,6 +785,17 @@ def test_daily_leaderboard_ranks_today_only(client, outbox):
     assert lb["you"]["seconds"] == 3600
     assert lb["entries"][0]["name"] == "Daily Ace"
     assert lb["entries"][0]["seconds"] == 3600
+
+
+def test_study_leaderboard_includes_pet_fields_from_lifetime(client, outbox):
+    register_verify(client, outbox, "study-pet@example.com")
+    set_name(client, "Study Pet")
+    put_state(client, [session_today(10 * 3600)])
+    data = client.get("/api/leaderboard", headers=JSON_HEADERS).get_json()
+    assert data["entries"][0]["form"] == "Lizard"
+    assert data["entries"][0]["level"] == 4
+    assert data["entries"][0]["emoji"] == "🦎"
+    assert data["you"]["form"] == "Lizard"
 
 
 def test_pet_leaderboard_uses_lifetime_seconds(client, outbox):

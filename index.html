@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/tour.css">
     <script>
         (function () {
             try {
@@ -662,10 +663,91 @@
             display: none !important;
         }
 
+        .header-greeting-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: rgba(107, 144, 128, 0.12);
+            border: 1px solid rgba(107, 144, 128, 0.22);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-strong);
+            flex-shrink: 0;
+        }
+        .header-greeting-icon svg { width: 20px; height: 20px; }
+
         .header-actions {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
+        }
+
+        .header-notify-wrap {
+            position: relative;
+        }
+        .header-notify-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-main);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .header-notify-btn:hover {
+            border-color: rgba(107, 144, 128, 0.45);
+            box-shadow: 0 4px 12px rgba(61, 68, 81, 0.08);
+        }
+        .header-notify-btn svg { width: 18px; height: 18px; }
+        .header-notify-popover {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            min-width: 220px;
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: #FAF7F0;
+            border: 1.5px solid rgba(122, 143, 110, 0.35);
+            box-shadow: 0 12px 32px rgba(42, 36, 32, 0.12);
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+            z-index: 50;
+        }
+        .header-notify-popover[hidden] { display: none !important; }
+
+        .header-avatar-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            border-radius: 999px;
+            padding: 4px 8px 4px 4px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .header-avatar-letter {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #9B8BB4, #6B9080);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .header-avatar-chevron {
+            width: 14px;
+            height: 14px;
+            color: var(--text-muted);
         }
 
         .btn {
@@ -740,81 +822,209 @@
             box-shadow: 0 4px 16px rgba(61, 68, 81, 0.05);
         }
 
-        /* Dashboard hero + accent cards */
+        /* Dashboard layout — mock-aligned cream/sage/lavender */
         .dash-hero-banner {
+            position: relative;
+            margin-bottom: 24px;
+            padding: 0;
+            border-radius: 22px;
+            border: 1px solid rgba(122, 143, 110, 0.28);
+            overflow: hidden;
+            min-height: 168px;
+            box-shadow: 0 8px 28px rgba(61, 68, 81, 0.08);
+        }
+        .dash-hero-scenery {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+        .dash-hero-scenery svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .dash-hero-inner {
+            position: relative;
+            z-index: 1;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 20px;
             flex-wrap: wrap;
-            margin-bottom: 24px;
-            padding: 28px 32px;
-            border-radius: 20px;
-            border: 1px solid var(--border-color);
-            background:
-                linear-gradient(135deg, rgba(155, 139, 180, 0.18) 0%, rgba(107, 144, 128, 0.12) 45%, rgba(248, 245, 240, 0.9) 100%);
-            box-shadow: 0 4px 20px rgba(61, 68, 81, 0.06);
-            position: relative;
-            overflow: hidden;
-        }
-        .dash-hero-banner::after {
-            content: "";
-            position: absolute;
-            right: -20px;
-            bottom: -30px;
-            width: 180px;
-            height: 100px;
-            background: linear-gradient(135deg, rgba(155, 139, 180, 0.25), rgba(107, 144, 128, 0.15));
-            border-radius: 50% 50% 0 50%;
-            pointer-events: none;
+            padding: 32px 36px;
+            min-height: 168px;
         }
         .dash-hero-quote {
-            font-size: clamp(1.25rem, 3vw, 1.65rem);
+            font-size: clamp(1.35rem, 3.2vw, 1.85rem);
             font-weight: 700;
-            color: var(--text-main);
-            line-height: 1.25;
-            max-width: 28rem;
-            position: relative;
-            z-index: 1;
+            color: #2A2420;
+            line-height: 1.22;
+            max-width: 26rem;
         }
         .dash-hero-underline {
             display: block;
-            width: 48px;
+            width: 52px;
             height: 3px;
-            margin-top: 10px;
+            margin-top: 12px;
             border-radius: 2px;
-            background: var(--neon-purple);
+            background: linear-gradient(90deg, #9B8BB4, #6B9080);
+        }
+        .btn-dash-start {
+            background: #2D4A3E;
+            border: none;
+            color: #FFFFFF;
+            font-weight: 800;
+            font-size: 14px;
+            padding: 14px 26px;
+            border-radius: 999px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 8px 22px rgba(45, 74, 62, 0.28);
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .btn-dash-start:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 28px rgba(45, 74, 62, 0.34);
+        }
+        .btn-dash-start-icon {
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        .dash-pet-row {
+            display: grid;
+            grid-template-columns: minmax(0, 2.15fr) minmax(0, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+            align-items: stretch;
+        }
+        .dash-pet-row .pet-container-card {
+            margin-bottom: 0;
+            height: 100%;
         }
         .dash-motivation-card {
-            background: linear-gradient(160deg, rgba(155, 139, 180, 0.22), rgba(155, 139, 180, 0.08));
-            border: 1px solid rgba(155, 139, 180, 0.25);
+            background: linear-gradient(165deg, rgba(155, 139, 180, 0.28) 0%, rgba(155, 139, 180, 0.1) 55%, rgba(248, 245, 240, 0.95) 100%);
+            border: 1px solid rgba(155, 139, 180, 0.32);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 140px;
+            position: relative;
+            overflow: hidden;
+        }
+        .dash-motivation-leaf {
+            position: absolute;
+            right: 12px;
+            bottom: 8px;
+            font-size: 56px;
+            opacity: 0.22;
+            pointer-events: none;
+            line-height: 1;
         }
         .dash-motivation-quote {
-            font-size: 1.15rem;
+            font-size: clamp(1.05rem, 2vw, 1.25rem);
             font-weight: 700;
             color: var(--text-main);
             line-height: 1.35;
-            margin: 8px 0 0;
+            margin: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .dash-metrics-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .dash-metrics-row .card {
+            min-height: 220px;
+        }
+
+        .dash-trends-row {
+            display: grid;
+            grid-template-columns: minmax(0, 2.15fr) minmax(0, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
+            align-items: stretch;
+        }
+        .dash-trends-card .card-title {
+            margin-bottom: 12px;
+        }
+        .dash-chart-toolbar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .dash-chart-period-btn {
+            border: 1.5px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            padding: 6px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .dash-chart-period-btn.active {
+            background: rgba(107, 144, 128, 0.16);
+            border-color: rgba(107, 144, 128, 0.45);
+            color: var(--accent-strong);
         }
         .dash-quote-card {
-            background: linear-gradient(145deg, #FFFFFF, rgba(107, 144, 128, 0.06));
+            background: linear-gradient(168deg, #FFFFFF 0%, rgba(155, 139, 180, 0.12) 100%);
+            border: 1px solid rgba(155, 139, 180, 0.22);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
             text-align: center;
+            min-height: 280px;
+            position: relative;
+            overflow: hidden;
+        }
+        .dash-quote-seedling {
+            font-size: 42px;
+            line-height: 1;
+            margin-bottom: 8px;
         }
         .dash-quote-text {
-            font-size: 1rem;
-            font-weight: 600;
+            font-size: 1.05rem;
+            font-weight: 700;
             color: var(--text-main);
-            line-height: 1.4;
+            line-height: 1.45;
             margin: 0;
+            font-family: var(--font-serif);
         }
-        .dash-side-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-            margin-bottom: 24px;
+        .dash-quote-wave {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 48px;
+            pointer-events: none;
+        }
+        .dash-quote-wave svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        @media (max-width: 1100px) {
+            .dash-pet-row,
+            .dash-trends-row { grid-template-columns: 1fr; }
+            .dash-metrics-row { grid-template-columns: 1fr; }
         }
         @media (max-width: 900px) {
-            .dash-side-grid { grid-template-columns: 1fr; }
+            .dash-hero-inner { padding: 24px 20px; }
         }
 
         .card-title {
@@ -2099,8 +2309,9 @@
             -moz-appearance: textfield;
         }
 
-        /* Break length stepper — visible on Timer when Break tab is active */
-        .timer-break-stepper {
+        /* Break / countdown length steppers on Timer */
+        .timer-break-stepper,
+        .timer-countdown-stepper {
             display: none;
             align-items: center;
             justify-content: center;
@@ -2113,10 +2324,12 @@
             overflow: hidden;
             box-shadow: none;
         }
-        .timer-break-stepper.visible {
+        .timer-break-stepper.visible,
+        .timer-countdown-stepper.visible {
             display: inline-flex;
         }
-        .timer-break-stepper:not(.visible) {
+        .timer-break-stepper:not(.visible),
+        .timer-countdown-stepper:not(.visible) {
             visibility: hidden;
             height: 0;
             margin: 0;
@@ -2124,21 +2337,25 @@
             border: none;
             overflow: hidden;
         }
-        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper {
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper,
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-countdown-stepper {
             border-color: rgba(255, 255, 255, 0.75);
             background: rgba(255, 255, 255, 0.32);
         }
-        .timer-break-stepper-label {
+        .timer-break-stepper-label,
+        .timer-countdown-stepper-label {
             font-size: 12px;
             font-weight: 800;
             text-transform: lowercase;
             color: rgba(255, 255, 255, 0.88);
             letter-spacing: 0.02em;
         }
-        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper-label {
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper-label,
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-countdown-stepper-label {
             color: var(--text-muted);
         }
-        .timer-break-stepper-value {
+        .timer-break-stepper-value,
+        .timer-countdown-stepper-value {
             font-size: 16px;
             font-weight: 800;
             min-width: 2.5ch;
@@ -2150,22 +2367,27 @@
             padding: 4px 0;
             -moz-appearance: textfield;
         }
-        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper-value {
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper-value,
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-countdown-stepper-value {
             color: var(--text-main);
         }
-        .timer-break-stepper-value:disabled {
+        .timer-break-stepper-value:disabled,
+        .timer-countdown-stepper-value:disabled {
             opacity: 0.45;
             cursor: not-allowed;
         }
-        .timer-break-stepper-unit {
+        .timer-break-stepper-unit,
+        .timer-countdown-stepper-unit {
             font-size: 12px;
             font-weight: 700;
             color: rgba(255, 255, 255, 0.75);
         }
-        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper-unit {
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper-unit,
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-countdown-stepper-unit {
             color: var(--text-muted);
         }
-        .timer-break-stepper-btn {
+        .timer-break-stepper-btn,
+        .timer-countdown-stepper-btn {
             min-width: 44px;
             min-height: 44px;
             border-radius: 999px;
@@ -2183,26 +2405,148 @@
             outline: none;
             box-shadow: none;
         }
-        .timer-break-stepper-btn:focus {
+        .timer-break-stepper-btn:focus,
+        .timer-countdown-stepper-btn:focus {
             outline: none;
             box-shadow: none;
         }
-        .timer-break-stepper-btn:focus-visible {
+        .timer-break-stepper-btn:focus-visible,
+        .timer-countdown-stepper-btn:focus-visible {
             outline: 2px solid rgba(255, 255, 255, 0.85);
             outline-offset: 2px;
         }
-        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper-btn {
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-break-stepper-btn,
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-countdown-stepper-btn {
             border-color: var(--border-color);
             background: #fff;
             color: var(--text-main);
         }
-        .timer-break-stepper-btn:hover:not(:disabled) {
+        .timer-break-stepper-btn:hover:not(:disabled),
+        .timer-countdown-stepper-btn:hover:not(:disabled) {
             transform: scale(1.05);
             box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
         }
-        .timer-break-stepper-btn:disabled {
+        .timer-break-stepper-btn:disabled,
+        .timer-countdown-stepper-btn:disabled {
             opacity: 0.45;
             cursor: not-allowed;
+        }
+
+        /* Target course picker (replaces always-visible pill row) */
+        .timer-target-picker-wrap {
+            position: relative;
+            align-self: center;
+        }
+        .timer-target-trigger {
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .timer-target-trigger:hover {
+            transform: scale(1.02);
+        }
+        .timer-target-trigger[aria-expanded="true"] .timer-target-chevron {
+            transform: rotate(180deg);
+        }
+        .timer-target-chevron {
+            width: 14px;
+            height: 14px;
+            opacity: 0.75;
+            transition: transform 0.2s ease;
+        }
+        .timer-target-subject {
+            margin-left: 4px;
+            font-weight: 800;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+        .timer-target-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            min-width: min(240px, 88vw);
+            max-height: min(280px, 50vh);
+            overflow-y: auto;
+            background: #FAF7F0;
+            border: 1.5px solid rgba(122, 143, 110, 0.35);
+            border-radius: 14px;
+            box-shadow: 0 12px 36px rgba(42, 36, 32, 0.16);
+            padding: 6px;
+            z-index: 120;
+        }
+        .timer-fullscreen-view.dark-mode-active .timer-target-menu {
+            background: rgba(28, 24, 22, 0.96);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+        .timer-target-menu[hidden] { display: none !important; }
+        .timer-target-menu-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            border: none;
+            background: transparent;
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main);
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .timer-target-menu-item:hover,
+        .timer-target-menu-item:focus-visible {
+            background: rgba(var(--accent-rgb), 0.12);
+            outline: none;
+        }
+        .timer-target-menu-item.is-active {
+            background: rgba(var(--accent-rgb), 0.18);
+            color: var(--neon-pink);
+        }
+        #timer-subject-pills { display: none !important; }
+
+        /* Leaderboard row hover card */
+        .lb-hover-tooltip {
+            position: fixed;
+            z-index: 9000;
+            pointer-events: none;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: #FAF7F0;
+            border: 1.5px solid rgba(122, 143, 110, 0.38);
+            box-shadow: 0 10px 32px rgba(42, 36, 32, 0.14);
+            min-width: 180px;
+            max-width: min(280px, 90vw);
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+        .lb-hover-tooltip.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .lb-hover-tooltip-name {
+            font-size: 14px;
+            font-weight: 800;
+            color: #2A2420;
+            margin-bottom: 4px;
+        }
+        .lb-hover-tooltip-time {
+            font-size: 13px;
+            font-weight: 700;
+            color: #5C534C;
+            line-height: 1.45;
+        }
+        .lb-hover-tooltip-pet {
+            font-size: 12px;
+            font-weight: 700;
+            color: #7A8F6E;
+            margin-top: 6px;
+        }
+        .lb-row.is-tooltip-open,
+        .lb-you-card.is-tooltip-open {
+            background: rgba(var(--accent-rgb), 0.08);
         }
 
         .data-table {
@@ -2981,6 +3325,9 @@
                 <button class="mobile-nav-toggle" id="mobile-nav-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="app-sidebar" onclick="toggleMobileNav()">
                     <i data-lucide="menu" id="mobile-nav-toggle-icon"></i>
                 </button>
+                <div class="header-greeting-icon" id="header-greeting-icon" aria-hidden="true">
+                    <i data-lucide="sun" id="header-greeting-icon-i"></i>
+                </div>
                 <div class="header-title-stack" id="header-greeting-stack">
                     <p class="header-greeting" id="header-greeting">Good evening</p>
                     <p class="header-tagline">Small steps. Big progress.</p>
@@ -2988,8 +3335,15 @@
                 <h1 id="page-title" hidden>Dashboard</h1>
             </div>
             <div class="header-actions">
-                <button class="btn btn-neon-pink" onclick="switchView('timer', document.getElementById('nav-item-timer-toggle'))">
-                    <i data-lucide="play"></i> <span class="hdr-btn-label">Start Session</span>
+                <div class="header-notify-wrap">
+                    <button type="button" class="header-notify-btn" id="header-notify-btn" aria-label="Notifications" aria-haspopup="true" aria-expanded="false" aria-controls="header-notify-popover" onclick="toggleHeaderNotifyPopover(event)">
+                        <i data-lucide="bell"></i>
+                    </button>
+                    <div class="header-notify-popover" id="header-notify-popover" role="status" hidden>You&rsquo;re all caught up</div>
+                </div>
+                <button type="button" class="header-avatar-btn" id="header-avatar-btn" aria-label="Account">
+                    <span class="header-avatar-letter" id="header-avatar-letter">A</span>
+                    <i data-lucide="chevron-down" class="header-avatar-chevron"></i>
                 </button>
             </div>
         </div>
@@ -2998,34 +3352,72 @@
         <div id="view-dashboard" class="view-panel active">
 
             <div class="dash-hero-banner">
-                <div>
-                    <p class="dash-hero-quote">Discipline today, freedom tomorrow.<span class="dash-hero-underline" aria-hidden="true"></span></p>
+                <div class="dash-hero-scenery" aria-hidden="true">
+                    <svg viewBox="0 0 1200 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="dashSkyGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#E8E0F4"/>
+                                <stop offset="55%" stop-color="#D4E4DC"/>
+                                <stop offset="100%" stop-color="#F5F0E8"/>
+                            </linearGradient>
+                            <linearGradient id="dashHillBack" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#B8A8CC" stop-opacity="0.55"/>
+                                <stop offset="100%" stop-color="#9B8BB4" stop-opacity="0.35"/>
+                            </linearGradient>
+                            <linearGradient id="dashHillMid" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%" stop-color="#8FAF98"/>
+                                <stop offset="100%" stop-color="#6B9080"/>
+                            </linearGradient>
+                            <linearGradient id="dashHillFront" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#6B9080"/>
+                                <stop offset="100%" stop-color="#4A6B5A"/>
+                            </linearGradient>
+                        </defs>
+                        <rect width="1200" height="200" fill="url(#dashSkyGrad)"/>
+                        <circle cx="980" cy="52" r="36" fill="#F5D88A" opacity="0.92"/>
+                        <circle cx="980" cy="52" r="48" fill="#F5D88A" opacity="0.18"/>
+                        <path d="M0 140 Q200 90 400 130 T800 120 T1200 145 L1200 200 L0 200 Z" fill="url(#dashHillBack)"/>
+                        <path d="M0 155 Q280 105 520 150 T920 135 T1200 160 L1200 200 L0 200 Z" fill="url(#dashHillMid)" opacity="0.85"/>
+                        <path d="M0 170 Q350 125 620 168 T1200 175 L1200 200 L0 200 Z" fill="url(#dashHillFront)" opacity="0.75"/>
+                    </svg>
                 </div>
-                <button type="button" class="btn btn-neon-pink" onclick="switchView('timer', document.getElementById('nav-item-timer-toggle'))">
-                    <i data-lucide="play"></i> Start Session
-                </button>
-            </div>
-            
-            <!-- Virtual Interactive Growing Pet Scoreboard Element -->
-            <div class="pet-container-card">
-                <div class="pet-sprite-frame" id="pet-avatar-emoji">🐜</div>
-                <div class="pet-status-info">
-                    <div class="pet-level-badge" id="pet-level-display-tag">Level 1: Ant</div>
-                    <h3 style="font-size:16px; font-weight:800; color:var(--text-main);" id="pet-headline-label">The smallest hunter starts the chain.</h3>
-                    <div class="progress-wrapper" style="margin-top:6px;">
-                        <div class="progress-labels" style="font-size:11px; margin-bottom:4px;">
-                            <span id="pet-xp-numerical-label">0h 0m / 2h 0m toward Beetle</span>
-                            <span style="font-weight:bold; color:var(--neon-purple);">Next Level</span>
-                        </div>
-                        <div class="progress-bar-bg" style="height:8px;">
-                            <div class="progress-bar-fill" id="pet-xp-progress-fill" style="background: linear-gradient(to right, var(--neon-blue), var(--neon-green));"></div>
-                        </div>
-                    </div>
-                    <button type="button" class="pet-gallery-btn" onclick="openPetGallery()">View all pets</button>
+                <div class="dash-hero-inner">
+                    <p class="dash-hero-quote">Discipline today, freedom tomorrow.<span class="dash-hero-underline" aria-hidden="true"></span></p>
+                    <button type="button" class="btn-dash-start" id="dash-start-session-btn" onclick="switchView('timer', document.getElementById('nav-item-timer-toggle'))">
+                        <span class="btn-dash-start-icon" aria-hidden="true">&#9654;</span> Start Session
+                    </button>
                 </div>
             </div>
 
-            <div class="dash-side-grid">
+            <div class="dash-pet-row">
+                <div class="pet-container-card">
+                    <div class="pet-sprite-frame" id="pet-avatar-emoji">🐜</div>
+                    <div class="pet-status-info">
+                        <div class="pet-level-badge" id="pet-level-display-tag">Level 1: Ant</div>
+                        <h3 style="font-size:16px; font-weight:800; color:var(--text-main);" id="pet-headline-label">The smallest hunter starts the chain.</h3>
+                        <div class="progress-wrapper" style="margin-top:6px;">
+                            <div class="progress-labels" style="font-size:11px; margin-bottom:4px;">
+                                <span id="pet-xp-numerical-label">0h 0m / 2h 0m toward Beetle</span>
+                                <span style="font-weight:bold; color:var(--neon-purple);">Next Level</span>
+                            </div>
+                            <div class="progress-bar-bg" style="height:8px;">
+                                <div class="progress-bar-fill" id="pet-xp-progress-fill" style="background: linear-gradient(to right, var(--neon-blue), var(--neon-green));"></div>
+                            </div>
+                        </div>
+                        <button type="button" class="pet-gallery-btn" onclick="openPetGallery()">View all pets</button>
+                    </div>
+                </div>
+                <div class="card dash-motivation-card">
+                    <div class="card-title">
+                        <span>Motivation</span>
+                        <i data-lucide="leaf" style="color: var(--neon-purple);"></i>
+                    </div>
+                    <p class="dash-motivation-quote">Better than yesterday.</p>
+                    <span class="dash-motivation-leaf" aria-hidden="true">🍃</span>
+                </div>
+            </div>
+
+            <div class="dash-metrics-row">
                 <div class="card" id="study-coach-card">
                     <div class="card-title">
                         <span>Study Coach</span>
@@ -3036,23 +3428,13 @@
                         <i data-lucide="lightbulb" style="width:14px;height:14px;"></i> Focus tip
                     </button>
                 </div>
-                <div class="card dash-motivation-card">
-                    <div class="card-title">
-                        <span>Motivation</span>
-                        <i data-lucide="leaf" style="color: var(--neon-purple);"></i>
-                    </div>
-                    <p class="dash-motivation-quote">Better than yesterday</p>
-                </div>
-            </div>
 
-            <div class="dashboard-grid">
-                
                 <div class="card">
                     <div class="card-title">
                         <span>Weekly Streak</span>
                         <i data-lucide="flame" style="color: var(--neon-pink);"></i>
                     </div>
-                    <p class="text-muted" style="font-size: 13px; margin-bottom: 12px;">Log a study session each day to keep your streak going.</p>
+                    <p class="text-muted" style="font-size: 13px; margin-bottom: 12px;">Mon–Sun study dots</p>
                     <div class="streak-container">
                         <div class="streak-day"><span>Mon</span><div class="streak-dot" id="streak-0">-</div></div>
                         <div class="streak-day"><span>Tue</span><div class="streak-dot" id="streak-1">-</div></div>
@@ -3069,7 +3451,7 @@
 
                 <div class="card">
                     <div class="card-title">
-                        <span>Today's Tracked Progress</span>
+                        <span>Today&rsquo;s Progress</span>
                         <i data-lucide="sparkles" style="color: var(--neon-purple);"></i>
                     </div>
                     <div class="metric-large" id="dash-today-time">0h 0m</div>
@@ -3083,22 +3465,28 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="card dashboard-row-full">
+            <div class="dash-trends-row">
+                <div class="card dash-trends-card">
                     <div class="card-title">
                         <span>Study Time Trends</span>
-                        <i data-lucide="heart-pulse" style="color: var(--neon-pink);"></i>
+                        <i data-lucide="trending-up" style="color: var(--accent-strong);"></i>
+                    </div>
+                    <div class="dash-chart-toolbar" role="tablist" aria-label="Chart period">
+                        <button type="button" class="dash-chart-period-btn active" data-chart-period="7" onclick="setAnalyticsChartPeriod('7')">7 days</button>
+                        <button type="button" class="dash-chart-period-btn" data-chart-period="30" onclick="setAnalyticsChartPeriod('30')">30 days</button>
+                        <button type="button" class="dash-chart-period-btn" data-chart-period="all" onclick="setAnalyticsChartPeriod('all')">All time</button>
                     </div>
                     <div class="analytics-chart-wrap">
                         <canvas id="analyticsChart"></canvas>
                     </div>
 
-                    <!-- Fully Realized To-Do Task Management Engine Widget -->
                     <div class="todo-engine-card">
                         <div class="todo-header-row">
                             <h3 style="font-size: 15px; font-weight: 800; color: var(--text-main); display:flex; align-items:center; gap:8px;">
                                 <i data-lucide="check-square" style="color: var(--neon-pink); width:18px; height:18px;"></i>
-                                Today's Tasks
+                                Today&rsquo;s Tasks
                             </h3>
                             <label class="todo-toggle-filter-label">
                                 <input type="checkbox" class="todo-toggle-checkbox" id="todo-filter-hide-completed" onchange="refreshTodoListViewLayout()">
@@ -3111,19 +3499,22 @@
                             <button class="btn btn-neon-pink" style="height: 44px; padding: 0 24px;" onclick="addNewTodoListItemEntry()">Add</button>
                         </div>
 
-                        <div class="todo-items-list-container" id="todo-list-node-housing-bin">
-                            <!-- Populated dynamically via internal JSON modules -->
-                        </div>
+                        <div class="todo-items-list-container" id="todo-list-node-housing-bin"></div>
                     </div>
                 </div>
 
-                <div class="card dash-quote-card dashboard-row-full">
-                    <div class="card-title" style="justify-content: center;">
-                        <i data-lucide="sprout" style="color: var(--accent-solid);"></i>
+                <div class="card dash-quote-card">
+                    <div>
+                        <div class="dash-quote-seedling" aria-hidden="true">🌱</div>
+                        <p class="dash-quote-text">Focus builds the life you want</p>
                     </div>
-                    <p class="dash-quote-text">Focus builds the life you want</p>
+                    <div class="dash-quote-wave" aria-hidden="true">
+                        <svg viewBox="0 0 400 48" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M0 28 Q50 8 100 28 T200 24 T300 32 T400 20 L400 48 L0 48 Z" fill="rgba(155,139,180,0.35)"/>
+                            <path d="M0 36 Q80 18 160 34 T320 30 T400 38 L400 48 L0 48 Z" fill="rgba(107,144,128,0.28)"/>
+                        </svg>
+                    </div>
                 </div>
-
             </div>
         </div>
 
@@ -3179,6 +3570,14 @@
                             <button type="button" class="timer-break-stepper-btn" id="timer-break-stepper-plus" aria-label="Increase break length" onclick="stepTimerBreakMinutes(1)">+</button>
                         </div>
 
+                        <div class="timer-countdown-stepper" id="timer-countdown-stepper" aria-label="Countdown length">
+                            <span class="timer-countdown-stepper-label">Focus</span>
+                            <button type="button" class="timer-countdown-stepper-btn" id="timer-countdown-stepper-minus" aria-label="Decrease countdown length" onclick="stepTimerCountdownMinutes(-1)">−</button>
+                            <input type="number" class="timer-countdown-stepper-value number-stepper-input" id="timer-countdown-stepper-input" value="25" min="1" max="180" step="1" aria-label="Countdown length in minutes" onchange="commitTimerCountdownMinutesFromInput()" onblur="commitTimerCountdownMinutesFromInput()" onkeydown="if(event.key==='Enter'){event.preventDefault();commitTimerCountdownMinutesFromInput();this.blur();}">
+                            <span class="timer-countdown-stepper-unit">min</span>
+                            <button type="button" class="timer-countdown-stepper-btn" id="timer-countdown-stepper-plus" aria-label="Increase countdown length" onclick="stepTimerCountdownMinutes(1)">+</button>
+                        </div>
+
                         <div class="timer-clock-display" id="timer-display">25:00</div>
                         <div class="timer-meta" id="timer-start-timestamp">Pick a course and start your session</div>
 
@@ -3197,13 +3596,15 @@
 
                     <!-- Receded: course target + subject pills -->
                     <div class="timer-secondary-cluster">
-                        <div class="timer-header-badge">
-                            <i data-lucide="bookmark-heart" style="width:12px; height:12px; color: var(--neon-pink); fill: var(--neon-pink);"></i>
-                            Target: <span id="timer-current-subject" style="margin-left: 4px; font-weight: 800;">Math</span>
+                        <div class="timer-target-picker-wrap" id="timer-target-picker-wrap">
+                            <button type="button" class="timer-header-badge timer-target-trigger" id="timer-target-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="timer-target-menu" onclick="toggleTimerTargetMenu(event)">
+                                <i data-lucide="bookmark-heart" style="width:12px; height:12px; color: var(--neon-pink); fill: var(--neon-pink);"></i>
+                                Target<span class="timer-target-subject" id="timer-current-subject">Math</span>
+                                <i data-lucide="chevron-down" class="timer-target-chevron"></i>
+                            </button>
+                            <div class="timer-target-menu" id="timer-target-menu" role="listbox" aria-label="Choose course" hidden></div>
                         </div>
-                        <div class="floating-subject-bar" id="timer-subject-pills">
-                            <!-- Dynamic subject pills injection slot -->
-                        </div>
+                        <div class="floating-subject-bar" id="timer-subject-pills" hidden aria-hidden="true"></div>
                     </div>
                 </main>
 
@@ -3752,9 +4153,12 @@
         }
 
         function syncTimerBreakStepperVisibility() {
-            const row = document.getElementById('timer-break-stepper');
-            if (row) row.classList.toggle('visible', isEngineInBreakPhase());
+            const breakRow = document.getElementById('timer-break-stepper');
+            const countdownRow = document.getElementById('timer-countdown-stepper');
+            if (breakRow) breakRow.classList.toggle('visible', isEngineInBreakPhase());
+            if (countdownRow) countdownRow.classList.toggle('visible', appState.selectedMode === 'countdown' && !isEngineInBreakPhase());
             updateTimerBreakStepperDisabled();
+            updateTimerCountdownStepperDisabled();
         }
 
         function updateTimerBreakStepperDisabled() {
@@ -3793,6 +4197,45 @@
         function stepTimerBreakMinutes(delta) {
             if (isEngineActivelyRunning) return;
             applyBreakMinutes(appState.profile.defaultBreakMinutes + delta);
+        }
+
+        function updateTimerCountdownStepperDisabled() {
+            const disabled = isEngineActivelyRunning;
+            const minusBtn = document.getElementById('timer-countdown-stepper-minus');
+            const plusBtn = document.getElementById('timer-countdown-stepper-plus');
+            if (minusBtn) minusBtn.disabled = disabled;
+            if (plusBtn) plusBtn.disabled = disabled;
+            const inputEl = document.getElementById('timer-countdown-stepper-input');
+            if (inputEl) {
+                inputEl.disabled = disabled;
+                inputEl.value = sanitizeTimerMinutes(appState.profile.defaultTimerMinutes);
+            }
+        }
+
+        function commitTimerCountdownMinutesFromInput() {
+            if (isEngineActivelyRunning) return;
+            const input = document.getElementById('timer-countdown-stepper-input');
+            if (!input) return;
+            applyTimerMinutes(input.value);
+        }
+
+        function applyTimerMinutes(minutes) {
+            const mins = sanitizeTimerMinutes(minutes);
+            appState.profile.defaultTimerMinutes = mins;
+            if (appState.selectedMode === 'countdown' && !isEngineInBreakPhase()) {
+                countdownTotalSeconds = wholeSeconds(mins * 60, 25 * 60) || 25 * 60;
+                countdownSecondsRemainingRegister = countdownTotalSeconds;
+            }
+            const settingsInput = document.getElementById('settings-timer-duration');
+            if (settingsInput) settingsInput.value = mins;
+            updateEngineDisplayString();
+            updateTimerCountdownStepperDisabled();
+            saveStateToLocalStorageRegister();
+        }
+
+        function stepTimerCountdownMinutes(delta) {
+            if (isEngineActivelyRunning) return;
+            applyTimerMinutes(appState.profile.defaultTimerMinutes + delta);
         }
 
         function refreshAutoBreakLabel() {
@@ -3840,9 +4283,9 @@
             { id: 'b_early_bird', category: 'Daily', title: 'Early Bird Badge', desc: 'Study before 7:00 AM (and after 3:00 AM).', icon: 'cloud-sun' },
             { id: 'b_night_owl', category: 'Daily', title: 'Night Owl Badge', desc: 'Study after 11:00 PM (and before 3:00 AM).', icon: 'moon' },
             { id: 'b_daily_goal', category: 'Daily', title: 'Daily Goal Badge', desc: 'Reach your daily study goal.', icon: 'target' },
-            { id: 'b_bronze_medal', category: 'Daily', title: 'Bronze Medal', desc: 'Study more than 3 hours 0 minutes in a single day.', icon: 'medal' },
-            { id: 'b_silver_medal', category: 'Daily', title: 'Silver Medal', desc: 'Study more than 4 hours 0 minutes in a single day.', icon: 'medal' },
-            { id: 'b_gold_medal', category: 'Daily', title: 'Gold Medal', desc: 'Study more than 5 hours 0 minutes in a single day.', icon: 'medal' },
+            { id: 'b_bronze_medal', category: 'Daily', title: 'Bronze Medal', desc: 'Study more than 3 hours in a single day.', icon: 'medal' },
+            { id: 'b_silver_medal', category: 'Daily', title: 'Silver Medal', desc: 'Study more than 4 hours in a single day.', icon: 'medal' },
+            { id: 'b_gold_medal', category: 'Daily', title: 'Gold Medal', desc: 'Study more than 5 hours in a single day.', icon: 'medal' },
             { id: 'b_weekly_goal', category: 'Weekly', title: 'Weekly Goal Badge', desc: 'Reach your weekly study goal.', icon: 'milestone' },
             { id: 'b_bronze_week', category: 'Weekly', title: 'Bronze Week', desc: 'Earn a Bronze Medal every day for a full week.', icon: 'shield' },
             { id: 'b_silver_week', category: 'Weekly', title: 'Silver Week', desc: 'Earn a Silver Medal every day for a full week.', icon: 'award' },
@@ -3881,7 +4324,7 @@
             { id: 'a_break_even', category: 'Dedication', title: 'Break Even', desc: 'Bounce back after missing a day.', check: (state) => state.sessions.length >= 2, icon: 'trending-up' },
             { id: 'a_stock_surge', category: 'Dedication', title: 'Stock Surge', desc: 'Study 10 hours more than your goal.', check: (state) => state.sessions.length >= 5, icon: 'activity' },
             { id: 'a_course_samurai', category: 'Dedication', title: 'Course Samurai', desc: 'Reach your study goal for a course.', check: (state) => state.sessions.length >= 3, icon: 'swords' },
-            { id: 'a_photo_finish', category: 'Dedication', title: 'Photo Finish', desc: 'Hit your daily goal with less than 0 hours 30 minutes to spare.', check: (state) => state.sessions.length >= 1, icon: 'camera' },
+            { id: 'a_photo_finish', category: 'Dedication', title: 'Photo Finish', desc: 'Hit your daily goal with less than 30 minutes to spare.', check: (state) => state.sessions.length >= 1, icon: 'camera' },
             { id: 'a_daily_devotion', category: 'Dedication', title: 'Daily Devotion', desc: 'Hit your daily goal every day for a month.', check: (state) => state.streak >= 28, icon: 'calendar-check' },
             { id: 'a_golden_legend', category: 'Dedication', title: 'Golden Legend', desc: 'Earn 23 Gold Medals.', check: (state) => state.sessions.length >= 6, icon: 'award' },
             { id: 'a_goal_crusher', category: 'Dedication', title: 'Goal Crusher', desc: 'Reach your study goal for the semester.', check: (state) => state.sessions.length >= 4, icon: 'target' },
@@ -3952,7 +4395,8 @@
                 lucide.createIcons();
                 initDashboardMetricsAndCharts();
                 renderCoursesView();
-                renderTimerSubjectPills();
+                updateTimerTargetBadge();
+                renderTimerTargetMenu();
                 // Must run after state has loaded (needs appState.courses/
                 // selectedCourse as fallbacks) but before the user can start a
                 // NEW timer block over an unrecovered one.
@@ -3987,6 +4431,7 @@
                 }
                 clearTimeout(bootFinishTimer);
                 finishAppBoot();
+                if (window.AuraTour && typeof AuraTour.initAppTour === 'function') AuraTour.initAppTour();
             }).catch(() => {
                 clearTimeout(bootFinishTimer);
                 finishAppBoot();
@@ -4068,6 +4513,11 @@
             return 'Good evening';
         }
 
+        function getTimeGreetingIconName() {
+            const h = new Date().getHours();
+            return (h >= 6 && h < 19) ? 'sun' : 'moon';
+        }
+
         function getHeaderFirstName() {
             if (accountDisplayName && accountDisplayName.trim()) {
                 return accountDisplayName.trim().split(/\s+/)[0];
@@ -4082,9 +4532,49 @@
 
         function refreshHeaderGreeting() {
             const greetingEl = document.getElementById('header-greeting');
+            const firstName = getHeaderFirstName();
             if (greetingEl) {
-                greetingEl.textContent = getTimeGreetingPrefix() + ', ' + getHeaderFirstName();
+                greetingEl.textContent = getTimeGreetingPrefix() + ', ' + firstName;
             }
+            const iconEl = document.getElementById('header-greeting-icon-i');
+            if (iconEl) {
+                iconEl.setAttribute('data-lucide', getTimeGreetingIconName());
+                if (window.lucide) lucide.createIcons();
+            }
+            const avatarLetter = document.getElementById('header-avatar-letter');
+            if (avatarLetter) {
+                avatarLetter.textContent = (firstName.charAt(0) || 'A').toUpperCase();
+            }
+        }
+
+        function toggleHeaderNotifyPopover(ev) {
+            if (ev) ev.stopPropagation();
+            const pop = document.getElementById('header-notify-popover');
+            const btn = document.getElementById('header-notify-btn');
+            if (!pop || !btn) return;
+            const willOpen = pop.hidden;
+            pop.hidden = !willOpen;
+            btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+            if (willOpen) {
+                const closeOnOutside = (e) => {
+                    if (!pop.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+                        pop.hidden = true;
+                        btn.setAttribute('aria-expanded', 'false');
+                        document.removeEventListener('click', closeOnOutside, true);
+                    }
+                };
+                window.setTimeout(() => document.addEventListener('click', closeOnOutside, true), 0);
+            }
+        }
+
+        let analyticsChartPeriod = '7';
+
+        function setAnalyticsChartPeriod(period) {
+            analyticsChartPeriod = period === '30' ? '30' : (period === 'all' ? 'all' : '7');
+            document.querySelectorAll('.dash-chart-period-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-chart-period') === analyticsChartPeriod);
+            });
+            buildAnalyticsChartCanvasComponent();
         }
 
         function syncGlobalHeaderForView(viewKey) {
@@ -5186,7 +5676,8 @@
                 if (tabEl) tabEl.classList.add('active');
                 const subjectLabel = document.getElementById('timer-current-subject');
                 if (subjectLabel) subjectLabel.innerText = courseLabel;
-                renderTimerSubjectPills();
+                updateTimerTargetBadge();
+                renderTimerTargetMenu();
                 updateEngineDisplayString();
                 const startBtn = document.getElementById('timer-start-btn');
                 if (startBtn) startBtn.innerHTML = '<i data-lucide="play-circle"></i> Resume Block';
@@ -5243,20 +5734,86 @@
             }
         }
 
-        function renderTimerSubjectPills() {
-            const container = document.getElementById('timer-subject-pills');
-            container.innerHTML = "";
+        function updateTimerTargetBadge() {
+            const label = document.getElementById('timer-current-subject');
+            if (label) label.textContent = appState.selectedCourse || 'No course';
+        }
+
+        function renderTimerTargetMenu() {
+            const menu = document.getElementById('timer-target-menu');
+            if (!menu) return;
+            menu.innerHTML = '';
+            if (!appState.courses.length) {
+                const empty = document.createElement('div');
+                empty.className = 'timer-target-menu-item';
+                empty.style.opacity = '0.65';
+                empty.style.cursor = 'default';
+                empty.textContent = 'Add a course in Courses';
+                menu.appendChild(empty);
+                return;
+            }
             appState.courses.forEach(c => {
-                const pill = document.createElement('div');
-                pill.className = `subject-pill ${c === appState.selectedCourse ? 'active' : ''}`;
-                pill.innerText = c;
-                pill.onclick = () => {
-                    appState.selectedCourse = c;
-                    document.getElementById('timer-current-subject').innerText = c;
-                    renderTimerSubjectPills();
-                };
-                container.appendChild(pill);
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'timer-target-menu-item' + (c === appState.selectedCourse ? ' is-active' : '');
+                btn.setAttribute('role', 'option');
+                btn.setAttribute('aria-selected', c === appState.selectedCourse ? 'true' : 'false');
+                btn.textContent = c;
+                btn.addEventListener('click', () => selectTimerTargetCourse(c));
+                menu.appendChild(btn);
             });
+        }
+
+        function selectTimerTargetCourse(courseName) {
+            appState.selectedCourse = courseName;
+            updateTimerTargetBadge();
+            renderTimerTargetMenu();
+            saveStateToLocalStorageRegister();
+            closeTimerTargetMenu();
+        }
+
+        function closeTimerTargetMenu() {
+            const menu = document.getElementById('timer-target-menu');
+            const trigger = document.getElementById('timer-target-trigger');
+            if (menu) menu.hidden = true;
+            if (trigger) trigger.setAttribute('aria-expanded', 'false');
+            document.removeEventListener('keydown', onTimerTargetMenuKeydown, true);
+            document.removeEventListener('click', onTimerTargetOutsideClick, true);
+        }
+
+        function onTimerTargetMenuKeydown(ev) {
+            if (ev.key === 'Escape') {
+                ev.preventDefault();
+                closeTimerTargetMenu();
+            }
+        }
+
+        function onTimerTargetOutsideClick(ev) {
+            const wrap = document.getElementById('timer-target-picker-wrap');
+            if (wrap && !wrap.contains(ev.target)) closeTimerTargetMenu();
+        }
+
+        function toggleTimerTargetMenu(ev) {
+            if (ev) ev.stopPropagation();
+            const menu = document.getElementById('timer-target-menu');
+            const trigger = document.getElementById('timer-target-trigger');
+            if (!menu || !trigger) return;
+            const willOpen = menu.hidden;
+            if (willOpen) {
+                renderTimerTargetMenu();
+                menu.hidden = false;
+                trigger.setAttribute('aria-expanded', 'true');
+                document.addEventListener('keydown', onTimerTargetMenuKeydown, true);
+                document.addEventListener('click', onTimerTargetOutsideClick, true);
+                if (window.lucide) lucide.createIcons();
+            } else {
+                closeTimerTargetMenu();
+            }
+        }
+
+        function renderTimerSubjectPills() {
+            updateTimerTargetBadge();
+            renderTimerTargetMenu();
         }
 
         function renderCoursesView() {
@@ -5300,7 +5857,8 @@
                 field.value = "";
                 saveStateToLocalStorageRegister();
                 renderCoursesView();
-                renderTimerSubjectPills();
+                updateTimerTargetBadge();
+                renderTimerTargetMenu();
                 triggerAlertToast("Course Added", `Added ${name} to your courses.`);
             }
         }
@@ -5318,7 +5876,8 @@
             if(appState.selectedCourse === courseName) appState.selectedCourse = appState.courses[0] || "";
             saveStateToLocalStorageRegister();
             renderCoursesView();
-            renderTimerSubjectPills();
+            updateTimerTargetBadge();
+            renderTimerTargetMenu();
             triggerAlertToast("Course Removed", "Removed from your courses.", false);
             });
         }
@@ -5500,6 +6059,61 @@
             return formatDurationHM(seconds);
         }
 
+        function petEmojiForForm(formName) {
+            const match = PET_GARDEN_FORMS.find(f => f.name === formName);
+            return match ? match.emoji : '🌱';
+        }
+
+        function formatLeaderboardPetLine(entry) {
+            if (!entry || !entry.form) return '';
+            const emoji = entry.emoji || petEmojiForForm(entry.form);
+            return emoji + ' ' + entry.form + ' · Level ' + (entry.level || 1);
+        }
+
+        let lbHoverTooltipEl = null;
+        function ensureLeaderboardHoverTooltip() {
+            if (lbHoverTooltipEl) return lbHoverTooltipEl;
+            lbHoverTooltipEl = document.createElement('div');
+            lbHoverTooltipEl.className = 'lb-hover-tooltip';
+            lbHoverTooltipEl.setAttribute('role', 'tooltip');
+            lbHoverTooltipEl.innerHTML = '<div class="lb-hover-tooltip-name"></div><div class="lb-hover-tooltip-time"></div><div class="lb-hover-tooltip-pet"></div>';
+            document.body.appendChild(lbHoverTooltipEl);
+            return lbHoverTooltipEl;
+        }
+
+        function hideLeaderboardHoverTooltip() {
+            if (!lbHoverTooltipEl) return;
+            lbHoverTooltipEl.classList.remove('is-visible');
+            document.querySelectorAll('.lb-row.is-tooltip-open, .lb-you-card.is-tooltip-open').forEach(el => el.classList.remove('is-tooltip-open'));
+        }
+
+        function showLeaderboardHoverTooltip(anchorEl, entry) {
+            if (!anchorEl || !entry) return;
+            const tip = ensureLeaderboardHoverTooltip();
+            tip.querySelector('.lb-hover-tooltip-name').textContent = entry.name || entry.public_name || 'Studier';
+            tip.querySelector('.lb-hover-tooltip-time').textContent = formatDurationHM(entry.seconds || 0, { long: true });
+            const petLine = formatLeaderboardPetLine(entry);
+            const petNode = tip.querySelector('.lb-hover-tooltip-pet');
+            petNode.textContent = petLine;
+            petNode.style.display = petLine ? 'block' : 'none';
+            const rect = anchorEl.getBoundingClientRect();
+            let left = rect.left + rect.width / 2 - 120;
+            left = Math.min(Math.max(12, left), window.innerWidth - tip.offsetWidth - 12);
+            let top = rect.top - tip.offsetHeight - 10;
+            if (top < 8) top = rect.bottom + 10;
+            tip.style.left = left + 'px';
+            tip.style.top = top + 'px';
+            tip.classList.add('is-visible');
+            anchorEl.classList.add('is-tooltip-open');
+        }
+
+        function bindLeaderboardHoverTooltip(anchorEl, entry) {
+            anchorEl.addEventListener('mouseenter', () => showLeaderboardHoverTooltip(anchorEl, entry));
+            anchorEl.addEventListener('mouseleave', hideLeaderboardHoverTooltip);
+            anchorEl.addEventListener('focus', () => showLeaderboardHoverTooltip(anchorEl, entry));
+            anchorEl.addEventListener('blur', hideLeaderboardHoverTooltip);
+        }
+
         function showLeaderboardState(kind, message) {
             const panel = document.getElementById('leaderboard-state-panel');
             const text = document.getElementById('leaderboard-state-text');
@@ -5667,6 +6281,8 @@
                 rankEl.textContent = '--';
                 subEl.textContent = 'You are shown as ' + you.public_name + ' to yourself only — flip the toggle to rejoin.';
             }
+            youCard.onmouseenter = () => showLeaderboardHoverTooltip(youCard, { name: you.public_name, seconds: you.seconds, level: you.level, form: you.form, emoji: you.emoji });
+            youCard.onmouseleave = hideLeaderboardHoverTooltip;
         }
 
         function setLeaderboardPeriod(period) {
@@ -5796,6 +6412,7 @@
                 row.appendChild(rankEl);
                 row.appendChild(nameEl);
                 row.appendChild(hoursEl);
+                bindLeaderboardHoverTooltip(row, e);
                 list.appendChild(row);
             });
         }
@@ -5827,7 +6444,17 @@
                     animation: reduceMotion ? false : undefined,
                     plugins: {
                         legend: { display: false },
-                        tooltip: { callbacks: { label: (item) => formatLeaderboardHours((entries[item.dataIndex] || {}).seconds || 0) } }
+                        tooltip: {
+                            callbacks: {
+                                label: (item) => {
+                                    const entry = entries[item.dataIndex] || {};
+                                    const lines = [formatDurationHM(entry.seconds || 0, { long: true })];
+                                    const petLine = formatLeaderboardPetLine(entry);
+                                    if (petLine) lines.push(petLine);
+                                    return lines;
+                                }
+                            }
+                        }
                     },
                     scales: {
                         y: { beginAtZero: true, grid: { color: gridColour }, ticks: { color: tickColour } },
@@ -5867,23 +6494,94 @@
         }
 
         function buildAnalyticsChartCanvasComponent() {
-            const ctx = document.getElementById('analyticsChart').getContext('2d'); if (operationalBarChartInstance) operationalBarChartInstance.destroy();
-            const labels = []; const datasets = [];
-            for (let i = 6; i >= 0; i--) {
-                const d = new Date(); d.setDate(d.getDate() - i); labels.push(d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }));
-                const checkStr = getLocalDateStr(d); let mSum = 0; appState.sessions.forEach(s => { if(s.date === checkStr) mSum += s.durationSeconds; });
-                datasets.push(Math.round((mSum / 3600) * 10) / 10);
+            const canvas = document.getElementById('analyticsChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (operationalBarChartInstance) operationalBarChartInstance.destroy();
+
+            const labels = [];
+            const dataPoints = [];
+            const dayBuckets = {};
+
+            if (analyticsChartPeriod === 'all') {
+                appState.sessions.forEach(s => {
+                    if (!s || !s.date) return;
+                    dayBuckets[s.date] = (dayBuckets[s.date] || 0) + (s.durationSeconds || 0);
+                });
+                const sortedDates = Object.keys(dayBuckets).sort();
+                const sliceStart = Math.max(0, sortedDates.length - 30);
+                sortedDates.slice(sliceStart).forEach(dateStr => {
+                    const d = new Date(dateStr + 'T12:00:00');
+                    labels.push(isNaN(d.getTime()) ? dateStr : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+                    dataPoints.push(Math.round((dayBuckets[dateStr] / 3600) * 10) / 10);
+                });
+                if (!labels.length) {
+                    labels.push('—');
+                    dataPoints.push(0);
+                }
+            } else {
+                const span = analyticsChartPeriod === '30' ? 29 : 6;
+                for (let i = span; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    labels.push(d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }));
+                    const checkStr = getLocalDateStr(d);
+                    let mSum = 0;
+                    appState.sessions.forEach(s => { if (s.date === checkStr) mSum += s.durationSeconds; });
+                    dataPoints.push(Math.round((mSum / 3600) * 10) / 10);
+                }
             }
-            // Canvas cannot read CSS variables, so resolve the active theme tokens first
-            const accentRgb = readThemeToken('--accent-rgb', '255, 102, 178');
-            const accentSolid = readThemeToken('--accent-solid', '#FF66B2');
-            const secondaryRgb = hexToRgbTriplet(readThemeToken('--accent-secondary', '#B57CFF'), '181, 124, 255');
-            const gridColour = readThemeToken('--chart-grid', '#FFEAF2');
+
+            const sageRgb = '107, 144, 128';
+            const sageSolid = readThemeToken('--accent-strong', '#6B9080');
+            const gridColour = readThemeToken('--chart-grid', '#E8E4DC');
             const tickColour = readThemeToken('--text-muted', '#8A7680');
-            const gradient = ctx.createLinearGradient(0, 0, 0, 220);
-            gradient.addColorStop(0, `rgba(${accentRgb}, 0.8)`);
-            gradient.addColorStop(1, `rgba(${secondaryRgb}, 0.1)`);
-            operationalBarChartInstance = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ data: datasets, backgroundColor: gradient, borderColor: accentSolid, borderWidth: 2, borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (item) => formatDurationHM(Math.round((item.parsed.y || 0) * 3600)) } } }, scales: { y: { beginAtZero: true, grid: { color: gridColour }, ticks: { color: tickColour, callback: (v) => v + 'h' } }, x: { grid: { display: false }, ticks: { color: tickColour } } } } });
+            const fillGradient = ctx.createLinearGradient(0, 0, 0, 220);
+            fillGradient.addColorStop(0, `rgba(${sageRgb}, 0.38)`);
+            fillGradient.addColorStop(1, `rgba(${sageRgb}, 0.02)`);
+
+            operationalBarChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataPoints,
+                        borderColor: sageSolid,
+                        backgroundColor: fillGradient,
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.42,
+                        pointRadius: 3,
+                        pointBackgroundColor: sageSolid,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (item) => formatDurationHM(Math.round((item.parsed.y || 0) * 3600), { long: true })
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: gridColour },
+                            ticks: { color: tickColour, callback: (v) => v + 'h' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: tickColour, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }
+                        }
+                    }
+                }
+            });
         }
 
         // -- Help / doubts panel -----------------------------------------------
@@ -6632,6 +7330,7 @@
     <!-- Server sync + Spotify integration, loaded AFTER the inline app script so
          appState / saveStateToLocalStorageRegister / switchView already exist. -->
     <!-- Guest trial locks load before sync so bootstrap skips server calls. -->
+    <script src="/static/tour.js"></script>
     <script src="/static/guest.js"></script>
     <script src="/static/sync.js"></script>
     <script src="/static/spotify.js"></script>
