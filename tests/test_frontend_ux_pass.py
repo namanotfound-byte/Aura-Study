@@ -56,8 +56,12 @@ def test_active_view_is_persisted_and_restored_after_bootstrap():
     assert "ACTIVE_VIEW_STORAGE_KEY = 'aurastudy_active_view'" in html
     assert "function persistActiveView" in html
     assert "function restorePersistedActiveView" in html
+    assert "function completeBootSequence" in html
     assert "persistActiveView(targetPanelKey)" in html
     assert "restorePersistedActiveView()" in html
+    boot_block = html[html.index("function completeBootSequence"):html.index("function completeBootSequence") + 900]
+    assert "AuraTour.shouldPlayTour" in boot_block
+    assert "restorePersistedActiveView()" in boot_block
     assert "GUEST_LOCKED_VIEWS" in html
     assert "'leaderboard'" not in html[html.index("GUEST_LOCKED_VIEWS"):html.index("GUEST_LOCKED_VIEWS") + 80]
     assert "leaderboardRankMedal" in html
@@ -111,6 +115,9 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     assert 'id="timer-colour-control-wrap"' in timer_view
     assert 'id="timer-colour-trigger-btn"' in timer_view
     assert 'id="timer-colour-popover"' in timer_view
+    assert 'onclick="openTimerColourPopover()"' in timer_view
+    assert "function initTimerColourPopover" in html
+    assert "z-index: 130" in html[html.index(".timer-colour-control-wrap"):html.index(".timer-colour-control-wrap") + 220]
     assert 'data-ambient-key="pink-mintrefresh"' in html
     assert 'data-ambient-key="blue-mintrefresh"' in html
     assert "function migrateAmbientKey" in html
@@ -181,6 +188,8 @@ def test_tour_overlay_and_storage_key_exist():
     assert "requestAnimationFrame" in countdown_step
     assert "changeEngineMode('countdown')" in countdown_step
     assert "syncTimerCountdownStepperVisibility()" in countdown_step
+    dashboard_step = tour_js[tour_js.index("title: 'Dashboard'"):tour_js.index("title: 'Dashboard'") + 520]
+    assert "aurastudy_active_view" in dashboard_step
 
 
 def test_leaderboard_row_tooltip_helpers_exist():
@@ -285,6 +294,8 @@ def test_sidebar_collapse_toggle_persisted():
     assert "function applySidebarCollapsedState" in html
     assert "localStorage.getItem('aurastudy_sidebar_collapsed')" in html
     sidebar_block = html[html.index('id="app-sidebar"'):html.index("<!-- Main Workspace Container -->")]
+    assert 'id="nav-item-music-toggle"' in sidebar_block
+    assert "overflow-y: auto" in html[html.index(".sidebar > div:first-child"):html.index(".sidebar > div:first-child") + 180]
     brand_snippet = html[
         html.index('id="sidebar-brand-home"') : html.index('id="sidebar-brand-home"') + 320
     ]
@@ -359,6 +370,12 @@ def test_brand_uses_png_mascot_and_wordmark_not_jpg_crop():
     assert "object-position: 22% center" not in landing_css
     auth_css = _read("static", "auth.css")
     assert "mix-blend-mode: multiply" not in auth_css
+    mascot_path = os.path.join(ROOT_DIR, "static", "brand", "aurastudy-mascot.png")
+    wordmark_path = os.path.join(ROOT_DIR, "static", "brand", "aurastudy-wordmark.png")
+    assert os.path.isfile(mascot_path)
+    assert os.path.isfile(wordmark_path)
+    assert os.path.getsize(mascot_path) > 1000
+    assert os.path.getsize(wordmark_path) > 1000
 
 
 def test_study_coach_has_no_focus_tip_button():
@@ -370,6 +387,10 @@ def test_study_coach_has_no_focus_tip_button():
     assert "function updateStudyCoachCard" in html
     finish_boot_block = html[html.index("function finishAppBoot"):html.index("function finishAppBoot") + 480]
     assert "initDashboardMetricsAndCharts();" in finish_boot_block
+    assert "rebuildDashboardChartAfterLayout();" in finish_boot_block
+    chart_rebuild_block = html[html.index("function rebuildDashboardChartAfterLayout"):html.index("function rebuildDashboardChartAfterLayout") + 420]
+    assert "operationalBarChartInstance.destroy()" in chart_rebuild_block
+    assert "resizeDashboardChartIfNeeded()" in chart_rebuild_block
     init_dash_block = html[html.index("function initDashboardMetricsAndCharts"):html.index("function initDashboardMetricsAndCharts") + 600]
     assert "updateStudyCoachCard();" in init_dash_block
 
@@ -388,8 +409,28 @@ def test_placeholder_clears_on_focus_for_courses_and_auth():
     html = _read("index.html")
     assert "bindPlaceholderFocusClear" in html
     assert "initPlaceholderFocusClearInputs" in html
+    assert "input:focus::placeholder" in html
     auth_js = _read("static", "auth.js")
+    auth_css = _read("static", "auth.css")
     assert "bindPlaceholderFocusClear" in auth_js
+    assert "input:focus::placeholder" in auth_css
+    login_html = _read("server", "templates", "login.html")
+    assert "/static/auth.js" in login_html
+
+
+def test_focus_mode_settings_use_visible_checkboxes():
+    html = _read("index.html")
+    settings_block = html[html.index('<!-- VIEW: SETTINGS -->'):html.index("<!-- Branded confirm dialog")]
+    assert 'id="focus-toggle-float"' in settings_block
+    assert 'id="focus-toggle-notify"' in settings_block
+    assert 'id="focus-toggle-wakelock"' in settings_block
+    assert 'id="focus-toggle-sound"' in settings_block
+    assert "focus-toggle-checkbox" in settings_block
+    pip_js = _read("static", "pip.js")
+    assert "function renderFocusSettingsUI" in pip_js
+    assert "renderFocusSettingsUI: renderFocusSettingsUI" in pip_js
+    assert "AuraFocus.init()" in html
+    assert "AuraFocus.renderFocusSettingsUI()" in html
 
 
 def test_close_pip_if_timer_view_respects_suppress_flag():

@@ -34,11 +34,15 @@ def test_pet_cumulative_level_logic_present():
     html = _read("index.html")
     assert "function getPetCumulativeHoursForLevel(level)" in html
     assert "function getPetLevelCostHours(level)" in html
+    assert "function getSessionDurationSeconds" in html
+    assert "function normalizeSessionsDurations" in html
     body = _extract_function_body(html, "getPetLevelCostHours")
     assert "100 + (level - 12) * 25" in body
+    session_body = _extract_function_body(html, "getSessionDurationSeconds")
+    assert "duration_seconds" in session_body
     update_body = _extract_function_body(html, "updatePetEvolutionState")
     assert "getPetCumulativeHoursForLevel(level + 1)" in update_body
-    assert "durationSeconds" in update_body
+    assert "getSessionDurationSeconds" in update_body
 
 
 def test_unicorn_forever_path_removed():

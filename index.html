@@ -263,6 +263,14 @@
             transition: width 0.25s ease, background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
             position: relative;
             overflow: hidden;
+            min-height: 0;
+        }
+        .sidebar > div:first-child {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
         }
         .sidebar::after {
             content: "";
@@ -1600,9 +1608,21 @@
             transform: translateY(4px) scale(0.96);
         }
 
+        input:focus::placeholder {
+            opacity: 0;
+            color: transparent;
+        }
+
         /* Timer colour popover — opens upward from bottom-center chip */
         .timer-colour-control-wrap {
             position: relative;
+            z-index: 130;
+            pointer-events: auto;
+        }
+        #timer-colour-trigger-btn {
+            position: relative;
+            z-index: 131;
+            pointer-events: auto;
         }
         .timer-colour-popover {
             position: absolute;
@@ -3566,7 +3586,7 @@
                     </div>
                     <div class="timer-stage-footer-center">
                         <div class="timer-colour-control-wrap" id="timer-colour-control-wrap">
-                            <button class="timer-floating-interactive-trigger-btn" id="timer-colour-trigger-btn" type="button" title="Timer background colour" aria-label="Timer background colour" aria-haspopup="true" aria-expanded="false" aria-controls="timer-colour-popover">
+                            <button class="timer-floating-interactive-trigger-btn" id="timer-colour-trigger-btn" type="button" title="Timer background colour" aria-label="Timer background colour" aria-haspopup="true" aria-expanded="false" aria-controls="timer-colour-popover" onclick="openTimerColourPopover()">
                                 <i data-lucide="palette" style="width: 14px; height: 14px;"></i>
                                 <span class="timer-colour-chip-label tfi-label">Colour</span>
                             </button>
@@ -3846,46 +3866,38 @@
                 <p class="text-muted" style="font-size: 12px; margin-top: -10px; margin-bottom: 4px;">Keep your active study block visible even when you switch tabs or apps.</p>
 
                 <div class="focus-mode-row">
-                    <div>
-                        <div class="focus-mode-row-label">Float the timer when I switch tabs</div>
-                        <div class="focus-mode-row-desc">Pops the timer into a small always-on-top window the moment you start a block, and best-effort when you switch away.</div>
-                    </div>
-                    <label class="focus-toggle-switch">
+                    <div class="focus-mode-row-label">Float the timer when I switch tabs</div>
+                    <div class="focus-mode-row-desc">Pops the timer into a small always-on-top window the moment you start a block, and best-effort when you switch away.</div>
+                    <label class="focus-toggle-checkbox">
                         <input type="checkbox" id="focus-toggle-float" data-pref="floatTimer" onchange="AuraFocus.onPreferenceToggle(this)">
-                        <span class="focus-toggle-slider"></span>
+                        <span class="focus-checkbox-box" aria-hidden="true"></span>
                     </label>
                 </div>
 
                 <div class="focus-mode-row">
-                    <div>
-                        <div class="focus-mode-row-label">Notify me if the timer is running in the background</div>
-                        <div class="focus-mode-row-desc">A browser notification plus a live countdown in the tab title when no floating window is open.</div>
-                    </div>
-                    <label class="focus-toggle-switch">
+                    <div class="focus-mode-row-label">Notify me if the timer is running in the background</div>
+                    <div class="focus-mode-row-desc">A browser notification plus a live countdown in the tab title when no floating window is open.</div>
+                    <label class="focus-toggle-checkbox">
                         <input type="checkbox" id="focus-toggle-notify" data-pref="notify" onchange="AuraFocus.onPreferenceToggle(this)">
-                        <span class="focus-toggle-slider"></span>
+                        <span class="focus-checkbox-box" aria-hidden="true"></span>
                     </label>
                 </div>
 
                 <div class="focus-mode-row">
-                    <div>
-                        <div class="focus-mode-row-label">Keep my screen awake during a session</div>
-                        <div class="focus-mode-row-desc">Prevents your phone or laptop from sleeping mid-block.</div>
-                    </div>
-                    <label class="focus-toggle-switch">
+                    <div class="focus-mode-row-label">Keep my screen awake during a session</div>
+                    <div class="focus-mode-row-desc">Prevents your phone or laptop from sleeping mid-block.</div>
+                    <label class="focus-toggle-checkbox">
                         <input type="checkbox" id="focus-toggle-wakelock" data-pref="keepAwake" onchange="AuraFocus.onPreferenceToggle(this)">
-                        <span class="focus-toggle-slider"></span>
+                        <span class="focus-checkbox-box" aria-hidden="true"></span>
                     </label>
                 </div>
 
                 <div class="focus-mode-row">
-                    <div>
-                        <div class="focus-mode-row-label">Play a sound when a session completes</div>
-                        <div class="focus-mode-row-desc">A short, gentle chime when a countdown finishes on its own -- so you notice even with the tab muted in the background.</div>
-                    </div>
-                    <label class="focus-toggle-switch">
+                    <div class="focus-mode-row-label">Play a sound when a session completes</div>
+                    <div class="focus-mode-row-desc">A short, gentle chime when a countdown finishes on its own -- so you notice even with the tab muted in the background.</div>
+                    <label class="focus-toggle-checkbox">
                         <input type="checkbox" id="focus-toggle-sound" data-pref="completionSound" onchange="AuraFocus.onPreferenceToggle(this)">
-                        <span class="focus-toggle-slider"></span>
+                        <span class="focus-checkbox-box" aria-hidden="true"></span>
                     </label>
                 </div>
 
@@ -4305,6 +4317,41 @@
             const overlay = document.getElementById('app-boot-overlay');
             if (overlay) overlay.hidden = true;
             initDashboardMetricsAndCharts();
+            rebuildDashboardChartAfterLayout();
+        }
+
+        function rebuildDashboardChartAfterLayout() {
+            window.requestAnimationFrame(function () {
+                if (operationalBarChartInstance) {
+                    operationalBarChartInstance.destroy();
+                    operationalBarChartInstance = null;
+                }
+                buildAnalyticsChartCanvasComponent();
+                resizeDashboardChartIfNeeded();
+                window.setTimeout(function () {
+                    resizeDashboardChartIfNeeded();
+                }, 50);
+            });
+        }
+
+        function completeBootSequence(appState) {
+            finishAppBoot();
+            if (window.AuraTour && typeof AuraTour.initAppTour === 'function') {
+                if (AuraTour.shouldPlayTour(appState)) {
+                    const origTourTeardown = AuraTour.teardown;
+                    AuraTour.teardown = function () {
+                        origTourTeardown.apply(this, arguments);
+                        initDashboardMetricsAndCharts();
+                        rebuildDashboardChartAfterLayout();
+                        restorePersistedActiveView();
+                    };
+                    AuraTour.initAppTour(appState);
+                } else {
+                    restorePersistedActiveView();
+                }
+            } else {
+                restorePersistedActiveView();
+            }
         }
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -4331,6 +4378,7 @@
                 attemptRunningTimerRecovery();
                 renderSessionsTable();
                 evaluateCabinetTrophyMetrics();
+                normalizeSessionsDurations(appState.sessions);
                 updatePetEvolutionState();
                 loadStickyScratchpadContent();
                 refreshTodoListViewLayout();
@@ -4348,29 +4396,18 @@
                 if (typeof AuraFocus !== 'undefined') AuraFocus.init();
                 syncFullscreenIcon();
                 applySidebarCollapsedState(isSidebarCollapsed());
-                restorePersistedActiveView();
+                initPlaceholderFocusClearInputs();
+                refreshHeaderNotifications();
+                if (window.AuraGuest && typeof AuraGuest.maybePromptGuestLogin === 'function') {
+                    const guestStudySecs = appState.sessions.reduce((acc, s) => acc + getSessionDurationSeconds(s), 0);
+                    AuraGuest.maybePromptGuestLogin(guestStudySecs);
+                }
+                clearTimeout(bootFinishTimer);
+                completeBootSequence(appState);
                 const activePanel = document.querySelector('.view-panel.active');
                 const activeViewKey = activePanel && activePanel.id ? activePanel.id.replace(/^view-/, '') : 'dashboard';
                 syncGlobalHeaderForView(activeViewKey);
                 refreshHeaderGreeting();
-                initPlaceholderFocusClearInputs();
-                refreshHeaderNotifications();
-                if (window.AuraGuest && typeof AuraGuest.maybePromptGuestLogin === 'function') {
-                    const guestStudySecs = appState.sessions.reduce((acc, s) => acc + s.durationSeconds, 0);
-                    AuraGuest.maybePromptGuestLogin(guestStudySecs);
-                }
-                clearTimeout(bootFinishTimer);
-                finishAppBoot();
-                if (window.AuraTour && typeof AuraTour.initAppTour === 'function') {
-                    AuraTour.initAppTour(appState);
-                    if (typeof AuraTour.teardown === 'function') {
-                        const origTourTeardown = AuraTour.teardown;
-                        AuraTour.teardown = function () {
-                            origTourTeardown.apply(this, arguments);
-                            initDashboardMetricsAndCharts();
-                        };
-                    }
-                }
             }).catch(() => {
                 clearTimeout(bootFinishTimer);
                 finishAppBoot();
@@ -4498,14 +4535,20 @@
         }
 
         function bindPlaceholderFocusClear(inputEl) {
-            if (!inputEl || !inputEl.placeholder) return;
-            const savedPh = inputEl.placeholder;
+            if (!inputEl) return;
+            const savedPh = inputEl.placeholder || '';
+            if (savedPh) inputEl.dataset.savedPlaceholder = savedPh;
             inputEl.addEventListener('focus', function () {
-                inputEl.dataset.savedPlaceholder = savedPh;
-                inputEl.placeholder = '';
+                if (savedPh) {
+                    inputEl.dataset.savedPlaceholder = savedPh;
+                    inputEl.placeholder = '';
+                }
+                if (inputEl.value === savedPh) inputEl.value = '';
             });
             inputEl.addEventListener('blur', function () {
-                if (!inputEl.value.trim()) inputEl.placeholder = inputEl.dataset.savedPlaceholder || savedPh;
+                if (!inputEl.value.trim() && savedPh) {
+                    inputEl.placeholder = inputEl.dataset.savedPlaceholder || savedPh;
+                }
             });
         }
 
@@ -4636,7 +4679,7 @@
             document.querySelectorAll('.dash-chart-period-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.getAttribute('data-chart-period') === analyticsChartPeriod);
             });
-            buildAnalyticsChartCanvasComponent();
+            rebuildDashboardChartAfterLayout();
         }
 
         function syncGlobalHeaderForView(viewKey) {
@@ -4734,7 +4777,10 @@
                     let parsed = JSON.parse(preserved);
                     if(parsed.profile) appState.profile = parsed.profile;
                     if(parsed.courses) appState.courses = parsed.courses;
-                    if(parsed.sessions) appState.sessions = parsed.sessions;
+                    if(parsed.sessions) {
+                        appState.sessions = parsed.sessions;
+                        normalizeSessionsDurations(appState.sessions);
+                    }
                     if(parsed.todoItems) appState.todoItems = parsed.todoItems;
                     if(parsed.selectedCourse) appState.selectedCourse = parsed.selectedCourse;
                     if(parsed.colourTheme) appState.colourTheme = parsed.colourTheme;
@@ -4795,8 +4841,25 @@
             return cumulative;
         }
 
-        function updatePetEvolutionState() {
-            const totalSeconds = appState.sessions.reduce((acc, s) => acc + s.durationSeconds, 0);
+        function getSessionDurationSeconds(session) {
+            if (!session) return 0;
+            const raw = session.durationSeconds != null ? session.durationSeconds : session.duration_seconds;
+            const n = Number(raw);
+            return isFinite(n) && n > 0 ? Math.floor(n) : 0;
+        }
+
+        function normalizeSessionsDurations(sessions) {
+            if (!Array.isArray(sessions)) return;
+            sessions.forEach(function (s) {
+                if (!s) return;
+                s.durationSeconds = getSessionDurationSeconds(s);
+                if ('duration_seconds' in s) delete s.duration_seconds;
+            });
+        }
+
+        function updatePetEvolutionState(retryOnce) {
+            normalizeSessionsDurations(appState.sessions);
+            const totalSeconds = appState.sessions.reduce((acc, s) => acc + getSessionDurationSeconds(s), 0);
             const totalHours = totalSeconds / 3600;
 
             let level = 1;
@@ -4818,6 +4881,13 @@
             const headlineNode = document.getElementById('pet-headline-label');
             const xpTextNode = document.getElementById('pet-xp-numerical-label');
             const fillNode = document.getElementById('pet-xp-progress-fill');
+
+            if (!petAvatarNode || !petTagNode || !headlineNode || !xpTextNode || !fillNode) {
+                if (retryOnce !== false) {
+                    window.setTimeout(function () { updatePetEvolutionState(false); }, 100);
+                }
+                return;
+            }
 
             petAvatarNode.innerText = currentForm.emoji;
             petTagNode.innerText = `Level ${level}: ${currentForm.name}`;
@@ -5064,6 +5134,10 @@
             else if (targetPanelKey === 'spotify' && typeof AuraSpotify !== 'undefined' && !(window.AuraGuest && AuraGuest.isGuest())) AuraSpotify.onViewShown();
             else if (targetPanelKey === 'settings') {
                 refreshSettingsSpotifyStatus();
+                if (typeof AuraFocus !== 'undefined') {
+                    AuraFocus.init();
+                    if (typeof AuraFocus.renderFocusSettingsUI === 'function') AuraFocus.renderFocusSettingsUI();
+                }
             }
             else if (targetPanelKey === 'leaderboard') startLeaderboardPolling();
             else if (targetPanelKey === 'help') onHelpViewShown();
@@ -5546,6 +5620,7 @@
         // sync.js is a separate, non-module script file.
         window.applyMergedSyncPayloadToAppState = function (mergedPayload) {
             if (!mergedPayload || !Array.isArray(mergedPayload.sessions)) return;
+            normalizeSessionsDurations(mergedPayload.sessions);
             if (unionMissingSessions(mergedPayload.sessions)) {
                 saveStateToLocalStorageRegister();
                 renderSessionsTable();

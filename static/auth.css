@@ -96,6 +96,11 @@ body {
   text-align: center;
 }
 
+input:focus::placeholder {
+  opacity: 0;
+  color: transparent;
+}
+
 .auth-brand-mascot {
   width: 88px;
   height: 88px;

@@ -330,7 +330,11 @@
             body: 'Your study overview — daily progress, streaks, charts, and your evolving pet.',
             beforeShow: function () {
                 if (typeof switchView === 'function') {
-                    switchView('dashboard', document.querySelector('#app-sidebar .nav-item[title="Dashboard"]'));
+                    var savedView = null;
+                    try { savedView = localStorage.getItem('aurastudy_active_view'); } catch (e) { /* ignore */ }
+                    if (!savedView || savedView === 'dashboard') {
+                        switchView('dashboard', document.querySelector('#app-sidebar .nav-item[title="Dashboard"]'));
+                    }
                 }
                 return true;
             }

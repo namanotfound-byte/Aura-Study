@@ -351,14 +351,20 @@
   });
 
   function bindPlaceholderFocusClear(inputEl) {
-    if (!inputEl || !inputEl.placeholder) return;
-    var savedPh = inputEl.placeholder;
+    if (!inputEl) return;
+    var savedPh = inputEl.placeholder || "";
+    if (savedPh) inputEl.dataset.savedPlaceholder = savedPh;
     inputEl.addEventListener("focus", function () {
-      inputEl.dataset.savedPlaceholder = savedPh;
-      inputEl.placeholder = "";
+      if (savedPh) {
+        inputEl.dataset.savedPlaceholder = savedPh;
+        inputEl.placeholder = "";
+      }
+      if (inputEl.value === savedPh) inputEl.value = "";
     });
     inputEl.addEventListener("blur", function () {
-      if (!inputEl.value.trim()) inputEl.placeholder = inputEl.dataset.savedPlaceholder || savedPh;
+      if (!inputEl.value.trim() && savedPh) {
+        inputEl.placeholder = inputEl.dataset.savedPlaceholder || savedPh;
+      }
     });
   }
 
