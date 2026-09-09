@@ -149,7 +149,7 @@
     var style = document.createElement('style');
     style.id = 'aura-spotify-styles';
     style.textContent =
-      '.as-card{margin-bottom:20px}' +
+      '.as-card{margin-bottom:20px;border-radius:20px;border:1px solid var(--border-color);box-shadow:0 4px 16px rgba(61,68,81,.05)}' +
       '.as-row{display:flex;align-items:center;gap:16px}' +
       '.as-art{width:72px;height:72px;border-radius:16px;object-fit:cover;background:var(--bg-card-hover);flex-shrink:0}' +
       '.as-track-name{font-weight:800;color:var(--text-main);font-size:15px;margin-bottom:2px}' +

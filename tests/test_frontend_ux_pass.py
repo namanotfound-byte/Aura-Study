@@ -111,11 +111,18 @@ def test_theme_and_timer_colors_live_in_settings_not_sidebar():
     assert 'data-ambient-key="blue-mintrefresh"' in html
     assert "function migrateAmbientKey" in html
     assert "function timerGradCssVar" in html
-    root_block = html[html.index(":root {"):html.index("/* Blueberry Frost")]
+    root_block = html[html.index(":root {"):html.index("/* Timer chrome:")]
     assert root_block.count("--timer-grad-") == 14
     blue_theme_block = html[html.index(":root[data-theme=\"blue\"]"):html.index("/* Theme switch control")]
     assert "--timer-grad-" not in blue_theme_block
     assert "--ambient-grad-" not in blue_theme_block
+    assert "/static/brand/aurastudy-logo.jpg" in html
+    assert "--font-serif" in html
+    assert "Fraunces" in html
+    landing_css = _read("static", "landing.css")
+    assert "min-height: 100dvh" in landing_css
+    assert ".landing-logo" in landing_css
+    assert _read("server", "templates", "landing.html").count("/static/brand/aurastudy-logo.jpg") >= 1
 
 
 def test_timer_break_length_editable_on_break_tab():
@@ -217,12 +224,12 @@ def test_sidebar_collapse_toggle_persisted():
     assert 'title="Dashboard"' in sidebar_block
     assert 'title="Timer"' in sidebar_block
     assert "html.sidebar-collapsed .nav-item > span:not(.nav-unread-badge)" in html
-    brand_span_block = html[html.index(".brand span {") : html.index(".brand span {") + 260]
-    assert "-webkit-background-clip: text" in brand_span_block
+    assert "brand-logo" in html
+    assert "/static/brand/aurastudy-logo.jpg" in html[html.index('id="sidebar-brand-home"'):html.index('id="sidebar-brand-home"') + 480]
     assert "html.sidebar-collapsed .brand span" in html
     collapsed_brand_span = html[
         html.index("html.sidebar-collapsed .brand span")
-        : html.index("html.sidebar-collapsed .brand span") + 80
+        : html.index("html.sidebar-collapsed .brand span") + 160
     ]
     assert "display: none" in collapsed_brand_span
     collapsed_brand_row = html[

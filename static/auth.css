@@ -1,45 +1,55 @@
-/* AuraStudy auth pages -- login / register / forgot / reset / message.
-   Matches the main app's pastel, rounded, playful visual language. */
+/* AuraStudy auth pages — cream canvas, sage green, serif headings */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Blue palette -- matches landing.css's blue-themed tokens (--accent-solid,
-     --neon-blue, --accent-strong) so the signed-out pages read consistently
-     with the landing page, since new accounts now default to the blue theme. */
-  --aura-accent: #2F9BE0;
-  --aura-accent-dark: #1B82C6;
-  --aura-accent-rgb: 47, 155, 224;
-  --aura-blue: #6C8CFF;
-  --aura-text: #35404D;
-  --aura-text-soft: #6F8092;
-  --aura-border: #C9E2FF;
-  --aura-error: #e0426b;
-  --aura-error-bg: #fdeaf0;
-  --aura-success: #22a37a;
-  --aura-success-bg: #e9fbf3;
-  --aura-info-bg: #fff3e0;
-  --aura-info-text: #8a5a1d;
+  --aura-accent: #6B9080;
+  --aura-accent-dark: #52796F;
+  --aura-accent-rgb: 107, 144, 128;
+  --aura-lavender: #9B8BB4;
+  --aura-text: #3D4451;
+  --aura-text-soft: #6B7280;
+  --aura-border: #E3DDD3;
+  --aura-bg: #F8F5F0;
+  --aura-error: #c0445a;
+  --aura-error-bg: #fdeef1;
+  --aura-success: #4a8f6a;
+  --aura-success-bg: #edf7f0;
+  --aura-info-bg: #f5f0e8;
+  --aura-info-text: #6b5a40;
+
+  --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Source Sans 3', 'Segoe UI', Roboto, -apple-system, sans-serif;
 }
 
 * { box-sizing: border-box; }
+
+html {
+  min-height: 100%;
+  min-height: 100dvh;
+  background: var(--aura-bg);
+}
 
 html, body {
   margin: 0;
   padding: 0;
   min-height: 100%;
+  min-height: 100dvh;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   color: var(--aura-text);
-  background: linear-gradient(135deg, #E3F3FF 0%, #EAF3FF 55%, #E9EAFF 100%);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(155, 139, 180, 0.1), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 20% 90%, rgba(107, 144, 128, 0.08), transparent 65%),
+    var(--aura-bg);
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
-  /* Safe-area padding for iOS notch/home-indicator. A no-op (env() resolves to 0) unless
-     the page's <meta viewport> also sets viewport-fit=cover -- see README note below. */
   padding-top: max(24px, env(safe-area-inset-top));
   padding-right: max(24px, env(safe-area-inset-right));
   padding-bottom: max(24px, env(safe-area-inset-bottom));
@@ -58,9 +68,10 @@ body {
 .auth-card {
   width: 100%;
   background: #ffffff;
-  border-radius: 28px;
-  padding: 36px 32px;
-  box-shadow: 0 20px 60px rgba(var(--aura-accent-rgb), 0.22), 0 2px 8px rgba(var(--aura-accent-rgb), 0.10);
+  border-radius: 24px;
+  padding: 32px 28px;
+  border: 1px solid var(--aura-border);
+  box-shadow: 0 12px 40px rgba(61, 68, 81, 0.08);
   position: relative;
   overflow: hidden;
 }
@@ -68,49 +79,40 @@ body {
 .auth-card::before {
   content: "";
   position: absolute;
-  top: -60px;
-  right: -60px;
-  width: 160px;
-  height: 160px;
-  background: radial-gradient(circle, rgba(var(--aura-accent-rgb), 0.20), transparent 70%);
+  bottom: -40px;
+  left: -20px;
+  right: -20px;
+  height: 80px;
+  background: linear-gradient(to top, rgba(155, 139, 180, 0.08), transparent);
   pointer-events: none;
 }
 
 .auth-brand {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 20px;
+  text-align: center;
 }
 
-.auth-brand i {
-  width: 20px;
-  height: 20px;
-  stroke: var(--aura-accent);
-  flex-shrink: 0;
+.auth-brand-logo {
+  width: 120px;
+  height: auto;
+  object-fit: contain;
 }
-
-/* ---------- Mini animated wordmark ----------
-   A smaller, quicker cousin of landing.css's full-page reveal -- purely
-   decorative branding above the form, so it must never block or delay it.
-   Fully visible by default (progressive enhancement): these rules only take
-   effect once the inline bootstrap script in base.html's <head> marks
-   <html> js-enabled, and landing.js is what actually splits the text into
-   per-letter spans and adds .is-split. With JS disabled the wordmark is
-   just static text, always visible. */
 
 .auth-wordmark {
   margin: 0;
   display: inline-block;
-  font-size: clamp(1.15rem, 5.5vw, 1.45rem);
-  font-weight: 800;
+  font-family: var(--font-serif);
+  font-size: clamp(1.25rem, 5.5vw, 1.55rem);
+  font-weight: 700;
   line-height: 1.15;
-  letter-spacing: -0.01em;
-  color: var(--aura-accent-dark);
+  letter-spacing: -0.02em;
+  color: var(--aura-text);
   white-space: nowrap;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .auth-wordmark .letter {
@@ -123,15 +125,7 @@ body {
 }
 
 html.js-enabled .auth-wordmark-letters {
-  opacity: 0;
-  animation: auth-word-fallback-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s forwards;
-}
-
-/* Once landing.js has split the word into individual letters it adds
-   .is-split, which hands the animating over to the per-letter spans below. */
-html.js-enabled .auth-wordmark-letters.is-split {
   opacity: 1;
-  animation: none;
 }
 
 html.js-enabled .auth-wordmark-letters.is-split .letter {
@@ -140,19 +134,11 @@ html.js-enabled .auth-wordmark-letters.is-split .letter {
   animation-delay: var(--delay, 0s);
 }
 
-/* Session-repeat visits and click/key/touch-to-skip both land here (see
-   landing.js) -- jumps any in-flight animation straight to its finished
-   state at once. */
 html.skip-anim .auth-wordmark-letters,
 html.skip-anim .auth-wordmark-letters.is-split .letter {
   opacity: 1 !important;
   transform: none !important;
   animation: none !important;
-}
-
-@keyframes auth-word-fallback-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes auth-letter-in {
@@ -161,7 +147,6 @@ html.skip-anim .auth-wordmark-letters.is-split .letter {
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Belt-and-braces: even if JS mis-times something, reduced motion always wins. */
 @media (prefers-reduced-motion: reduce) {
   html.js-enabled .auth-wordmark-letters,
   html.js-enabled .auth-wordmark-letters.is-split .letter {
@@ -172,10 +157,12 @@ html.skip-anim .auth-wordmark-letters.is-split .letter {
 }
 
 .auth-heading {
+  font-family: var(--font-serif);
   font-size: 1.5rem;
-  font-weight: 800;
+  font-weight: 700;
   margin: 0 0 6px;
   line-height: 1.25;
+  color: var(--aura-text);
 }
 
 .auth-subheading {
@@ -210,14 +197,12 @@ html.skip-anim .auth-wordmark-letters.is-split .letter {
 .auth-field input[type="text"],
 .auth-field input[type="password"] {
   font: inherit;
-  /* font:inherit above pulls the *label's* 0.85rem (13.6px) size, which sits under the
-     16px iOS Safari zoom-on-focus threshold -- override just the size back up. */
   font-size: 1rem;
   font-weight: 500;
   padding: 13px 16px;
   border-radius: 16px;
-  border: 2px solid var(--aura-border);
-  background: #f8fbff;
+  border: 1px solid var(--aura-border);
+  background: #faf9f7;
   color: var(--aura-text);
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -226,7 +211,7 @@ html.skip-anim .auth-wordmark-letters.is-split .letter {
 
 .auth-field input:focus {
   border-color: var(--aura-accent);
-  box-shadow: 0 0 0 4px rgba(var(--aura-accent-rgb), 0.15);
+  box-shadow: 0 0 0 3px rgba(var(--aura-accent-rgb), 0.12);
 }
 
 .auth-field input.is-invalid {
@@ -305,7 +290,7 @@ html.skip-anim .auth-wordmark-letters.is-split .letter {
 
 .auth-submit {
   margin-top: 4px;
-  background: linear-gradient(135deg, var(--aura-accent), var(--aura-accent-dark));
+  background: var(--aura-accent);
   color: #fff;
   border: none;
   padding: 14px 18px;
@@ -317,12 +302,16 @@ html.skip-anim .auth-wordmark-letters.is-split .letter {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  box-shadow: 0 10px 24px rgba(var(--aura-accent-rgb), 0.32);
+  box-shadow: 0 8px 20px rgba(var(--aura-accent-rgb), 0.25);
   transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
   text-decoration: none;
 }
 
-.auth-submit:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(var(--aura-accent-rgb), 0.4); }
+.auth-submit:hover {
+  background: var(--aura-accent-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(var(--aura-accent-rgb), 0.32);
+}
 .auth-submit:active { transform: translateY(0); }
 .auth-submit:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
 
@@ -403,18 +392,16 @@ html.skip-anim .auth-wordmark-letters.is-split .letter {
 .auth-message-icon i { width: 28px; height: 28px; }
 
 .auth-card:has(.auth-message-icon) { text-align: center; }
-.auth-card:has(.auth-message-icon) .auth-brand { justify-content: center; }
 
 .auth-footnote {
-  color: #4d6274;
-  opacity: 0.75;
+  color: var(--aura-text-soft);
   font-size: 0.78rem;
   text-align: center;
   margin: 0;
 }
 
 @media (max-width: 420px) {
-  .auth-card { padding: 28px 22px; border-radius: 22px; }
+  .auth-card { padding: 28px 22px; border-radius: 20px; }
   .auth-heading { font-size: 1.3rem; }
 }
 

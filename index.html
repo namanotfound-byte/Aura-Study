@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>AuraStudy — Focus Timer & Study Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
         (function () {
             try {
@@ -30,22 +33,25 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
-            /* Pastel Neon Theme Palette */
-            --bg-main: #FFF5F8;
-            --bg-sidebar: #FFEAF2;
+            /* AuraStudy Zen Shell — cream canvas, sage green, dusty lavender */
+            --bg-main: #F8F5F0;
+            --bg-sidebar: #F0EDE6;
             --bg-card: #FFFFFF;
-            --bg-card-hover: #FFF9FB;
-            --border-color: #FFD3E3;
-            
-            --neon-blue: #33C6FF;
-            --neon-pink: #FF66B2;
-            --neon-purple: #B57CFF;
-            --neon-green: #52E5A3;
-            --neon-amber: #FFB347;
-            
-            --text-main: #4A3E43;
-            --text-muted: #8A7680;
-            
+            --bg-card-hover: #FAFAF7;
+            --border-color: #E3DDD3;
+
+            --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+            --font-sans: 'Source Sans 3', 'Segoe UI', Roboto, -apple-system, sans-serif;
+
+            --neon-blue: #8BA4C4;
+            --neon-pink: #6B9080;
+            --neon-purple: #9B8BB4;
+            --neon-green: #6B9080;
+            --neon-amber: #C4A882;
+
+            --text-main: #3D4451;
+            --text-muted: #6B7280;
+
             /* Timer background presets — theme-independent (14 total: 7 pink + 7 blue) */
             --timer-grad-pink-cottoncandy: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%);
             --timer-grad-pink-sunsetglow: linear-gradient(135deg, #FFE4E1 0%, #FFB6C1 50%, #E6E6FA 100%);
@@ -62,35 +68,28 @@
             --timer-grad-blue-auroracute: linear-gradient(135deg, #79E2FC 0%, #96C7E6 100%);
             --timer-grad-blue-magicaldark: linear-gradient(135deg, #08213D 0%, #21497F 50%, #0090FF 100%);
 
-            /* Accent used for every glow, shadow and highlight in the app */
-            --accent-rgb: 255, 102, 178;
-            --accent-solid: #FF66B2;
-            --accent-secondary: #B57CFF;
-            --chart-grid: #FFEAF2;
-            --accent-strong: #FF4D9C;
+            /* Shell accent — sage green (never overridden by timer theme) */
+            --accent-rgb: 107, 144, 128;
+            --accent-solid: #6B9080;
+            --accent-secondary: #9B8BB4;
+            --chart-grid: #EDE9E2;
+            --accent-strong: #52796F;
         }
 
-        /* Blueberry Frost theme. Same layout, cool palette. */
-        :root[data-theme="blue"],
-        body[data-theme="blue"] {
-            --bg-main: #F2F8FF;
-            --bg-sidebar: #E4F0FF;
-            --bg-card: #FFFFFF;
-            --bg-card-hover: #F7FBFF;
-            --border-color: #C9E2FF;
+        /* Timer chrome: Bubblegum Pink (settings option — timer view only) */
+        :root:not([data-theme="blue"]) #view-timer {
+            --neon-pink: #FF66B2;
+            --neon-purple: #B57CFF;
+            --neon-blue: #33C6FF;
+            --neon-green: #52E5A3;
+        }
 
+        /* Timer chrome: Blueberry Frost (settings option — timer view only) */
+        :root[data-theme="blue"] #view-timer {
             --neon-pink: #2F9BE0;
             --neon-purple: #6C8CFF;
             --neon-blue: #33C6FF;
-
-            --text-main: #35404D;
-            --text-muted: #6F8092;
-
-            --accent-rgb: 47, 155, 224;
-            --accent-solid: #2F9BE0;
-            --accent-secondary: #6C8CFF;
-            --chart-grid: #E4F0FF;
-            --accent-strong: #1B82C6;
+            --neon-green: #52E5A3;
         }
 
         /* Theme switch control (Settings only) */
@@ -202,8 +201,12 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: var(--font-sans);
             -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3, .header-greeting, .dash-hero-quote, .dash-motivation-quote, .dash-quote-text, .brand span {
+            font-family: var(--font-serif);
         }
 
         body {
@@ -235,15 +238,19 @@
         #app-boot-overlay[hidden] { display: none !important; }
         .app-boot-logo {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 10px;
-            font-size: 28px;
-            font-weight: 900;
-            letter-spacing: 0.5px;
-            background: linear-gradient(to right, var(--neon-pink), var(--neon-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 2px 4px rgba(var(--accent-rgb), 0.2));
+            gap: 12px;
+            font-family: var(--font-serif);
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-main);
+        }
+        .app-boot-logo img {
+            width: 120px;
+            height: auto;
+            object-fit: contain;
         }
         .app-boot-spinner {
             width: 36px;
@@ -329,14 +336,33 @@
         .sidebar {
             width: 270px;
             background-color: var(--bg-sidebar);
-            border-right: 2px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             padding: 24px 16px;
             z-index: 10;
-            box-shadow: 4px 0 15px rgba(var(--accent-rgb), 0.08);
+            box-shadow: 2px 0 12px rgba(61, 68, 81, 0.04);
             transition: width 0.25s ease, background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .sidebar::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 72px;
+            pointer-events: none;
+            background:
+                linear-gradient(to top, rgba(155, 139, 180, 0.12), transparent 70%),
+                linear-gradient(135deg, rgba(107, 144, 128, 0.08) 0%, transparent 55%);
+        }
+        .sidebar > div:first-child,
+        .sidebar-footer {
+            position: relative;
+            z-index: 1;
         }
 
         .sidebar-brand-row {
@@ -349,22 +375,43 @@
 
         .brand {
             display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 24px;
-            font-weight: 900;
-            letter-spacing: 0.5px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
             margin-bottom: 0;
-            padding-left: 8px;
+            padding-left: 4px;
             min-width: 0;
         }
-
+        .brand-logo-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            flex-shrink: 0;
+            border-radius: 10px;
+        }
         .brand span {
-            background: linear-gradient(to right, var(--neon-pink), var(--neon-purple));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 2px 4px rgba(var(--accent-rgb), 0.2));
+            color: var(--text-main);
+            font-family: var(--font-serif);
+            font-weight: 700;
+            line-height: 1.1;
+        }
+        .brand-tagline {
+            font-family: var(--font-sans);
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding-left: 50px;
+            line-height: 1.3;
         }
 
         button.brand {
@@ -377,7 +424,7 @@
         }
 
         button.brand:focus-visible {
-            outline: 2px solid var(--neon-pink);
+            outline: 2px solid var(--accent-solid);
             outline-offset: 3px;
             border-radius: 10px;
         }
@@ -416,13 +463,22 @@
                 margin-bottom: 8px;
             }
 
-            html.sidebar-collapsed .brand span {
+            html.sidebar-collapsed .brand span,
+            html.sidebar-collapsed .brand-tagline {
                 display: none;
             }
 
             html.sidebar-collapsed .brand {
-                padding: 12px;
+                padding: 8px;
                 justify-content: center;
+                align-items: center;
+            }
+            html.sidebar-collapsed .brand-logo-row {
+                justify-content: center;
+            }
+            html.sidebar-collapsed .brand-logo {
+                width: 36px;
+                height: 36px;
             }
 
             html.sidebar-collapsed .nav-item > span:not(.nav-unread-badge) {
@@ -467,16 +523,16 @@
         }
 
         .nav-item:hover {
-            background-color: rgba(255, 255, 255, 0.5);
-            color: var(--neon-pink);
-            transform: translateX(4px);
+            background-color: rgba(255, 255, 255, 0.55);
+            color: var(--accent-solid);
+            transform: translateX(3px);
         }
 
         .nav-item.active {
-            background: #FFFFFF;
-            color: var(--neon-pink);
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.1);
+            background: rgba(107, 144, 128, 0.14);
+            color: var(--accent-strong);
+            border: 1px solid rgba(107, 144, 128, 0.22);
+            box-shadow: none;
         }
 
         .sidebar-footer {
@@ -553,13 +609,13 @@
 
         /* Top Header Navigation Panel Bar */
         .top-header {
-            height: 75px;
+            min-height: 75px;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 32px;
-            background-color: rgba(255, 245, 248, 0.85);
+            padding: 12px 32px;
+            background-color: rgba(248, 245, 240, 0.92);
             backdrop-filter: blur(16px);
             z-index: 5;
         }
@@ -571,11 +627,39 @@
             min-width: 0;
         }
 
-        .header-title-area h1 {
-            font-size: 24px;
-            font-weight: 800;
+        .header-title-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .header-greeting {
+            font-size: 22px;
+            font-weight: 700;
             color: var(--text-main);
-            letter-spacing: -0.5px;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        .header-tagline {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .header-title-area h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.02em;
+            font-family: var(--font-serif);
+        }
+
+        .header-title-stack[hidden] {
+            display: none !important;
         }
 
         .header-actions {
@@ -607,15 +691,17 @@
         }
 
         .btn-neon-pink {
-            background: var(--neon-pink);
-            border: 1px solid var(--neon-pink);
+            background: var(--accent-solid);
+            border: 1px solid var(--accent-solid);
             color: #FFFFFF;
-            box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
+            box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.25);
+            border-radius: 999px;
         }
 
         .btn-neon-pink:hover {
             background: var(--accent-strong);
-            box-shadow: 0 6px 18px rgba(var(--accent-rgb), 0.4);
+            border-color: var(--accent-strong);
+            box-shadow: 0 6px 18px rgba(var(--accent-rgb), 0.32);
         }
 
         .view-panel {
@@ -647,11 +733,88 @@
 
         .card {
             background: var(--bg-card);
-            border: 2px solid var(--border-color);
-            border-radius: 24px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
             padding: 24px;
             position: relative;
-            box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.04);
+            box-shadow: 0 4px 16px rgba(61, 68, 81, 0.05);
+        }
+
+        /* Dashboard hero + accent cards */
+        .dash-hero-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+            padding: 28px 32px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background:
+                linear-gradient(135deg, rgba(155, 139, 180, 0.18) 0%, rgba(107, 144, 128, 0.12) 45%, rgba(248, 245, 240, 0.9) 100%);
+            box-shadow: 0 4px 20px rgba(61, 68, 81, 0.06);
+            position: relative;
+            overflow: hidden;
+        }
+        .dash-hero-banner::after {
+            content: "";
+            position: absolute;
+            right: -20px;
+            bottom: -30px;
+            width: 180px;
+            height: 100px;
+            background: linear-gradient(135deg, rgba(155, 139, 180, 0.25), rgba(107, 144, 128, 0.15));
+            border-radius: 50% 50% 0 50%;
+            pointer-events: none;
+        }
+        .dash-hero-quote {
+            font-size: clamp(1.25rem, 3vw, 1.65rem);
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.25;
+            max-width: 28rem;
+            position: relative;
+            z-index: 1;
+        }
+        .dash-hero-underline {
+            display: block;
+            width: 48px;
+            height: 3px;
+            margin-top: 10px;
+            border-radius: 2px;
+            background: var(--neon-purple);
+        }
+        .dash-motivation-card {
+            background: linear-gradient(160deg, rgba(155, 139, 180, 0.22), rgba(155, 139, 180, 0.08));
+            border: 1px solid rgba(155, 139, 180, 0.25);
+        }
+        .dash-motivation-quote {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.35;
+            margin: 8px 0 0;
+        }
+        .dash-quote-card {
+            background: linear-gradient(145deg, #FFFFFF, rgba(107, 144, 128, 0.06));
+            text-align: center;
+        }
+        .dash-quote-text {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            line-height: 1.4;
+            margin: 0;
+        }
+        .dash-side-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        @media (max-width: 900px) {
+            .dash-side-grid { grid-template-columns: 1fr; }
         }
 
         .card-title {
@@ -702,9 +865,9 @@
         }
 
         .streak-dot.completed {
-            background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+            background: linear-gradient(135deg, var(--accent-solid), var(--neon-purple));
             color: #FFFFFF;
-            box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
+            box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.25);
             border-color: transparent;
         }
 
@@ -719,9 +882,8 @@
             font-weight: 900;
             margin: 6px 0;
             letter-spacing: -1px;
-            background: linear-gradient(to right, var(--text-main), var(--neon-pink));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-family: var(--font-serif);
+            color: var(--text-main);
         }
 
         .progress-bar-bg {
@@ -733,7 +895,7 @@
 
         .progress-bar-fill {
             height: 100%;
-            background: linear-gradient(to right, var(--neon-pink), var(--neon-purple));
+            background: linear-gradient(to right, var(--accent-solid), var(--neon-purple));
             width: 0%;
             border-radius: 10px;
             transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
@@ -741,21 +903,21 @@
 
         /* Virtual Study Pet Dashboard Widget */
         .pet-container-card {
-            background: linear-gradient(145deg, #FFFFFF, #FFF0F5);
-            border: 2px solid var(--border-color);
-            border-radius: 24px;
+            background: linear-gradient(145deg, #FFFFFF, rgba(107, 144, 128, 0.06));
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
             padding: 20px;
             display: flex;
             align-items: center;
             gap: 20px;
             margin-bottom: 24px;
-            box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.05);
+            box-shadow: 0 4px 16px rgba(61, 68, 81, 0.05);
         }
         .pet-sprite-frame {
             width: 80px;
             height: 80px;
             background: #FFFFFF;
-            border: 2px dashed var(--neon-pink);
+            border: 2px dashed rgba(107, 144, 128, 0.35);
             border-radius: 20px;
             display: flex;
             align-items: center;
@@ -772,7 +934,7 @@
             flex: 1;
         }
         .pet-level-badge {
-            background: var(--neon-pink);
+            background: var(--neon-purple);
             color: #FFFFFF;
             font-size: 11px;
             font-weight: 800;
@@ -788,7 +950,7 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
-            background: var(--neon-pink);
+            background: var(--accent-solid);
             color: #fff;
             border: none;
             border-radius: 999px;
@@ -797,7 +959,7 @@
             cursor: pointer;
             padding: 8px 16px;
             text-decoration: none;
-            box-shadow: 0 6px 16px rgba(var(--accent-rgb), 0.28);
+            box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.22);
         }
         .pet-gallery-btn:hover { filter: brightness(1.05); text-decoration: none; }
         .pet-form-req { font-size: 10px; color: var(--text-muted); font-weight: 700; margin-top: 4px; line-height: 1.35; }
@@ -2713,7 +2875,7 @@
 
     <div id="app-boot-overlay" role="status" aria-live="polite" aria-label="Loading AuraStudy">
         <div class="app-boot-logo">
-            <span aria-hidden="true">✦</span>
+            <img src="/static/brand/aurastudy-logo.jpg" alt="" width="120" height="120">
             <span>AuraStudy</span>
         </div>
         <div class="app-boot-spinner" aria-hidden="true"></div>
@@ -2751,8 +2913,11 @@
         <div>
             <div class="sidebar-brand-row">
                 <button type="button" class="brand" id="sidebar-brand-home" aria-label="Go to Dashboard" onclick="switchView('dashboard', document.querySelector('#app-sidebar .nav-group .nav-item[title=&quot;Dashboard&quot;]')); closeMobileNav();">
-                    <i data-lucide="sparkles" style="color: var(--neon-pink);"></i>
-                    <span>AuraStudy</span>
+                    <div class="brand-logo-row">
+                        <img src="/static/brand/aurastudy-logo.jpg" alt="" class="brand-logo" width="40" height="40">
+                        <span>AuraStudy</span>
+                    </div>
+                    <span class="brand-tagline">Focus / Learn / Grow</span>
                 </button>
                 <button type="button" class="sidebar-collapse-btn" id="sidebar-collapse-toggle" aria-label="Collapse sidebar" title="Collapse sidebar" onclick="toggleSidebarCollapsed()">
                     <i data-lucide="panel-left-close"></i>
@@ -2816,17 +2981,30 @@
                 <button class="mobile-nav-toggle" id="mobile-nav-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="app-sidebar" onclick="toggleMobileNav()">
                     <i data-lucide="menu" id="mobile-nav-toggle-icon"></i>
                 </button>
-                <h1 id="page-title">Dashboard</h1>
+                <div class="header-title-stack" id="header-greeting-stack">
+                    <p class="header-greeting" id="header-greeting">Good evening</p>
+                    <p class="header-tagline">Small steps. Big progress.</p>
+                </div>
+                <h1 id="page-title" hidden>Dashboard</h1>
             </div>
             <div class="header-actions">
                 <button class="btn btn-neon-pink" onclick="switchView('timer', document.getElementById('nav-item-timer-toggle'))">
-                    <i data-lucide="heart-handshake"></i> <span class="hdr-btn-label">Start Session</span>
+                    <i data-lucide="play"></i> <span class="hdr-btn-label">Start Session</span>
                 </button>
             </div>
         </div>
 
         <!-- VIEW: DASHBOARD -->
         <div id="view-dashboard" class="view-panel active">
+
+            <div class="dash-hero-banner">
+                <div>
+                    <p class="dash-hero-quote">Discipline today, freedom tomorrow.<span class="dash-hero-underline" aria-hidden="true"></span></p>
+                </div>
+                <button type="button" class="btn btn-neon-pink" onclick="switchView('timer', document.getElementById('nav-item-timer-toggle'))">
+                    <i data-lucide="play"></i> Start Session
+                </button>
+            </div>
             
             <!-- Virtual Interactive Growing Pet Scoreboard Element -->
             <div class="pet-container-card">
@@ -2847,12 +3025,24 @@
                 </div>
             </div>
 
-            <div class="card" id="study-coach-card" style="margin-bottom: 20px;">
-                <div class="card-title">
-                    <span>Study Coach</span>
-                    <i data-lucide="lightbulb" style="color: var(--neon-purple);"></i>
+            <div class="dash-side-grid">
+                <div class="card" id="study-coach-card">
+                    <div class="card-title">
+                        <span>Study Coach</span>
+                        <i data-lucide="lightbulb" style="color: var(--neon-purple);"></i>
+                    </div>
+                    <p id="study-coach-tip" class="text-muted" style="font-size: 14px; line-height: 1.5; margin: 0;">Loading tip…</p>
+                    <button type="button" class="btn btn-neon-pink" style="margin-top: 14px; font-size: 12px; padding: 8px 16px;" onclick="document.getElementById('study-coach-tip').scrollIntoView({behavior:'smooth',block:'nearest'})">
+                        <i data-lucide="lightbulb" style="width:14px;height:14px;"></i> Focus tip
+                    </button>
                 </div>
-                <p id="study-coach-tip" class="text-muted" style="font-size: 14px; line-height: 1.5; margin: 0;">Loading tip…</p>
+                <div class="card dash-motivation-card">
+                    <div class="card-title">
+                        <span>Motivation</span>
+                        <i data-lucide="leaf" style="color: var(--neon-purple);"></i>
+                    </div>
+                    <p class="dash-motivation-quote">Better than yesterday</p>
+                </div>
             </div>
 
             <div class="dashboard-grid">
@@ -2925,6 +3115,13 @@
                             <!-- Populated dynamically via internal JSON modules -->
                         </div>
                     </div>
+                </div>
+
+                <div class="card dash-quote-card dashboard-row-full">
+                    <div class="card-title" style="justify-content: center;">
+                        <i data-lucide="sprout" style="color: var(--accent-solid);"></i>
+                    </div>
+                    <p class="dash-quote-text">Focus builds the life you want</p>
                 </div>
 
             </div>
@@ -3780,6 +3977,10 @@
                 syncFullscreenIcon();
                 applySidebarCollapsedState(isSidebarCollapsed());
                 restorePersistedActiveView();
+                const activePanel = document.querySelector('.view-panel.active');
+                const activeViewKey = activePanel && activePanel.id ? activePanel.id.replace(/^view-/, '') : 'dashboard';
+                syncGlobalHeaderForView(activeViewKey);
+                refreshHeaderGreeting();
                 if (window.AuraGuest && typeof AuraGuest.maybePromptGuestLogin === 'function') {
                     const guestStudySecs = appState.sessions.reduce((acc, s) => acc + s.durationSeconds, 0);
                     AuraGuest.maybePromptGuestLogin(guestStudySecs);
@@ -3819,6 +4020,8 @@
         function applyAccountIdentity(user) {
             if (!user || !user.email) return;
             appState.profile.email = user.email;
+            if (user.display_name) accountDisplayName = user.display_name;
+            refreshHeaderGreeting();
             const emailField = document.getElementById('settings-user-email');
             if (emailField) {
                 emailField.value = user.email;
@@ -3856,8 +4059,42 @@
             applySidebarCollapsedState(!isSidebarCollapsed());
         }
 
+        let accountDisplayName = '';
+
+        function getTimeGreetingPrefix() {
+            const h = new Date().getHours();
+            if (h < 12) return 'Good morning';
+            if (h < 17) return 'Good afternoon';
+            return 'Good evening';
+        }
+
+        function getHeaderFirstName() {
+            if (accountDisplayName && accountDisplayName.trim()) {
+                return accountDisplayName.trim().split(/\s+/)[0];
+            }
+            const email = appState.profile && appState.profile.email;
+            if (email && email.includes('@')) {
+                const local = email.split('@')[0].replace(/[._+-]+/g, ' ').trim();
+                if (local && local !== 'you') return local.split(/\s+/)[0];
+            }
+            return 'there';
+        }
+
+        function refreshHeaderGreeting() {
+            const greetingEl = document.getElementById('header-greeting');
+            if (greetingEl) {
+                greetingEl.textContent = getTimeGreetingPrefix() + ', ' + getHeaderFirstName();
+            }
+        }
+
         function syncGlobalHeaderForView(viewKey) {
             document.body.classList.toggle('timer-view-active', viewKey === 'timer');
+            const greetingStack = document.getElementById('header-greeting-stack');
+            const pageTitle = document.getElementById('page-title');
+            const onDashboard = viewKey === 'dashboard';
+            if (greetingStack) greetingStack.hidden = !onDashboard;
+            if (pageTitle) pageTitle.hidden = onDashboard;
+            if (onDashboard) refreshHeaderGreeting();
         }
 
         function toggleMobileNav() {
@@ -4286,7 +4523,8 @@
                 clickedAnchorRef.classList.add('active');
             }
             const headerTitle = targetPanelKey.charAt(0).toUpperCase() + targetPanelKey.slice(1);
-            document.getElementById('page-title').innerText = headerTitle === 'Trophies' ? 'Achievements' : headerTitle;
+            const pageTitleEl = document.getElementById('page-title');
+            if (pageTitleEl) pageTitleEl.innerText = headerTitle === 'Trophies' ? 'Achievements' : headerTitle;
 
             if (targetPanelKey === 'dashboard') {
                 initDashboardMetricsAndCharts();

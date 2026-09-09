@@ -1,22 +1,25 @@
-/* AuraStudy landing page.
-   Palette lifted from index.html's body[data-theme="blue"] block — the landing page
-   is always blue, regardless of which theme the app itself is set to. */
+/* AuraStudy landing — cream canvas, sage green, dusty lavender */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg-main: #F2F8FF;
+  --bg-main: #F8F5F0;
   --bg-card: #FFFFFF;
-  --border-color: #C9E2FF;
+  --border-color: #E3DDD3;
 
-  --neon-blue: #33C6FF;
-  --neon-purple: #6C8CFF;
+  --sage: #6B9080;
+  --sage-dark: #52796F;
+  --sage-rgb: 107, 144, 128;
+  --lavender: #9B8BB4;
+  --slate: #3D4451;
+  --slate-muted: #6B7280;
 
-  --text-main: #35404D;
-  --text-muted: #6F8092;
+  --accent-rgb: var(--sage-rgb);
+  --accent-solid: var(--sage);
+  --accent-strong: var(--sage-dark);
 
-  --accent-rgb: 47, 155, 224;
-  --accent-solid: #2F9BE0;
-  --accent-secondary: #6C8CFF;
-  --accent-strong: #1B82C6;
+  --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Source Sans 3', 'Segoe UI', Roboto, -apple-system, sans-serif;
 }
 
 * {
@@ -25,15 +28,17 @@
   padding: 0;
 }
 
-html, body {
-  height: 100%;
+html {
+  min-height: 100%;
+  min-height: 100dvh;
+  background: var(--bg-main);
 }
 
 body {
-  font-family: 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   background: var(--bg-main);
-  color: var(--text-main);
+  color: var(--slate);
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
@@ -43,6 +48,7 @@ body {
   position: relative;
   min-height: 100vh;
   min-height: 100dvh;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -53,20 +59,23 @@ body {
   padding-left: max(24px, env(safe-area-inset-left));
   text-align: center;
   overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(155, 139, 180, 0.12), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 20% 90%, rgba(107, 144, 128, 0.1), transparent 65%),
+    var(--bg-main);
 }
 
 .landing-glow {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(900px, 140vw);
-  height: min(900px, 140vw);
-  transform: translate(-50%, -50%);
-  background:
-    radial-gradient(circle at 35% 30%, rgba(var(--accent-rgb), 0.16), transparent 55%),
-    radial-gradient(circle at 65% 70%, rgba(108, 140, 255, 0.14), transparent 55%);
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 45%;
   pointer-events: none;
   z-index: 0;
+  background:
+    linear-gradient(to top, rgba(155, 139, 180, 0.08) 0%, transparent 55%),
+    linear-gradient(135deg, rgba(107, 144, 128, 0.06) 0%, transparent 50%);
 }
 
 .landing-inner {
@@ -75,25 +84,34 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  max-width: 92vw;
+  gap: 16px;
+  max-width: min(34rem, 92vw);
 }
 
-/* ---------- Wordmark ---------- */
+.landing-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.landing-logo {
+  width: clamp(120px, 28vw, 168px);
+  height: auto;
+  object-fit: contain;
+}
 
 .wordmark {
-  font-size: clamp(2.4rem, 11vw, 4.75rem);
-  font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  max-width: 100%;
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 9vw, 3.25rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--slate);
 }
 
 .wordmark .letters {
   display: inline-block;
-  color: var(--accent-solid);
-  filter: drop-shadow(0 4px 20px rgba(var(--accent-rgb), 0.25));
 }
 
 .letter {
@@ -101,44 +119,45 @@ body {
   will-change: transform, opacity;
 }
 
-/* Space characters need width even though they render no glyph */
 .letter.is-space {
   width: 0.28em;
 }
 
 .tagline {
-  font-size: clamp(0.85rem, 2.4vw, 1.05rem);
-  color: var(--text-muted);
-  font-weight: 600;
+  font-family: var(--font-serif);
+  font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+  color: var(--slate-muted);
+  font-weight: 500;
 }
 
 .guest-trial-copy {
-  font-size: clamp(0.78rem, 2.1vw, 0.95rem);
-  color: var(--text-muted);
+  font-size: clamp(0.78rem, 2.1vw, 0.92rem);
+  color: var(--slate-muted);
   font-weight: 500;
   line-height: 1.55;
-  max-width: 34rem;
-  margin-top: 4px;
+  max-width: 32rem;
 }
-
-/* ---------- Buttons ---------- */
 
 .cta-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   gap: 12px;
-  margin-top: 10px;
+  margin-top: 8px;
+  width: 100%;
+  max-width: 28rem;
 }
 
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 1 1 140px;
   min-width: 128px;
-  padding: 13px 28px;
+  padding: 13px 22px;
   border-radius: 999px;
+  font-family: var(--font-sans);
   font-size: 15px;
   font-weight: 700;
   text-decoration: none;
@@ -149,27 +168,27 @@ body {
 
 .btn-outline {
   background: var(--bg-card);
-  color: var(--text-main);
+  color: var(--slate);
   border-color: var(--border-color);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .btn-outline:hover {
-  border-color: var(--accent-solid);
-  color: var(--accent-strong);
+  border-color: var(--sage);
+  color: var(--sage-dark);
   transform: translateY(-1px);
 }
 
 .btn-primary {
-  background: var(--accent-solid);
+  background: var(--sage);
   color: #FFFFFF;
-  box-shadow: 0 8px 20px rgba(var(--accent-rgb), 0.32);
+  box-shadow: 0 8px 20px rgba(var(--sage-rgb), 0.28);
 }
 
 .btn-primary:hover {
-  background: var(--accent-strong);
+  background: var(--sage-dark);
   transform: translateY(-1px);
-  box-shadow: 0 10px 26px rgba(var(--accent-rgb), 0.4);
+  box-shadow: 0 10px 26px rgba(var(--sage-rgb), 0.35);
 }
 
 .btn:active {
@@ -177,32 +196,19 @@ body {
 }
 
 .btn:focus-visible {
-  outline: 3px solid var(--neon-blue);
+  outline: 3px solid var(--lavender);
   outline-offset: 3px;
 }
 
-/* Guarantee a keyboard user always sees the button in full, even mid fade-in. */
 .cta-row:focus-within {
   opacity: 1 !important;
   animation: none !important;
   transform: none !important;
 }
 
-/* ---------- Animation (progressive enhancement only) ----------
-   Everything is fully visible and static by default so the page works with no CSS
-   animation support and, more importantly, if JavaScript never runs (the inline
-   bootstrap script below is the only thing that flips this on). */
-
+/* Progressive enhancement — wordmark always visible before JS */
 html.js-enabled .wordmark .letters {
-  opacity: 0;
-  animation: word-fallback-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s forwards;
-}
-
-/* Once landing.js has split the word into individual letters it adds .is-split,
-   which hands the animating over to the per-letter spans below. */
-html.js-enabled .wordmark .letters.is-split {
   opacity: 1;
-  animation: none;
 }
 
 html.js-enabled .wordmark .letters.is-split .letter {
@@ -213,27 +219,22 @@ html.js-enabled .wordmark .letters.is-split .letter {
 
 html.js-enabled .tagline {
   opacity: 0;
-  animation: fade-up 0.45s ease-out 1.05s forwards;
+  animation: fade-up 0.45s ease-out 0.85s forwards;
 }
 
 html.js-enabled .guest-trial-copy {
   opacity: 0;
-  animation: fade-up 0.45s ease-out 1.12s forwards;
+  animation: fade-up 0.45s ease-out 0.95s forwards;
 }
 
 html.js-enabled .cta-row {
   opacity: 0;
-  animation: fade-up 0.45s ease-out 1.22s forwards;
-}
-
-@keyframes word-fallback-in {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
+  animation: fade-up 0.45s ease-out 1.05s forwards;
 }
 
 @keyframes letter-in {
-  0%   { opacity: 0; transform: translateY(22px) scale(0.85); }
-  55%  { opacity: 1; transform: translateY(-3px) scale(1.04); }
+  0%   { opacity: 0; transform: translateY(14px) scale(0.92); }
+  55%  { opacity: 1; transform: translateY(-2px) scale(1.02); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
@@ -242,7 +243,6 @@ html.js-enabled .cta-row {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Belt-and-braces: even if JS mis-times something, reduced motion always wins. */
 @media (prefers-reduced-motion: reduce) {
   html.js-enabled .wordmark .letters,
   html.js-enabled .wordmark .letters.is-split .letter,
@@ -255,11 +255,6 @@ html.js-enabled .cta-row {
   }
 }
 
-/* Session-repeat visits: landing.js marks the reveal as played (via
-   sessionStorage) the first time it runs in a tab session, and adds this
-   class on every later visit to `/` in that same tab instead of replaying
-   the animation -- same finished-state treatment as reduced motion above,
-   just triggered from JS instead of a media query. */
 html.skip-anim .wordmark .letters,
 html.skip-anim .wordmark .letters.is-split .letter,
 html.skip-anim .tagline,
@@ -270,10 +265,14 @@ html.skip-anim .cta-row {
   animation: none !important;
 }
 
-@media (max-width: 360px) {
+@media (max-width: 480px) {
+  .cta-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .btn {
-    min-width: 0;
-    padding: 12px 20px;
-    font-size: 14px;
+    flex: 1 1 auto;
+    width: 100%;
   }
 }
