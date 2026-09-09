@@ -829,3 +829,24 @@ def test_invalid_leaderboard_period_rejected(client, outbox):
     register_verify(client, outbox, "badperiod@example.com")
     resp = client.get("/api/leaderboard?period=month", headers=JSON_HEADERS)
     assert resp.status_code == 400
+
+
+def test_lifetime_leaderboard_ranks_all_time(client, outbox):
+    register_verify(client, outbox, "lifetime-a@example.com")
+    set_name(client, "Lifetime Ace")
+    put_state(client, [session_today(5 * 3600)])
+    lb = client.get("/api/leaderboard?period=lifetime", headers=JSON_HEADERS).get_json()
+    assert lb["period"] == "lifetime"
+    assert lb["you"]["seconds"] == 5 * 3600
+    assert lb["entries"][0]["name"] == "Lifetime Ace"
+    assert lb["entries"][0]["seconds"] == 5 * 3600
+    assert lb["entries"][0]["form"]
+
+
+def test_lifetime_leaderboard_accepts_all_alias(client, outbox):
+    register_verify(client, outbox, "lifetime-b@example.com")
+    set_name(client, "Alias Ace")
+    put_state(client, [session_today(2 * 3600)])
+    lb = client.get("/api/leaderboard?period=all", headers=JSON_HEADERS).get_json()
+    assert lb["period"] == "lifetime"
+    assert lb["you"]["seconds"] == 2 * 3600

@@ -10,11 +10,14 @@ def _read(*parts):
         return f.read()
 
 
-def test_leaderboard_has_daily_weekly_toggle_and_no_auto_open_name_editor():
+def test_leaderboard_has_daily_weekly_lifetime_toggle_and_no_auto_open_name_editor():
     html = _read("index.html")
     assert 'id="lb-period-day"' in html
     assert 'id="lb-period-week"' in html
+    assert 'id="lb-period-lifetime"' in html
     assert "setLeaderboardPeriod('day')" in html
+    assert "setLeaderboardPeriod('lifetime')" in html
+    assert "No one is ranked yet." in html
     assert "leaderboardNameEditorAutoOpened" not in html
     assert "You are shown as" in html
     assert "function onTimerKeyboardShortcut" in html
@@ -22,7 +25,6 @@ def test_leaderboard_has_daily_weekly_toggle_and_no_auto_open_name_editor():
     assert "function celebrateNewUnlocks" in html
     assert "function openPetGallery" in html
     assert "mSum / 3600" in html
-    assert "aurastudy_theme" in html
     assert "Reach at " in html
     assert "text-decoration: none" in html
     assert "hue-sun" in html and "trophyHueClass" in html
@@ -86,15 +88,17 @@ def test_reset_flow_uses_branded_confirm_modal_not_window_confirm():
     assert "saveEngineWorkspaceBlockData()" in reset_block
 
 
-def test_theme_and_timer_colors_live_in_settings_not_sidebar():
+def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     html = _read("index.html")
     sidebar_footer = html[html.index('<div class="sidebar-footer">'):html.index('id="nav-item-logout"')]
     assert "theme-switch-row" not in sidebar_footer
     assert "user-profile" not in sidebar_footer
     assert 'id="user-email-display"' not in sidebar_footer
     assert "theme-btn-pink" not in sidebar_footer
-    assert "settings-theme-btn-pink" in html
-    assert "settings-theme-btn-blue" in html
+    assert "settings-theme-btn-pink" not in html
+    assert "settings-theme-btn-blue" not in html
+    assert "applyColourTheme" not in html
+    assert "Colour Theme" not in html
     assert 'id="settings-ambient-picker"' not in html
     assert 'id="settings-break-duration"' in html
     assert "Default Break Length (Minutes)" in html
@@ -111,18 +115,21 @@ def test_theme_and_timer_colors_live_in_settings_not_sidebar():
     assert 'data-ambient-key="blue-mintrefresh"' in html
     assert "function migrateAmbientKey" in html
     assert "function timerGradCssVar" in html
-    root_block = html[html.index(":root {"):html.index("/* Timer chrome:")]
+    root_block = html[html.index(":root {"):html.index("/* Branded in-app confirm dialog")]
     assert root_block.count("--timer-grad-") == 14
-    blue_theme_block = html[html.index(":root[data-theme=\"blue\"]"):html.index("/* Theme switch control")]
-    assert "--timer-grad-" not in blue_theme_block
-    assert "--ambient-grad-" not in blue_theme_block
-    assert "/static/brand/aurastudy-logo.jpg" in html
+    assert "/static/brand/aurastudy-mascot.png" in html
+    assert "/static/brand/aurastudy-wordmark.png" in html
     assert "--font-serif" in html
     assert "Fraunces" in html
     landing_css = _read("static", "landing.css")
     assert "min-height: 100dvh" in landing_css
     assert ".landing-logo" in landing_css
-    assert _read("server", "templates", "landing.html").count("/static/brand/aurastudy-logo.jpg") >= 1
+    landing_html = _read("server", "templates", "landing.html")
+    assert landing_html.count("/static/brand/aurastudy-mascot.png") >= 1
+    assert landing_html.count("/static/brand/aurastudy-wordmark.png") >= 1
+    base_html = _read("server", "templates", "base.html")
+    assert "/static/brand/aurastudy-mascot.png" in base_html
+    assert "/static/brand/aurastudy-wordmark.png" in base_html
 
 
 def test_dashboard_matches_mock_layout_single_start_session():
@@ -286,17 +293,20 @@ def test_sidebar_collapse_toggle_persisted():
     assert 'title="Dashboard"' in sidebar_block
     assert 'title="Timer"' in sidebar_block
     assert "html.sidebar-collapsed .nav-item > span:not(.nav-unread-badge)" in html
-    assert "brand-logo" in html
-    assert "/static/brand/aurastudy-logo.jpg" in html[html.index('id="sidebar-brand-home"'):html.index('id="sidebar-brand-home"') + 480]
-    assert "html.sidebar-collapsed .brand span" in html
-    collapsed_brand_span = html[
-        html.index("html.sidebar-collapsed .brand span")
-        : html.index("html.sidebar-collapsed .brand span") + 160
+    assert "brand-mascot" in html
+    assert "brand-wordmark" in html
+    brand_snippet = html[html.index('id="sidebar-brand-home"'):html.index('id="sidebar-brand-home"') + 480]
+    assert "/static/brand/aurastudy-mascot.png" in brand_snippet
+    assert "/static/brand/aurastudy-wordmark.png" in brand_snippet
+    assert "html.sidebar-collapsed .brand-wordmark" in html
+    collapsed_brand_wordmark = html[
+        html.index("html.sidebar-collapsed .brand-wordmark")
+        : html.index("html.sidebar-collapsed .brand-wordmark") + 160
     ]
-    assert "display: none" in collapsed_brand_span
+    assert "display: none" in collapsed_brand_wordmark
     collapsed_brand_row = html[
         html.index("html.sidebar-collapsed .sidebar-brand-row")
-        : html.index("html.sidebar-collapsed .brand span")
+        : html.index("html.sidebar-collapsed .brand-wordmark")
     ]
     assert "gap: 8px" in collapsed_brand_row
     assert "margin-bottom: 8px" in collapsed_brand_row
@@ -338,17 +348,30 @@ def test_dashboard_chart_tooltip_is_larger_and_quote_card_centers_content():
     assert "dash-quote-content" in html
 
 
-def test_brand_logo_crops_mascot_and_tagline_removed():
+def test_brand_uses_png_mascot_and_wordmark_not_jpg_crop():
     html = _read("index.html")
     assert "brand-tagline" not in html
     assert "Focus / Learn / Grow" not in html
-    logo_block = html[html.index(".brand-logo {"):html.index(".brand-logo {") + 280]
-    assert "mix-blend-mode: multiply" in logo_block
-    assert "object-position: 22% center" in logo_block
+    assert "/static/brand/aurastudy-logo.jpg" not in html
+    assert "object-position: 22% center" not in html
+    assert "mix-blend-mode: multiply" not in html[html.index(".brand-mascot"):html.index(".brand-mascot") + 220]
     landing_css = _read("static", "landing.css")
-    assert "object-position: 22% center" in landing_css
+    assert "object-position: 22% center" not in landing_css
     auth_css = _read("static", "auth.css")
-    assert "mix-blend-mode: multiply" in auth_css
+    assert "mix-blend-mode: multiply" not in auth_css
+
+
+def test_study_coach_has_no_focus_tip_button():
+    html = _read("index.html")
+    coach_block = html[html.index('id="study-coach-card"'):html.index('id="study-coach-card"') + 520]
+    assert "Focus tip" not in coach_block
+    assert 'id="study-coach-tip"' in coach_block
+    assert "Loading tip" not in coach_block
+    assert "function updateStudyCoachCard" in html
+    finish_boot_block = html[html.index("function finishAppBoot"):html.index("function finishAppBoot") + 480]
+    assert "initDashboardMetricsAndCharts();" in finish_boot_block
+    init_dash_block = html[html.index("function initDashboardMetricsAndCharts"):html.index("function initDashboardMetricsAndCharts") + 600]
+    assert "updateStudyCoachCard();" in init_dash_block
 
 
 def test_default_todos_empty_and_legacy_strings_stripped():

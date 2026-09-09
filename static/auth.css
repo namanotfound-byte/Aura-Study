@@ -96,12 +96,16 @@ body {
   text-align: center;
 }
 
-.auth-brand-logo {
+.auth-brand-mascot {
   width: 88px;
   height: 88px;
-  object-fit: cover;
-  object-position: 22% center;
-  mix-blend-mode: multiply;
+  object-fit: contain;
+}
+
+.auth-brand-wordmark {
+  width: min(220px, 72vw);
+  height: auto;
+  object-fit: contain;
 }
 
 .auth-wordmark {

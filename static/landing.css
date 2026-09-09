@@ -95,12 +95,17 @@ body {
   gap: 12px;
 }
 
-.landing-logo {
+.landing-logo,
+.landing-mascot {
   width: clamp(96px, 22vw, 132px);
   height: clamp(96px, 22vw, 132px);
-  object-fit: cover;
-  object-position: 22% center;
-  mix-blend-mode: multiply;
+  object-fit: contain;
+}
+
+.landing-wordmark {
+  width: min(280px, 78vw);
+  height: auto;
+  object-fit: contain;
 }
 
 .wordmark {

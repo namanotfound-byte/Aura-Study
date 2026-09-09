@@ -11,16 +11,6 @@
     <script>
         (function () {
             try {
-                var theme = localStorage.getItem('aurastudy_theme');
-                if (theme !== 'blue' && theme !== 'pink') {
-                    var raw = localStorage.getItem('aurastudy_state_v1') || localStorage.getItem('aurastudy_girly_v8');
-                    if (raw) theme = JSON.parse(raw).colourTheme;
-                }
-                if (theme === 'blue') document.documentElement.setAttribute('data-theme', 'blue');
-            } catch (e) { /* first paint stays default */ }
-        })();
-        (function () {
-            try {
                 if (localStorage.getItem('aurastudy_sidebar_collapsed') === '1') {
                     document.documentElement.classList.add('sidebar-collapsed');
                 }
@@ -77,47 +67,6 @@
             --accent-strong: #52796F;
         }
 
-        /* Timer chrome: Bubblegum Pink (settings option — timer view only) */
-        :root:not([data-theme="blue"]) #view-timer {
-            --neon-pink: #FF66B2;
-            --neon-purple: #B57CFF;
-            --neon-blue: #33C6FF;
-            --neon-green: #52E5A3;
-        }
-
-        /* Timer chrome: Blueberry Frost (settings option — timer view only) */
-        :root[data-theme="blue"] #view-timer {
-            --neon-pink: #2F9BE0;
-            --neon-purple: #6C8CFF;
-            --neon-blue: #33C6FF;
-            --neon-green: #52E5A3;
-        }
-
-        /* Theme switch control (Settings only) */
-        .settings-theme-row,
-        .theme-switch-row {
-            display: flex;
-            gap: 8px;
-            padding: 8px;
-            margin-bottom: 8px;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-        }
-
-        .settings-appearance-label {
-            display: block;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            margin-bottom: 6px;
-            color: var(--text-muted);
-        }
-
-        .settings-appearance-label + .settings-theme-row {
-            margin-bottom: 20px;
-        }
-
         /* Branded in-app confirm dialog (replaces window.confirm for destructive actions) */
         .aura-confirm-backdrop {
             position: fixed;
@@ -165,39 +114,6 @@
             border-color: transparent;
         }
 
-        .theme-switch-btn {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 8px 6px;
-            border: 1px solid transparent;
-            border-radius: 12px;
-            background: transparent;
-            color: var(--text-muted);
-            font-size: 12px;
-            font-weight: 800;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .theme-switch-btn .theme-swatch {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            border: 1px solid rgba(0, 0, 0, 0.08);
-        }
-
-        .theme-switch-btn:hover { background: var(--bg-card-hover); }
-
-        .theme-switch-btn.active {
-            color: var(--accent-solid);
-            border-color: var(--border-color);
-            background: var(--bg-sidebar);
-            box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.2);
-        }
-
         * {
             box-sizing: border-box;
             margin: 0;
@@ -206,7 +122,7 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        h1, h2, h3, .header-greeting, .dash-hero-quote, .dash-motivation-quote, .dash-quote-text, .brand span {
+        h1, h2, h3, .header-greeting, .dash-hero-quote, .dash-motivation-quote, .dash-quote-text {
             font-family: var(--font-serif);
         }
 
@@ -242,18 +158,16 @@
             flex-direction: column;
             align-items: center;
             gap: 12px;
-            font-family: var(--font-serif);
-            font-size: 26px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            color: var(--text-main);
         }
-        .app-boot-logo img {
+        .app-boot-mascot {
             width: 72px;
             height: 72px;
-            object-fit: cover;
-            object-position: 22% center;
-            mix-blend-mode: multiply;
+            object-fit: contain;
+        }
+        .app-boot-wordmark {
+            width: min(220px, 70vw);
+            height: auto;
+            object-fit: contain;
         }
         .app-boot-spinner {
             width: 36px;
@@ -393,20 +307,18 @@
             align-items: center;
             gap: 10px;
         }
-        .brand-logo {
+        .brand-mascot {
             width: 40px;
             height: 40px;
-            object-fit: cover;
-            object-position: 22% center;
+            object-fit: contain;
             flex-shrink: 0;
-            border-radius: 0;
-            mix-blend-mode: multiply;
         }
-        .brand span {
-            color: var(--text-main);
-            font-family: var(--font-serif);
-            font-weight: 700;
-            line-height: 1.1;
+        .brand-wordmark {
+            height: 28px;
+            width: auto;
+            max-width: 140px;
+            object-fit: contain;
+            flex-shrink: 1;
         }
         button.brand {
             border: none;
@@ -457,7 +369,7 @@
                 margin-bottom: 8px;
             }
 
-            html.sidebar-collapsed .brand span {
+            html.sidebar-collapsed .brand-wordmark {
                 display: none;
             }
 
@@ -469,7 +381,7 @@
             html.sidebar-collapsed .brand-logo-row {
                 justify-content: center;
             }
-            html.sidebar-collapsed .brand-logo {
+            html.sidebar-collapsed .brand-mascot {
                 width: 36px;
                 height: 36px;
             }
@@ -2819,7 +2731,6 @@
             .mode-tab-btn,
             .trophy-tab-trigger,
             .subject-pill,
-            .theme-switch-btn { min-height: 44px; }
             .btn,
             .timer-btn,
             .timer-btn-icon,
@@ -3257,8 +3168,8 @@
 
     <div id="app-boot-overlay" role="status" aria-live="polite" aria-label="Loading AuraStudy">
         <div class="app-boot-logo">
-            <img src="/static/brand/aurastudy-logo.jpg" alt="" width="120" height="120">
-            <span>AuraStudy</span>
+            <img src="/static/brand/aurastudy-mascot.png" alt="" class="app-boot-mascot" width="72" height="72">
+            <img src="/static/brand/aurastudy-wordmark.png" alt="AuraStudy" class="app-boot-wordmark">
         </div>
         <div class="app-boot-spinner" aria-hidden="true"></div>
         <p class="app-boot-caption">Loading your workspace…</p>
@@ -3296,8 +3207,8 @@
             <div class="sidebar-brand-row">
                 <button type="button" class="brand" id="sidebar-brand-home" aria-label="Go to Dashboard" onclick="switchView('dashboard', document.querySelector('#app-sidebar .nav-group .nav-item[title=&quot;Dashboard&quot;]')); closeMobileNav();">
                     <div class="brand-logo-row">
-                        <img src="/static/brand/aurastudy-logo.jpg" alt="" class="brand-logo" width="40" height="40">
-                        <span>AuraStudy</span>
+                        <img src="/static/brand/aurastudy-mascot.png" alt="" class="brand-mascot" width="40" height="40">
+                        <img src="/static/brand/aurastudy-wordmark.png" alt="AuraStudy" class="brand-wordmark">
                     </div>
                 </button>
                 <button type="button" class="sidebar-collapse-btn" id="sidebar-collapse-toggle" aria-label="Collapse sidebar" title="Collapse sidebar" onclick="toggleSidebarCollapsed()">
@@ -3460,10 +3371,7 @@
                         <span>Study Coach</span>
                         <i data-lucide="lightbulb" style="color: var(--neon-purple);"></i>
                     </div>
-                    <p id="study-coach-tip" class="text-muted" style="font-size: 14px; line-height: 1.5; margin: 0;">Loading tip…</p>
-                    <button type="button" class="btn btn-neon-pink" style="margin-top: 14px; font-size: 12px; padding: 8px 16px;" onclick="document.getElementById('study-coach-tip').scrollIntoView({behavior:'smooth',block:'nearest'})">
-                        <i data-lucide="lightbulb" style="width:14px;height:14px;"></i> Focus tip
-                    </button>
+                    <p id="study-coach-tip" class="text-muted" style="font-size: 14px; line-height: 1.5; margin: 0;">Welcome! Log your first study session to unlock personalized tips based on your habits.</p>
                 </div>
 
                 <div class="card">
@@ -3779,6 +3687,7 @@
                         <div class="lb-period-tabs" role="tablist" aria-label="Leaderboard period">
                             <button type="button" class="lb-period-tab" id="lb-period-day" onclick="setLeaderboardPeriod('day')">Daily</button>
                             <button type="button" class="lb-period-tab active" id="lb-period-week" onclick="setLeaderboardPeriod('week')">Weekly</button>
+                            <button type="button" class="lb-period-tab" id="lb-period-lifetime" onclick="setLeaderboardPeriod('lifetime')">Lifetime</button>
                         </div>
                     </div>
                     <label class="lb-opt-row" for="leaderboard-opt-toggle">
@@ -3907,23 +3816,6 @@
                 </div>
 
                 <button class="btn btn-neon-pink" onclick="triggerManualSaveNotification()">Save Changes</button>
-            </div>
-
-            <div class="card" style="max-width: 600px; margin-top: 24px;">
-                <div class="card-title">Appearance</div>
-                <p class="text-muted" style="font-size: 12px; margin-top: -10px; margin-bottom: 16px;">Choose your app colour theme. Timer background colours are on the Timer view.</p>
-
-                <span class="settings-appearance-label">Colour Theme</span>
-                <div class="settings-theme-row">
-                    <button class="theme-switch-btn" id="settings-theme-btn-pink" type="button" onclick="applyColourTheme('pink')" title="Bubblegum Pink">
-                        <span class="theme-swatch" style="background: linear-gradient(135deg, #FF66B2, #B57CFF);"></span>
-                        Pink
-                    </button>
-                    <button class="theme-switch-btn" id="settings-theme-btn-blue" type="button" onclick="applyColourTheme('blue')" title="Blueberry Frost">
-                        <span class="theme-swatch" style="background: linear-gradient(135deg, #2F9BE0, #6C8CFF);"></span>
-                        Blue
-                    </button>
-                </div>
             </div>
 
             <div class="card" style="max-width: 600px; margin-top: 24px;">
@@ -4412,6 +4304,7 @@
             document.documentElement.classList.remove('boot-pending');
             const overlay = document.getElementById('app-boot-overlay');
             if (overlay) overlay.hidden = true;
+            initDashboardMetricsAndCharts();
         }
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -4468,7 +4361,16 @@
                 }
                 clearTimeout(bootFinishTimer);
                 finishAppBoot();
-                if (window.AuraTour && typeof AuraTour.initAppTour === 'function') AuraTour.initAppTour(appState);
+                if (window.AuraTour && typeof AuraTour.initAppTour === 'function') {
+                    AuraTour.initAppTour(appState);
+                    if (typeof AuraTour.teardown === 'function') {
+                        const origTourTeardown = AuraTour.teardown;
+                        AuraTour.teardown = function () {
+                            origTourTeardown.apply(this, arguments);
+                            initDashboardMetricsAndCharts();
+                        };
+                    }
+                }
             }).catch(() => {
                 clearTimeout(bootFinishTimer);
                 finishAppBoot();
@@ -4813,30 +4715,6 @@
             return `${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)}`;
         }
 
-        function applyColourTheme(themeKey, isInitialLoad = false) {
-            appState.colourTheme = (themeKey === 'blue') ? 'blue' : 'pink';
-            if (appState.colourTheme === 'blue') {
-                document.documentElement.setAttribute('data-theme', 'blue');
-                document.body.setAttribute('data-theme', 'blue');
-            } else {
-                document.documentElement.removeAttribute('data-theme');
-                document.body.removeAttribute('data-theme');
-            }
-            try { localStorage.setItem('aurastudy_theme', appState.colourTheme); } catch (e) { /* ignore */ }
-
-            const pinkBtn = document.getElementById('settings-theme-btn-pink');
-            const blueBtn = document.getElementById('settings-theme-btn-blue');
-            if (pinkBtn && blueBtn) {
-                pinkBtn.classList.toggle('active', appState.colourTheme === 'pink');
-                blueBtn.classList.toggle('active', appState.colourTheme === 'blue');
-            }
-
-            if (!isInitialLoad) {
-                saveStateToLocalStorageRegister();
-                if (operationalBarChartInstance) buildAnalyticsChartCanvasComponent();
-            }
-        }
-
         function saveStateToLocalStorageRegister() {
             localStorage.setItem('aurastudy_state_v1', JSON.stringify(appState));
         }
@@ -4866,7 +4744,6 @@
             }
             appState.ambientKey = migrateAmbientKey(appState.ambientKey, appState.colourTheme);
             appState.isDarkAmbient = ambientPresetIsDark(appState.ambientKey);
-            applyColourTheme(appState.colourTheme, true);
             applyAmbientEnvironmentPreset(appState.ambientKey, appState.isDarkAmbient);
             appState.profile.defaultBreakMinutes = sanitizeBreakMinutes(appState.profile.defaultBreakMinutes);
             document.getElementById('settings-user-email').value = appState.profile.email;
@@ -6043,19 +5920,51 @@
         }
 
         // Dashboard Metrics and Chart Logic
+        function isDashboardChartCanvasReady() {
+            const canvas = document.getElementById('analyticsChart');
+            if (!canvas) return false;
+            const rect = canvas.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+        }
+
+        function resizeDashboardChartIfNeeded() {
+            if (operationalBarChartInstance && typeof operationalBarChartInstance.resize === 'function') {
+                operationalBarChartInstance.resize();
+            }
+        }
+
         function initDashboardMetricsAndCharts() {
+            updateStudyCoachCard();
+
             const today = getLocalDateStr();
             let todaySecs = 0; appState.sessions.forEach(s => { if(s.date === today) todaySecs += s.durationSeconds; });
-            document.getElementById('dash-today-time').innerText = formatDurationHM(todaySecs);
+            const todayEl = document.getElementById('dash-today-time');
+            if (todayEl) todayEl.innerText = formatDurationHM(todaySecs);
 
             const totalGoalSecs = appState.profile.dailyGoalHours * 3600;
             const completedPercentage = Math.min(Math.floor((todaySecs / totalGoalSecs) * 100), 100);
-            document.getElementById('dash-progress-text').innerText = `${completedPercentage}% achieved`;
-            document.getElementById('dash-goal-text').innerText = `Daily Target: ${formatDurationHM(totalGoalSecs)}`;
-            document.getElementById('dash-progress-fill').style.width = `${completedPercentage}%`;
+            const progressText = document.getElementById('dash-progress-text');
+            const goalText = document.getElementById('dash-goal-text');
+            const progressFill = document.getElementById('dash-progress-fill');
+            if (progressText) progressText.innerText = `${completedPercentage}% achieved`;
+            if (goalText) goalText.innerText = `Daily Target: ${formatDurationHM(totalGoalSecs)}`;
+            if (progressFill) progressFill.style.width = `${completedPercentage}%`;
 
-            calculateStreaksLogicModule(); buildAnalyticsChartCanvasComponent();
-            updateStudyCoachCard();
+            calculateStreaksLogicModule();
+
+            if (isDashboardChartCanvasReady()) {
+                buildAnalyticsChartCanvasComponent();
+                resizeDashboardChartIfNeeded();
+            } else {
+                window.requestAnimationFrame(function () {
+                    window.setTimeout(function () {
+                        if (isDashboardChartCanvasReady()) {
+                            buildAnalyticsChartCanvasComponent();
+                            resizeDashboardChartIfNeeded();
+                        }
+                    }, 50);
+                });
+            }
         }
 
         function calculateStreaksLogicModule() {
@@ -6383,13 +6292,21 @@
 
             if (participants === 0 && entries.length === 0) {
                 content.style.display = 'none';
-                showLeaderboardState('empty', isGuestViewer
-                    ? "No one has logged study time yet. Sign up free to appear on the board once you start studying."
-                    : (!you.public_name
-                        ? "No one has logged study time this week yet. Set a public name above to be ready to join once you start studying."
-                        : (you.opted_in
-                            ? "No one has logged study time this week yet -- be the first! Your total will show up here once you've studied a bit."
-                            : "No one has logged study time this week yet. Flip \"Show me on the board\" above to join in once you start studying.")));
+                let emptyMessage;
+                if (leaderboardPeriod === 'lifetime') {
+                    emptyMessage = isGuestViewer
+                        ? "No one is ranked yet."
+                        : "No one is ranked yet.";
+                } else if (isGuestViewer) {
+                    emptyMessage = "No one has logged study time yet. Sign up free to appear on the board once you start studying.";
+                } else if (!you.public_name) {
+                    emptyMessage = "No one has logged study time this week yet. Set a public name above to be ready to join once you start studying.";
+                } else if (you.opted_in) {
+                    emptyMessage = "No one has logged study time this week yet -- be the first! Your total will show up here once you've studied a bit.";
+                } else {
+                    emptyMessage = "No one has logged study time this week yet. Flip \"Show me on the board\" above to join in once you start studying.";
+                }
+                showLeaderboardState('empty', emptyMessage);
                 return;
             }
 
@@ -6447,11 +6364,13 @@
         }
 
         function setLeaderboardPeriod(period) {
-            leaderboardPeriod = period === 'day' ? 'day' : 'week';
+            leaderboardPeriod = period === 'day' ? 'day' : (period === 'lifetime' ? 'lifetime' : 'week');
             const dayBtn = document.getElementById('lb-period-day');
             const weekBtn = document.getElementById('lb-period-week');
+            const lifetimeBtn = document.getElementById('lb-period-lifetime');
             if (dayBtn) dayBtn.classList.toggle('active', leaderboardPeriod === 'day');
             if (weekBtn) weekBtn.classList.toggle('active', leaderboardPeriod === 'week');
+            if (lifetimeBtn) lifetimeBtn.classList.toggle('active', leaderboardPeriod === 'lifetime');
             const heading = document.getElementById('lb-heading');
             const copy = document.getElementById('lb-copy');
             const chartTitle = document.getElementById('lb-chart-title');
@@ -6459,6 +6378,10 @@
                 if (heading) heading.textContent = "Today's Leaderboard";
                 if (copy) copy.textContent = "Total study time today, across everyone who's opted in and set a public name. Resets at midnight in your timezone.";
                 if (chartTitle) chartTitle.textContent = 'Top 20 Today';
+            } else if (leaderboardPeriod === 'lifetime') {
+                if (heading) heading.textContent = 'Lifetime Leaderboard';
+                if (copy) copy.textContent = "All-time study totals across everyone who's opted in and set a public name.";
+                if (chartTitle) chartTitle.textContent = 'Top 20 All Time';
             } else {
                 if (heading) heading.textContent = "This Week's Leaderboard";
                 if (copy) copy.textContent = "Total study time this week, across everyone who's opted in and set a public name. Resets every Monday.";
@@ -6749,6 +6672,7 @@
                     }
                 }
             });
+            resizeDashboardChartIfNeeded();
         }
 
         // -- Help / doubts panel -----------------------------------------------

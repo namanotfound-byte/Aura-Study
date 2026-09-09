@@ -570,14 +570,163 @@ def _pet_entries_guest_view(db, week_start_str):
     }
 
 
+def _board_from_lifetime(db, user, local_date=None, limit=TOP_N):
+    """All-time study leaderboard ranked by leaderboard_lifetime.seconds."""
+    backfill_lifetime_from_user_state(db)
+    user_id = user["id"]
+    my_public_name = user["public_name"]
+    week_start_str = current_week_start(local_date).isoformat()
+
+    my_life = db.execute(
+        "SELECT seconds FROM leaderboard_lifetime WHERE user_id = %s",
+        (user_id,),
+    ).fetchone()
+    my_seconds = my_life["seconds"] if my_life is not None else 0
+
+    opt_row = db.execute(
+        "SELECT opted_in FROM leaderboard_weeks WHERE user_id = %s AND week_start = %s",
+        (user_id, week_start_str),
+    ).fetchone()
+    my_opted_in = bool(opt_row["opted_in"]) if opt_row is not None else True
+    my_pet = pet_fields_from_lifetime_seconds(my_seconds)
+
+    top_rows = db.execute(
+        """
+        SELECT ll.user_id, ll.seconds, u.public_name
+        FROM leaderboard_lifetime ll
+        JOIN users u ON u.id = ll.user_id
+        LEFT JOIN leaderboard_weeks lw
+            ON lw.user_id = ll.user_id AND lw.week_start = %s
+        WHERE ll.seconds > 0 AND u.public_name IS NOT NULL
+              AND (lw.opted_in IS NULL OR lw.opted_in = %s)
+        ORDER BY ll.seconds DESC, ll.user_id ASC
+        LIMIT %s
+        """,
+        (week_start_str, True, limit),
+    ).fetchall()
+
+    entries = []
+    my_rank = None
+    for idx, row in enumerate(top_rows, start=1):
+        pet = pet_fields_from_lifetime_seconds(row["seconds"])
+        entries.append({
+            "rank": idx,
+            "name": row["public_name"],
+            "seconds": row["seconds"],
+            "level": pet["level"],
+            "form": pet["form"],
+            "emoji": pet["emoji"],
+        })
+        if row["user_id"] == user_id:
+            my_rank = idx
+
+    listed = my_opted_in and my_public_name is not None and my_seconds > 0
+    if listed and my_rank is None:
+        better = db.execute(
+            """
+            SELECT COUNT(*) AS c
+            FROM leaderboard_lifetime ll
+            JOIN users u ON u.id = ll.user_id
+            LEFT JOIN leaderboard_weeks lw
+                ON lw.user_id = ll.user_id AND lw.week_start = %s
+            WHERE ll.seconds > %s AND u.public_name IS NOT NULL
+                  AND (lw.opted_in IS NULL OR lw.opted_in = %s)
+            """,
+            (week_start_str, my_seconds, True),
+        ).fetchone()
+        my_rank = better["c"] + 1
+    elif not listed:
+        my_rank = None
+
+    participants_row = db.execute(
+        """
+        SELECT COUNT(*) AS c
+        FROM leaderboard_lifetime ll
+        JOIN users u ON u.id = ll.user_id
+        LEFT JOIN leaderboard_weeks lw
+            ON lw.user_id = ll.user_id AND lw.week_start = %s
+        WHERE ll.seconds > 0 AND u.public_name IS NOT NULL
+              AND (lw.opted_in IS NULL OR lw.opted_in = %s)
+        """,
+        (week_start_str, True),
+    ).fetchone()
+
+    return {
+        "you": {
+            "rank": my_rank,
+            "seconds": my_seconds,
+            "public_name": my_public_name,
+            "opted_in": my_opted_in,
+            "level": my_pet["level"],
+            "form": my_pet["form"],
+            "emoji": my_pet["emoji"],
+        },
+        "entries": entries,
+        "participants": participants_row["c"],
+    }
+
+
+def _board_lifetime_guest_view(db, local_date=None, limit=TOP_N):
+    backfill_lifetime_from_user_state(db)
+    week_start_str = current_week_start(local_date).isoformat()
+    top_rows = db.execute(
+        """
+        SELECT ll.user_id, ll.seconds, u.public_name
+        FROM leaderboard_lifetime ll
+        JOIN users u ON u.id = ll.user_id
+        LEFT JOIN leaderboard_weeks lw
+            ON lw.user_id = ll.user_id AND lw.week_start = %s
+        WHERE ll.seconds > 0 AND u.public_name IS NOT NULL
+              AND (lw.opted_in IS NULL OR lw.opted_in = %s)
+        ORDER BY ll.seconds DESC, ll.user_id ASC
+        LIMIT %s
+        """,
+        (week_start_str, True, limit),
+    ).fetchall()
+
+    entries = []
+    for idx, row in enumerate(top_rows, start=1):
+        pet = pet_fields_from_lifetime_seconds(row["seconds"])
+        entries.append({
+            "rank": idx,
+            "name": row["public_name"],
+            "seconds": row["seconds"],
+            "level": pet["level"],
+            "form": pet["form"],
+            "emoji": pet["emoji"],
+        })
+
+    participants_row = db.execute(
+        """
+        SELECT COUNT(*) AS c
+        FROM leaderboard_lifetime ll
+        JOIN users u ON u.id = ll.user_id
+        LEFT JOIN leaderboard_weeks lw
+            ON lw.user_id = ll.user_id AND lw.week_start = %s
+        WHERE ll.seconds > 0 AND u.public_name IS NOT NULL
+              AND (lw.opted_in IS NULL OR lw.opted_in = %s)
+        """,
+        (week_start_str, True),
+    ).fetchone()
+
+    return {
+        "you": None,
+        "entries": entries,
+        "participants": participants_row["c"],
+        "guest_view": True,
+    }
+
+
 @bp.route("/leaderboard", methods=["GET"])
 @login_or_guest_read
 def get_leaderboard():
     db = get_db()
     local_date = flask.request.args.get("local_date")
     period = (flask.request.args.get("period") or "week").strip().lower()
-    if period not in ("week", "day"):
-        return json_error("validation_error", "period must be week or day.", 400)
+    if period == "all":
+        period = "lifetime"
+    if period not in ("week", "day", "lifetime"):
+        return json_error("validation_error", "period must be week, day, or lifetime.", 400)
 
     if flask.g.get("guest_readonly"):
         if period == "day":
@@ -585,6 +734,10 @@ def get_leaderboard():
             body = _board_guest_view(db, "leaderboard_days", "day_date", day_str)
             body["period"] = "day"
             body["day"] = day_str
+            return flask.jsonify(body)
+        if period == "lifetime":
+            body = _board_lifetime_guest_view(db, local_date)
+            body["period"] = "lifetime"
             return flask.jsonify(body)
         week_start_str = current_week_start(local_date).isoformat()
         body = _board_guest_view(db, "leaderboard_weeks", "week_start", week_start_str)
@@ -598,6 +751,10 @@ def get_leaderboard():
         body = _board_from_table(db, user, "leaderboard_days", "day_date", day_str)
         body["period"] = "day"
         body["day"] = day_str
+        return flask.jsonify(body)
+    if period == "lifetime":
+        body = _board_from_lifetime(db, user, local_date)
+        body["period"] = "lifetime"
         return flask.jsonify(body)
 
     week_start_str = current_week_start(local_date).isoformat()
