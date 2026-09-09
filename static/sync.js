@@ -221,6 +221,25 @@
     return s && s.clientId ? "id:" + s.clientId : "sig:" + sessionSignature(s);
   }
 
+  function sessionBurstSignature(s) {
+    if (!s) return "";
+    return [s.date, s.course, s.type, s.durationSeconds, s.timestamp].join("|");
+  }
+
+  function dedupeBurstSessions(sessions) {
+    if (!Array.isArray(sessions)) return sessions;
+    var seen = {};
+    var kept = [];
+    for (var i = 0; i < sessions.length; i++) {
+      var s = sessions[i];
+      var key = sessionBurstSignature(s);
+      if (seen[key]) continue;
+      seen[key] = true;
+      kept.push(s);
+    }
+    return kept;
+  }
+
   // Union of two `sessions` arrays, deduped by sessionMergeKey. Only ever
   // ADDS entries -- never drops one from either side. `base`'s non-sessions
   // fields (profile, courses, todoItems, etc.) win as-is: those aren't
@@ -240,7 +259,7 @@
       seen[key] = true;
       return true;
     });
-    merged.sessions = baseSessions.concat(missing);
+    merged.sessions = dedupeBurstSessions(baseSessions.concat(missing));
     return merged;
   }
 

@@ -113,6 +113,7 @@
             color: #fff;
             border-color: transparent;
         }
+        .aura-confirm-actions .btn[hidden] { display: none !important; }
 
         * {
             box-sizing: border-box;
@@ -1959,6 +1960,11 @@
             color: #1E824C;
             background: rgba(82, 229, 163, 0.18);
         }
+        .timer-btn-log:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
 
         .floating-subject-bar {
             display: flex;
@@ -3570,7 +3576,7 @@
                             <button class="timer-btn timer-btn-icon" onclick="resetEngineDisplayState()" title="Reset" aria-label="Reset timer">
                                 <i data-lucide="refresh-cw"></i>
                             </button>
-                            <button class="timer-btn timer-btn-log" onclick="saveEngineWorkspaceBlockData()">
+                            <button class="timer-btn timer-btn-log" id="timer-btn-log" onclick="saveEngineWorkspaceBlockData()">
                                 <i data-lucide="check-circle-2"></i> Log
                             </button>
                         </div>
@@ -3945,6 +3951,7 @@
             <p id="aura-confirm-message"></p>
             <div class="aura-confirm-actions">
                 <button type="button" class="btn" id="aura-confirm-cancel">Cancel</button>
+                <button type="button" class="btn btn-danger" id="aura-confirm-third" hidden>Reset — don't log time</button>
                 <button type="button" class="btn btn-neon-pink" id="aura-confirm-ok">Confirm</button>
             </div>
         </div>
@@ -4041,6 +4048,8 @@
         let countdownTotalSeconds = 25 * 60;  // length of the current countdown block
         let enginePhase = 'study';            // 'study' | 'break' — break never logs sessions
         let isBreakBlock = false;
+        let engineLogSaveInFlight = false;
+        let engineBlockLoggedThisSession = false;
         const POMODORO_DURATION_SECONDS = 25 * 60;
         let appBootFinished = false;
 
@@ -4162,8 +4171,15 @@
             applyBreakMinutes(appState.profile.defaultBreakMinutes + delta);
         }
 
+        function isCountdownStepperLocked() {
+            if (appState.selectedMode !== 'countdown' || isEngineInBreakPhase()) return false;
+            return isEngineActivelyRunning
+                || wholeSeconds(runningAccumulatedSeconds) > 0
+                || wholeSeconds(bankedElapsedSeconds) > 0;
+        }
+
         function updateTimerCountdownStepperDisabled() {
-            const disabled = isEngineActivelyRunning;
+            const disabled = isCountdownStepperLocked();
             const minusBtn = document.getElementById('timer-countdown-stepper-minus');
             const plusBtn = document.getElementById('timer-countdown-stepper-plus');
             if (minusBtn) minusBtn.disabled = disabled;
@@ -4173,6 +4189,21 @@
                 inputEl.disabled = disabled;
                 inputEl.value = sanitizeTimerMinutes(appState.profile.defaultTimerMinutes);
             }
+        }
+
+        function updateTimerLogButtonDisabled() {
+            const logBtn = document.getElementById('timer-btn-log');
+            if (!logBtn) return;
+            logBtn.disabled = engineLogSaveInFlight || engineBlockLoggedThisSession;
+        }
+
+        function finalizeEngineResetDisplay() {
+            initialBlockTimestampString = '';
+            engineBlockLoggedThisSession = false;
+            engineLogSaveInFlight = false;
+            updateEngineDisplayString();
+            syncTimerBreakStepperVisibility();
+            updateTimerLogButtonDisabled();
         }
 
         function commitTimerCountdownMinutesFromInput() {
@@ -4805,6 +4836,10 @@
                     if(parsed.sessions) {
                         appState.sessions = parsed.sessions;
                         normalizeSessionsDurations(appState.sessions);
+                        if (dedupeBurstSessionsInPlace()) {
+                            saveStateToLocalStorageRegister();
+                            if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
+                        }
                     }
                     if(parsed.todoItems) appState.todoItems = parsed.todoItems;
                     if(parsed.selectedCourse) appState.selectedCourse = parsed.selectedCourse;
@@ -5096,6 +5131,7 @@
             const messageEl = document.getElementById('aura-confirm-message');
             const cancelBtn = document.getElementById('aura-confirm-cancel');
             const okBtn = document.getElementById('aura-confirm-ok');
+            const thirdBtn = document.getElementById('aura-confirm-third');
             if (!modal || !titleEl || !messageEl || !cancelBtn || !okBtn) {
                 return Promise.resolve(false);
             }
@@ -5105,6 +5141,15 @@
             okBtn.innerText = options.confirmLabel || 'Confirm';
             cancelBtn.innerText = options.cancelLabel || 'Cancel';
             okBtn.className = options.destructive ? 'btn btn-danger' : 'btn btn-neon-pink';
+            if (thirdBtn) {
+                if (auraConfirmMode === 'reset') {
+                    thirdBtn.hidden = false;
+                    thirdBtn.innerText = options.thirdLabel || "Reset — don't log time";
+                    thirdBtn.className = options.destructiveThird ? 'btn btn-danger' : 'btn';
+                } else {
+                    thirdBtn.hidden = true;
+                }
+            }
             modal.hidden = false;
             return new Promise((resolve) => {
                 auraConfirmResolver = resolve;
@@ -5126,18 +5171,26 @@
             const modal = document.getElementById('aura-confirm-modal');
             const cancelBtn = document.getElementById('aura-confirm-cancel');
             const okBtn = document.getElementById('aura-confirm-ok');
+            const thirdBtn = document.getElementById('aura-confirm-third');
             if (!modal || !cancelBtn || !okBtn) return;
-            cancelBtn.addEventListener('click', () => closeAuraConfirmDialog(false));
-            okBtn.addEventListener('click', () => closeAuraConfirmDialog(true));
+            cancelBtn.addEventListener('click', () => {
+                closeAuraConfirmDialog(auraConfirmMode === 'reset' || auraConfirmMode === 'reset-break' ? null : false);
+            });
+            okBtn.addEventListener('click', () => {
+                closeAuraConfirmDialog(auraConfirmMode === 'reset' ? 'log' : true);
+            });
+            if (thirdBtn) {
+                thirdBtn.addEventListener('click', () => closeAuraConfirmDialog('discard'));
+            }
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
-                    closeAuraConfirmDialog(auraConfirmMode === 'reset' ? null : false);
+                    closeAuraConfirmDialog(auraConfirmMode === 'reset' || auraConfirmMode === 'reset-break' ? null : false);
                 }
             });
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && modal && !modal.hidden) {
                     e.preventDefault();
-                    closeAuraConfirmDialog(auraConfirmMode === 'reset' ? null : false);
+                    closeAuraConfirmDialog(auraConfirmMode === 'reset' || auraConfirmMode === 'reset-break' ? null : false);
                 }
             });
         })();
@@ -5529,6 +5582,7 @@
                 startBtn.innerHTML = '<i data-lucide="play-circle"></i> ' + (isEngineInBreakPhase() ? 'Resume Break' : 'Resume Block');
                 persistRunningTimerSnapshot();
                 updateTimerBreakStepperDisabled();
+                updateTimerCountdownStepperDisabled();
             } else {
                 if (runningAccumulatedSeconds === 0 && !isEngineInBreakPhase()) {
                     if (appState.selectedMode === "countdown") {
@@ -5555,6 +5609,7 @@
                 engineTickHandler();
                 persistRunningTimerSnapshot();
                 updateTimerBreakStepperDisabled();
+                updateTimerCountdownStepperDisabled();
             }
             lucide.createIcons();
         }
@@ -5576,23 +5631,39 @@
                 : Math.floor(runningAccumulatedSeconds || 0);
             if (!skipConfirm && elapsedOnClock >= 60) {
                 const durationLabel = formatDurationHM(elapsedOnClock, { long: true });
-                showAuraConfirmDialog({
-                    mode: 'reset',
-                    title: isEngineInBreakPhase() ? 'Reset break?' : 'Reset timer?',
-                    message: (isEngineInBreakPhase()
-                        ? 'Reset the break? Time on the clock will be lost.'
-                        : 'Reset the timer? ' + durationLabel + ' will be lost unless you log first.\n\nYes logs your study time then resets. No resets without logging.'),
-                    confirmLabel: 'Yes',
-                    cancelLabel: 'No',
-                    destructive: true
-                }).then((choice) => {
-                    if (choice === null) return;
-                    if (!isEngineInBreakPhase() && choice === true) {
-                        saveEngineWorkspaceBlockData();
-                        return;
-                    }
-                    resetEngineDisplayState(true);
-                });
+                if (isEngineInBreakPhase()) {
+                    showAuraConfirmDialog({
+                        mode: 'reset-break',
+                        title: 'Reset break?',
+                        message: 'Reset the break? Time on the clock will be lost.',
+                        confirmLabel: 'Reset',
+                        cancelLabel: 'Cancel',
+                        destructive: true
+                    }).then((choice) => {
+                        if (choice !== true) return;
+                        resetEngineDisplayState(true);
+                    });
+                } else {
+                    showAuraConfirmDialog({
+                        mode: 'reset',
+                        title: 'Reset timer?',
+                        message: 'Reset the timer? ' + durationLabel + ' is on the clock.\n\nChoose whether to log that study time before resetting.',
+                        confirmLabel: 'Reset — log time',
+                        thirdLabel: "Reset — don't log time",
+                        cancelLabel: 'Cancel',
+                        destructive: false,
+                        destructiveThird: true
+                    }).then((choice) => {
+                        if (choice === null) return;
+                        if (choice === 'log') {
+                            saveEngineWorkspaceBlockData();
+                            return;
+                        }
+                        if (choice === 'discard') {
+                            resetEngineDisplayState(true);
+                        }
+                    });
+                }
                 return;
             }
             const wasBreak = isEngineInBreakPhase();
@@ -5605,20 +5676,53 @@
             runningAccumulatedSeconds = 0;
             if (wasBreak) {
                 exitBreakMode();
+                finalizeEngineResetDisplay();
                 return;
             }
             countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
             countdownSecondsRemainingRegister = countdownTotalSeconds;
-            updateEngineDisplayString();
             document.getElementById('timer-start-btn').innerHTML = '<i data-lucide="play-circle"></i> Start Block';
             document.getElementById('timer-start-timestamp').innerText = "Timer reset.";
             clearRunningTimerSnapshot();
             lucide.createIcons();
+            finalizeEngineResetDisplay();
         }
 
         function sessionSignature(s) {
             if (!s) return '';
             return [s.date, s.course, s.type, s.durationSeconds, s.timestamp, s.addedByAdmin ? 1 : 0].join('|');
+        }
+
+        // Click-spam signature: same date, course, type, exact duration, and
+        // start timestamp — unique clientIds still match here so burst dupes collapse.
+        function sessionBurstSignature(s) {
+            if (!s) return '';
+            return [s.date, s.course, s.type, s.durationSeconds, s.timestamp].join('|');
+        }
+
+        function dedupeBurstSessionsInPlace() {
+            if (!Array.isArray(appState.sessions) || appState.sessions.length === 0) return false;
+            const seen = new Set();
+            const kept = [];
+            let removed = false;
+            for (const s of appState.sessions) {
+                const key = sessionBurstSignature(s);
+                if (seen.has(key)) {
+                    removed = true;
+                    continue;
+                }
+                seen.add(key);
+                kept.push(s);
+            }
+            if (removed) appState.sessions = kept;
+            return removed;
+        }
+
+        function persistSessionsAfterBurstDedupe() {
+            if (!dedupeBurstSessionsInPlace()) return false;
+            saveStateToLocalStorageRegister();
+            if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
+            return true;
         }
 
         function sessionMergeKey(s) {
@@ -5651,6 +5755,7 @@
             // history. Correctness of the totals and the sessions existing
             // at all matters far more here than their exact list position.
             appState.sessions = appState.sessions.concat(missing);
+            dedupeBurstSessionsInPlace();
             return true;
         }
 
@@ -5683,8 +5788,11 @@
         window.applyMergedSyncPayloadToAppState = function (mergedPayload) {
             if (!mergedPayload || !Array.isArray(mergedPayload.sessions)) return;
             normalizeSessionsDurations(mergedPayload.sessions);
-            if (unionMissingSessions(mergedPayload.sessions)) {
+            const hadUnion = unionMissingSessions(mergedPayload.sessions);
+            const hadDedupe = dedupeBurstSessionsInPlace();
+            if (hadUnion || hadDedupe) {
                 saveStateToLocalStorageRegister();
+                if (hadDedupe && window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
                 renderSessionsTable();
                 updatePetEvolutionState();
                 initDashboardMetricsAndCharts();
@@ -5694,60 +5802,71 @@
 
         function saveEngineWorkspaceBlockData(options) {
             if (isEngineInBreakPhase()) return;
-            syncEngineRegistersFromClock();
-            clearInterval(engineIntervalRegister);
-            engineIntervalRegister = null;
-            isEngineActivelyRunning = false;
-            engineAnchorMs = null;
-            lastSyncClockMs = null;
-            // Last line of defence before a duration is written into a
-            // session and propagates into the leaderboard, the charts and
-            // the pet: never trust runningAccumulatedSeconds to already be a
-            // whole number, no matter how many upstream writers floor it.
-            const finalDuration = wholeSeconds(runningAccumulatedSeconds);
+            if (engineLogSaveInFlight || engineBlockLoggedThisSession) return;
+            engineLogSaveInFlight = true;
+            updateTimerLogButtonDisabled();
+            try {
+                syncEngineRegistersFromClock();
+                clearInterval(engineIntervalRegister);
+                engineIntervalRegister = null;
+                isEngineActivelyRunning = false;
+                engineAnchorMs = null;
+                lastSyncClockMs = null;
+                // Last line of defence before a duration is written into a
+                // session and propagates into the leaderboard, the charts and
+                // the pet: never trust runningAccumulatedSeconds to already be a
+                // whole number, no matter how many upstream writers floor it.
+                const finalDuration = wholeSeconds(runningAccumulatedSeconds);
 
-            if (finalDuration >= 5) {
-                const logDataNode = {
-                    // Client-generated unique id, not the server's -- lets
-                    // mergeSessionsFromOtherTabs() and the 409-conflict merge
-                    // in static/sync.js dedupe this exact session reliably
-                    // instead of relying on its fields never coincidentally
-                    // matching another entry.
-                    clientId: 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10),
-                    date: getLocalDateStr(),
-                    course: appState.selectedCourse,
-                    type: appState.selectedMode === "countdown" ? "Countdown" : "Stopwatch",
-                    durationSeconds: finalDuration,
-                    timestamp: initialBlockTimestampString || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    hourOfDayExecuted: new Date().getHours()
-                };
+                if (finalDuration >= 5) {
+                    const logDataNode = {
+                        // Client-generated unique id, not the server's -- lets
+                        // mergeSessionsFromOtherTabs() and the 409-conflict merge
+                        // in static/sync.js dedupe this exact session reliably
+                        // instead of relying on its fields never coincidentally
+                        // matching another entry.
+                        clientId: 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10),
+                        date: getLocalDateStr(),
+                        course: appState.selectedCourse,
+                        type: appState.selectedMode === "countdown" ? "Countdown" : "Stopwatch",
+                        durationSeconds: finalDuration,
+                        timestamp: initialBlockTimestampString || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        hourOfDayExecuted: new Date().getHours()
+                    };
 
-                // A completed session is exactly the moment durability matters
-                // most -- merge in whatever another tab already logged first,
-                // so neither tab's work is lost to a last-write-wins overwrite.
-                mergeSessionsFromOtherTabs();
-                appState.sessions.unshift(logDataNode);
-                saveStateToLocalStorageRegister();
-                updatePetEvolutionState();
-                initDashboardMetricsAndCharts();
-                maybeNudgeGuestAfterStudy();
-                // Flush to the server immediately rather than waiting out
-                // sync.js's debounce -- see static/sync.js's flush().
-                if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
+                    // A completed session is exactly the moment durability matters
+                    // most -- merge in whatever another tab already logged first,
+                    // so neither tab's work is lost to a last-write-wins overwrite.
+                    mergeSessionsFromOtherTabs();
+                    appState.sessions.unshift(logDataNode);
+                    dedupeBurstSessionsInPlace();
+                    saveStateToLocalStorageRegister();
+                    updatePetEvolutionState();
+                    initDashboardMetricsAndCharts();
+                    maybeNudgeGuestAfterStudy();
+                    engineBlockLoggedThisSession = true;
+                    updateTimerLogButtonDisabled();
+                    // Flush to the server immediately rather than waiting out
+                    // sync.js's debounce -- see static/sync.js's flush().
+                    if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
 
-                if (finalDuration >= 15 * 60) {
-                    triggerAlertToast("Session Logged", `Nice work! Logged ${formatDurationHM(finalDuration)} into ${appState.selectedCourse}.`, true);
+                    triggerAlertToast(
+                        "Logged",
+                        `Logged ${formatDurationHM(finalDuration)} into ${appState.selectedCourse}.`,
+                        true
+                    );
                 } else {
-                    triggerAlertToast("Keep Going", "Every minute adds up to big results! Try again soon.", false);
+                    triggerAlertToast("Too Short!", "Session was too short to archive. Keep going next time!", false);
                 }
-            } else {
-                triggerAlertToast("Too Short!", "Session was too short to archive. Keep going next time!", false);
-            }
-            // skipConfirm: the session has just been logged (or was too short
-            // to log), so there is nothing left on the clock to lose and no
-            // reason to ask. deferReset: pomodoro auto-break will enter break mode.
-            if (!(options && options.deferReset)) {
-                resetEngineDisplayState(true);
+                // skipConfirm: the session has just been logged (or was too short
+                // to log), so there is nothing left on the clock to lose and no
+                // reason to ask. deferReset: pomodoro auto-break will enter break mode.
+                if (!(options && options.deferReset)) {
+                    resetEngineDisplayState(true);
+                }
+            } finally {
+                engineLogSaveInFlight = false;
+                updateTimerLogButtonDisabled();
             }
         }
 
