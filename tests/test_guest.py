@@ -1,5 +1,6 @@
 """Guest routing, cookie behaviour, and API access."""
 import json
+import os
 import re
 from datetime import timedelta
 
@@ -7,6 +8,12 @@ from server import guest as guest_module
 from server.db import utcnow
 
 JSON_HEADERS = {"X-Requested-With": "XMLHttpRequest"}
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _read(*parts):
+    with open(os.path.join(ROOT_DIR, *parts), "r", encoding="utf-8") as f:
+        return f.read()
 
 
 def register_verify(client, outbox, email="guest-test@example.com", password="pw123456"):
@@ -122,3 +129,22 @@ def test_logged_in_user_ignores_guest_query(client, outbox):
     assert resp.status_code == 302
     assert resp.headers["Location"].endswith("/app")
     assert "Set-Cookie" not in resp.headers or guest_module.GUEST_COOKIE_NAME not in resp.headers.get("Set-Cookie", "")
+
+
+def test_login_and_register_include_guest_cta(client):
+    for path in ("/login", "/register"):
+        resp = client.get(path)
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert "Continue as guest" in body
+        assert "/app?guest=1" in body
+
+
+def test_guest_app_shows_spotify_locked_panel_markup(client):
+    resp = start_guest_trial(client)
+    body = resp.get_data(as_text=True)
+    assert "initGuestExperience" in body
+    assert "showGuestLockedPanel" in _read("static", "guest.js")
+    assert 'id="view-spotify"' in body
+    assert "guest-locked-panel" in _read("static", "guest.js")
+    assert "Log in or sign up to connect Spotify" in _read("static", "guest.js")

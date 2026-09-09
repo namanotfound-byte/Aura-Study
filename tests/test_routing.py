@@ -76,6 +76,9 @@ def test_register_page_redirects_authenticated_user_to_app(client, outbox):
 def test_login_page_renders_for_logged_out_visitor(client):
     resp = client.get("/login")
     assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "Continue as guest" in body
+    assert "/app?guest=1" in body
 
 
 def test_healthz_is_unauthenticated_and_does_not_redirect(client):

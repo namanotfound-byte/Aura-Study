@@ -240,6 +240,23 @@
 
   // -- redirect param handling --------------------------------------------
 
+  function spotifyErrorMessage(reason) {
+    var messages = {
+      access_denied: 'You declined Spotify’s permission screen. Tap Connect Spotify to try again.',
+      state_mismatch: 'The login session was interrupted — try Connect Spotify again.',
+      session_expired: 'Your AuraStudy session expired — refresh, log in again, then retry.',
+      missing_code: 'Spotify did not finish authorization — try Connect Spotify again.',
+      network_error: 'Could not reach Spotify — check your connection and try again.',
+      token_exchange_failed:
+        'Spotify rejected the connection. You may not be on the app’s allow-list yet — see “Can’t connect?” on the Music tab.',
+      user_profile_failed: 'Connected to Spotify but could not read your profile — try again.',
+    };
+    return (
+      messages[reason] ||
+      'Something went wrong connecting Spotify. Try Connect Spotify again, or use “Can’t connect?” below if you need allow-list access.'
+    );
+  }
+
   function handleRedirectParams() {
     var params = new URLSearchParams(window.location.search);
     if (!params.has('spotify')) return;
@@ -251,11 +268,7 @@
     } else if (val === 'error') {
       STATE.connectFailed = true;
       STATE.connectFailedReason = params.get('reason') || 'unknown';
-      toast(
-        'Spotify Connection Failed',
-        'Reason: ' + STATE.connectFailedReason + '. Try Connect Spotify again, or use “Can’t connect?” below if you need allow-list access.',
-        false
-      );
+      toast('Couldn’t Connect Spotify', spotifyErrorMessage(STATE.connectFailedReason), false);
     }
     params.delete('spotify');
     params.delete('reason');
@@ -269,8 +282,8 @@
   function renderConnectStepsList(className) {
     return (
       '<ol class="' + className + '">' +
-      '<li>Tap <strong>Connect Spotify</strong> (you need an AuraStudy account first).</li>' +
-      '<li>Approve Spotify’s permission screen once — so we can see what’s playing.</li>' +
+      '<li>Make sure you’re signed into AuraStudy with this account.</li>' +
+      '<li>Tap <strong>Connect Spotify</strong> — you’ll go to Spotify to authorize AuraStudy once.</li>' +
       '<li>Open the Spotify app on your phone or computer and start a song — it will show up here automatically.</li>' +
       '</ol>'
     );
@@ -281,9 +294,8 @@
       '<details class="as-cant-connect"' + (openByDefault ? ' open' : '') + ' id="as-cant-connect">' +
       '<summary>Can’t connect?</summary>' +
       '<div class="as-cant-connect-body">' +
-      '<p class="as-access-note">AuraStudy’s Spotify app is in developer mode, so only accounts the owner has allow-listed can connect. ' +
-      'If Connect Spotify fails even after approving permissions, share the email on your Spotify account below — ' +
-      'the AuraStudy owner can add you to that list. You can withdraw this request at any time.</p>' +
+      '<p class="as-access-note">Until the AuraStudy Spotify app is in <strong>Extended Quota</strong> (live mode), Spotify only allows users the owner added in the Spotify Developer Dashboard (<strong>User Management</strong> — about 25 emails). ' +
+      'If Connect Spotify fails even after you approve permissions, submit the <strong>Request Access</strong> form below with the email on your <strong>Spotify account</strong> — the AuraStudy owner can add it there. You can withdraw a request at any time.</p>' +
       '<div id="as-access-body"><p class="as-note">Loading…</p></div>' +
       '</div></details>'
     );
@@ -298,7 +310,7 @@
     return (
       '<div class="card as-card">' +
       '<h3 style="margin-top:0;color:var(--text-main);">Connect Spotify 🎧</h3>' +
-      '<p class="as-note">There’s only one way to link your music — connect once, then play in Spotify.</p>' +
+      '<p class="as-note">You must be signed into AuraStudy. Connect once, then play music in the Spotify app — it appears here automatically.</p>' +
       renderConnectStepsList('as-connect-steps') +
       '<button class="btn btn-neon-pink" data-action="connect">Connect Spotify</button>' +
       failedNote +
@@ -787,7 +799,7 @@
     }
     if (!s.connected) {
       el.innerHTML =
-        '<p class="tmp-note">Connect Spotify to see what’s playing.</p>' +
+        '<p class="tmp-note">Sign into AuraStudy, then connect Spotify to see what’s playing.</p>' +
         renderConnectStepsList('tmp-connect-steps') +
         '<button class="btn btn-neon-pink tmp-connect-btn" type="button" data-action="connect">Connect Spotify</button>';
       return;

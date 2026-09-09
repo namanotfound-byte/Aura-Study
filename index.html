@@ -3770,7 +3770,11 @@
                 // fetch, not a poll; it only refreshes again when the panel is open
                 // (see onHelpViewShown / switchView). Guests stay local-only.
                 if (!(window.AuraGuest && AuraGuest.isGuest())) loadHelpMessages();
-                if (typeof AuraSpotify !== 'undefined' && !(window.AuraGuest && AuraGuest.isGuest())) AuraSpotify.init();
+                if (window.AuraGuest && typeof AuraGuest.initGuestExperience === 'function' && AuraGuest.isGuest()) {
+                    AuraGuest.initGuestExperience();
+                } else if (typeof AuraSpotify !== 'undefined') {
+                    AuraSpotify.init();
+                }
                 initTimerColourPopover();
                 if (typeof AuraFocus !== 'undefined') AuraFocus.init();
                 syncFullscreenIcon();
@@ -4292,7 +4296,7 @@
             else if (targetPanelKey === 'courses') renderCoursesView();
             else if (targetPanelKey === 'sessions') renderSessionsTable();
             else if (targetPanelKey === 'trophies') evaluateCabinetTrophyMetrics();
-            else if (targetPanelKey === 'spotify' && typeof AuraSpotify !== 'undefined') AuraSpotify.onViewShown();
+            else if (targetPanelKey === 'spotify' && typeof AuraSpotify !== 'undefined' && !(window.AuraGuest && AuraGuest.isGuest())) AuraSpotify.onViewShown();
             else if (targetPanelKey === 'settings') {
                 refreshSettingsSpotifyStatus();
             }

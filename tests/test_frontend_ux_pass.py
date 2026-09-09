@@ -40,6 +40,15 @@ def test_spotify_timer_bar_is_horizontal():
     assert "as-now-bar" in js
 
 
+def test_spotify_connect_flow_copy_and_oauth_toast():
+    js = _read("static", "spotify.js")
+    assert "Extended Quota" in js
+    assert "spotifyErrorMessage" in js
+    assert "Couldn’t Connect Spotify" in js
+    assert "signed into AuraStudy" in js
+    assert "Request Access" in js
+
+
 def test_active_view_is_persisted_and_restored_after_bootstrap():
     html = _read("index.html")
     assert "ACTIVE_VIEW_STORAGE_KEY = 'aurastudy_active_view'" in html
@@ -55,6 +64,8 @@ def test_active_view_is_persisted_and_restored_after_bootstrap():
     assert "Lion" in html
     assert "trophy-medal-emoji" in html
     assert "maybePromptGuestLogin" in _read("static", "guest.js")
+    assert "initGuestExperience" in _read("static", "guest.js")
+    assert "initGuestExperience()" in html
     assert "function isViewAccessible" in html
     assert 'id="app-boot-overlay"' in html
     assert "boot-pending" in html

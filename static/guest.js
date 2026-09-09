@@ -97,20 +97,46 @@
     );
   }
 
-  function showGuestLockedPanel(containerId, featureLabel) {
+  function showGuestLockedPanel(containerId, featureLabel, message) {
     var panel = document.getElementById(containerId);
     if (!panel) return;
+    var copy =
+      message ||
+      guestAccountMessage(featureLabel);
     panel.innerHTML =
       '<div class="card lb-state-panel guest-locked-panel">' +
       '<i data-lucide="lock"></i>' +
       "<span>" +
-      guestAccountMessage(featureLabel) +
+      copy +
       "</span>" +
       '<div class="guest-locked-actions">' +
       '<a href="/register" class="btn btn-neon-pink">Sign up free</a>' +
       '<a href="/login" class="btn">Log in</a>' +
       "</div></div>";
     if (window.lucide) lucide.createIcons();
+  }
+
+  function wireGuestTimerMusic() {
+    if (!isGuest()) return;
+    var btn = document.getElementById("timer-music-trigger-btn");
+    if (!btn || btn.getAttribute("data-guest-wired") === "1") return;
+    btn.setAttribute("data-guest-wired", "1");
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      requireAccount(
+        "Log in or sign up free to connect Spotify and control music from the timer."
+      );
+    });
+  }
+
+  function initGuestExperience() {
+    if (!isGuest()) return;
+    showGuestLockedPanel(
+      "view-spotify",
+      "Spotify",
+      "Log in or sign up to connect Spotify. Completely free — no credit card, nothing required."
+    );
+    wireGuestTimerMusic();
   }
 
   function readLastNudgeHours() {
@@ -168,6 +194,8 @@
     applyGuestNav: applyGuestNav,
     guestAccountMessage: guestAccountMessage,
     showGuestLockedPanel: showGuestLockedPanel,
+    initGuestExperience: initGuestExperience,
+    wireGuestTimerMusic: wireGuestTimerMusic,
     maybePromptGuestLogin: maybePromptGuestLogin,
   };
 })();
