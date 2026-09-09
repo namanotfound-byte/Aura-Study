@@ -96,9 +96,11 @@ body {
 }
 
 .landing-logo {
-  width: clamp(120px, 28vw, 168px);
-  height: auto;
-  object-fit: contain;
+  width: clamp(96px, 22vw, 132px);
+  height: clamp(96px, 22vw, 132px);
+  object-fit: cover;
+  object-position: 22% center;
+  mix-blend-mode: multiply;
 }
 
 .wordmark {

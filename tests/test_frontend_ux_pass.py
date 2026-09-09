@@ -132,7 +132,10 @@ def test_dashboard_matches_mock_layout_single_start_session():
     assert 'id="dash-start-session-btn"' in dash
     assert "btn-dash-start" in dash
     assert 'id="header-notify-btn"' in html
-    assert 'id="header-avatar-letter"' in html
+    assert 'id="header-notify-badge"' in html
+    assert 'id="header-notify-list"' in html
+    assert 'function refreshHeaderNotifications' in html
+    assert 'id="header-avatar-btn"' not in html
     assert 'id="header-greeting-icon"' in html
     assert "dash-hero-scenery" in dash
     assert "dash-pet-row" in dash
@@ -162,6 +165,15 @@ def test_tour_overlay_and_storage_key_exist():
     assert "/static/tour.css" in html
     assert "aurastudy_tour_done" in tour_js
     assert "aura-tour-overlay" in tour_js
+    assert "hasExistingStudyData" in tour_js
+    assert "markTourDoneIfReturningUser" in tour_js
+    assert "shouldPlayTour" in tour_js
+    assert "syncTimerCountdownStepperVisibility" in tour_js
+    assert "initAppTour(appState)" in html
+    countdown_step = tour_js[tour_js.index("Countdown length"):tour_js.index("Countdown length") + 1400]
+    assert "requestAnimationFrame" in countdown_step
+    assert "changeEngineMode('countdown')" in countdown_step
+    assert "syncTimerCountdownStepperVisibility()" in countdown_step
 
 
 def test_leaderboard_row_tooltip_helpers_exist():
@@ -248,9 +260,13 @@ def test_timer_target_cluster_centered_with_more_gap():
     html = _read("index.html")
     cluster_block = html[html.index(".timer-secondary-cluster {"):html.index(".timer-header-badge {")]
     badge_block = html[html.index(".timer-header-badge {"):html.index(".timer-fullscreen-view:not(.dark-mode-active) .timer-header-badge")]
+    target_block = html[html.index(".timer-target-trigger {"):html.index(".timer-target-menu {")]
     assert "gap: 16px" in cluster_block
     assert "align-self: center" in badge_block
     assert "width: fit-content" in badge_block
+    assert "font-size: 13px" in target_block
+    assert "color: #fff !important" in target_block
+    assert "padding: 8px 18px" in target_block
 
 
 def test_sidebar_collapse_toggle_persisted():
@@ -308,6 +324,49 @@ def test_switchview_wrap_opens_float_before_original_when_leaving_timer():
     assert "leavingTimer" in body
     assert "STATE.suppressPipClose = true" in body
     assert re.search(r"STATE\.suppressPipClose\s*=\s*false", body)
+
+
+def test_dashboard_chart_tooltip_is_larger_and_quote_card_centers_content():
+    html = _read("index.html")
+    chart_block = html[html.index("function buildAnalyticsChartCanvasComponent"):html.index("function formatHelpTimestamp")]
+    assert "padding: 16" in chart_block
+    assert "titleFont:" in chart_block
+    assert "bodyFont:" in chart_block
+    assert "boxPadding: 8" in chart_block
+    quote_block = html[html.index(".dash-quote-card {"):html.index(".dash-quote-seedling {")]
+    assert "justify-content: center" in quote_block
+    assert "dash-quote-content" in html
+
+
+def test_brand_logo_crops_mascot_and_tagline_removed():
+    html = _read("index.html")
+    assert "brand-tagline" not in html
+    assert "Focus / Learn / Grow" not in html
+    logo_block = html[html.index(".brand-logo {"):html.index(".brand-logo {") + 280]
+    assert "mix-blend-mode: multiply" in logo_block
+    assert "object-position: 22% center" in logo_block
+    landing_css = _read("static", "landing.css")
+    assert "object-position: 22% center" in landing_css
+    auth_css = _read("static", "auth.css")
+    assert "mix-blend-mode: multiply" in auth_css
+
+
+def test_default_todos_empty_and_legacy_strings_stripped():
+    html = _read("index.html")
+    state_block = html[html.index("let appState = {"):html.index("let engineIntervalRegister")]
+    assert "todoItems: []" in state_block
+    assert "stripLegacyDefaultTodos" in html
+    assert "LEGACY_DEFAULT_TODO_TEXTS" in html
+    assert "Review today's lecture notes" not in state_block
+    assert "Finish a practice problem set" not in state_block
+
+
+def test_placeholder_clears_on_focus_for_courses_and_auth():
+    html = _read("index.html")
+    assert "bindPlaceholderFocusClear" in html
+    assert "initPlaceholderFocusClearInputs" in html
+    auth_js = _read("static", "auth.js")
+    assert "bindPlaceholderFocusClear" in auth_js
 
 
 def test_close_pip_if_timer_view_respects_suppress_flag():

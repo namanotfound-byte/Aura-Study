@@ -97,9 +97,11 @@ body {
 }
 
 .auth-brand-logo {
-  width: 120px;
-  height: auto;
-  object-fit: contain;
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  object-position: 22% center;
+  mix-blend-mode: multiply;
 }
 
 .auth-wordmark {

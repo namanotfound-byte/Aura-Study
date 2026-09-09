@@ -118,3 +118,11 @@ def test_study_coach_is_local_and_deterministic():
 
     coach_region = html[html.index("function computeStudyCoachMetrics"):html.index("function formatLeaderboardHours")]
     assert "fetch(" not in coach_region
+
+
+def test_analytics_chart_tooltip_uses_long_duration_format():
+    html = _read("index.html")
+    chart_block = _extract_function_body(html, "buildAnalyticsChartCanvasComponent")
+    assert "formatDurationHM(Math.round((item.parsed.y || 0) * 3600), { long: true })" in chart_block
+    assert "padding: 16" in chart_block
+    assert "bodyFont:" in chart_block

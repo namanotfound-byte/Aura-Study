@@ -36,6 +36,36 @@
         try { return localStorage.getItem(TOUR_LANDING_PHASE_KEY) === '1'; } catch (e) { return false; }
     }
 
+    function readPersistedState() {
+        try {
+            var raw = localStorage.getItem('aurastudy_state_v1') || localStorage.getItem('aurastudy_girly_v8');
+            if (!raw) return null;
+            return JSON.parse(raw);
+        } catch (e) { return null; }
+    }
+
+    function hasExistingStudyData(appState) {
+        if (appState && Array.isArray(appState.sessions) && appState.sessions.length > 0) return true;
+        var persisted = readPersistedState();
+        if (persisted && Array.isArray(persisted.sessions) && persisted.sessions.length > 0) return true;
+        try {
+            if (localStorage.getItem('aurastudy_running_timer_v1')) return true;
+            if (localStorage.getItem('aurastudy_seen_unlocks')) return true;
+            if (localStorage.getItem('aurastudy_active_view')) return true;
+        } catch (e) { /* ignore */ }
+        return false;
+    }
+
+    function markTourDoneIfReturningUser(appState) {
+        if (isTourDone()) return;
+        if (hasExistingStudyData(appState)) tourDone();
+    }
+
+    function shouldPlayTour(appState) {
+        if (isTourDone()) return false;
+        return !hasExistingStudyData(appState);
+    }
+
     function prefersReducedMotion() {
         return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     }
@@ -151,28 +181,18 @@
         arrow.style.left = Math.min(Math.max(12, arrowLeft), window.innerWidth - 40) + 'px';
     }
 
-    function renderStep(index) {
-        var step = steps[index];
-        if (!step) return;
-        document.querySelectorAll('.aura-tour-target-active').forEach(function (el) {
-            el.classList.remove('aura-tour-target-active');
-        });
-        if (onTargetClick) {
-            onTargetClick.el.removeEventListener('click', onTargetClick.fn, true);
-            onTargetClick = null;
+    function runBeforeShow(step) {
+        if (!step.beforeShow) return Promise.resolve(true);
+        try {
+            var result = step.beforeShow();
+            if (result && typeof result.then === 'function') return result;
+            return Promise.resolve(result !== false);
+        } catch (e) {
+            return Promise.resolve(false);
         }
+    }
 
-        var target = resolveTarget(step);
-        if (!target) {
-            advance(1);
-            return;
-        }
-
-        if (step.beforeShow && step.beforeShow() === false) {
-            advance(1);
-            return;
-        }
-
+    function paintStep(index, target, step) {
         target.classList.add('aura-tour-target-active');
         if (step.scroll !== false) {
             try { target.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' }); } catch (e) { /* ignore */ }
@@ -200,6 +220,31 @@
             target.addEventListener('click', clickFn, true);
             onTargetClick = { el: target, fn: clickFn };
         }
+    }
+
+    function renderStep(index) {
+        var step = steps[index];
+        if (!step) return;
+        document.querySelectorAll('.aura-tour-target-active').forEach(function (el) {
+            el.classList.remove('aura-tour-target-active');
+        });
+        if (onTargetClick) {
+            onTargetClick.el.removeEventListener('click', onTargetClick.fn, true);
+            onTargetClick = null;
+        }
+
+        runBeforeShow(step).then(function (ready) {
+            if (!ready) {
+                advance(1);
+                return;
+            }
+            var target = resolveTarget(step);
+            if (!target) {
+                advance(1);
+                return;
+            }
+            paintStep(index, target, step);
+        });
     }
 
     function advance(delta) {
@@ -316,10 +361,24 @@
                 if (typeof switchView === 'function') {
                     switchView('timer', document.getElementById('nav-item-timer-toggle'));
                 }
+                var modePromise = Promise.resolve();
                 if (typeof changeEngineMode === 'function' && typeof getActiveEngineModeKey === 'function') {
-                    if (getActiveEngineModeKey() !== 'countdown') changeEngineMode('countdown');
+                    if (getActiveEngineModeKey() !== 'countdown') modePromise = Promise.resolve(changeEngineMode('countdown'));
                 }
-                return !!document.getElementById('timer-countdown-stepper');
+                return modePromise.then(function () {
+                    if (typeof syncTimerCountdownStepperVisibility === 'function') {
+                        syncTimerCountdownStepperVisibility();
+                    }
+                    var stepper = document.getElementById('timer-countdown-stepper');
+                    if (stepper) stepper.classList.add('visible');
+                    return new Promise(function (resolve) {
+                        window.requestAnimationFrame(function () {
+                            window.requestAnimationFrame(function () {
+                                resolve(!!stepper);
+                            });
+                        });
+                    });
+                });
             }
         },
         {
@@ -367,15 +426,19 @@
     ];
 
     function initLandingTour() {
-        if (isTourDone() || isLandingPhaseDone()) return;
+        if (isTourDone() || isLandingPhaseDone() || hasExistingStudyData()) {
+            if (hasExistingStudyData()) markTourDoneIfReturningUser();
+            return;
+        }
         if (!document.getElementById('letters') && !document.querySelector('.landing-logo')) return;
         window.setTimeout(function () {
             startTour(LANDING_STEPS);
         }, prefersReducedMotion() ? 400 : 1800);
     }
 
-    function initAppTour() {
-        if (isTourDone()) return;
+    function initAppTour(appState) {
+        markTourDoneIfReturningUser(appState);
+        if (!shouldPlayTour(appState)) return;
         if (!document.getElementById('app-sidebar')) return;
         window.setTimeout(function () {
             startTour(APP_STEPS);
@@ -387,6 +450,9 @@
         initLandingTour: initLandingTour,
         initAppTour: initAppTour,
         isTourDone: isTourDone,
+        hasExistingStudyData: hasExistingStudyData,
+        markTourDoneIfReturningUser: markTourDoneIfReturningUser,
+        shouldPlayTour: shouldPlayTour,
         teardown: teardown
     };
 

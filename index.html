@@ -249,9 +249,11 @@
             color: var(--text-main);
         }
         .app-boot-logo img {
-            width: 120px;
-            height: auto;
-            object-fit: contain;
+            width: 72px;
+            height: 72px;
+            object-fit: cover;
+            object-position: 22% center;
+            mix-blend-mode: multiply;
         }
         .app-boot-spinner {
             width: 36px;
@@ -394,9 +396,11 @@
         .brand-logo {
             width: 40px;
             height: 40px;
-            object-fit: contain;
+            object-fit: cover;
+            object-position: 22% center;
             flex-shrink: 0;
-            border-radius: 10px;
+            border-radius: 0;
+            mix-blend-mode: multiply;
         }
         .brand span {
             color: var(--text-main);
@@ -404,17 +408,6 @@
             font-weight: 700;
             line-height: 1.1;
         }
-        .brand-tagline {
-            font-family: var(--font-sans);
-            font-size: 9px;
-            font-weight: 700;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            padding-left: 50px;
-            line-height: 1.3;
-        }
-
         button.brand {
             border: none;
             background: transparent;
@@ -464,8 +457,7 @@
                 margin-bottom: 8px;
             }
 
-            html.sidebar-collapsed .brand span,
-            html.sidebar-collapsed .brand-tagline {
+            html.sidebar-collapsed .brand span {
                 display: none;
             }
 
@@ -704,12 +696,30 @@
             box-shadow: 0 4px 12px rgba(61, 68, 81, 0.08);
         }
         .header-notify-btn svg { width: 18px; height: 18px; }
+        .header-notify-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: var(--accent-solid);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 800;
+            line-height: 18px;
+            text-align: center;
+            border: 2px solid var(--bg-main);
+        }
+        .header-notify-badge[hidden] { display: none !important; }
         .header-notify-popover {
             position: absolute;
             top: calc(100% + 8px);
             right: 0;
-            min-width: 220px;
-            padding: 14px 16px;
+            min-width: 260px;
+            max-width: min(320px, 92vw);
+            padding: 10px 0;
             border-radius: 14px;
             background: #FAF7F0;
             border: 1.5px solid rgba(122, 143, 110, 0.35);
@@ -720,34 +730,33 @@
             z-index: 50;
         }
         .header-notify-popover[hidden] { display: none !important; }
-
-        .header-avatar-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            border: 1px solid var(--border-color);
-            background: var(--bg-card);
-            border-radius: 999px;
-            padding: 4px 8px 4px 4px;
-            cursor: pointer;
-            font-family: inherit;
-        }
-        .header-avatar-letter {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #9B8BB4, #6B9080);
-            color: #fff;
-            font-size: 14px;
-            font-weight: 800;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .header-avatar-chevron {
-            width: 14px;
-            height: 14px;
+        .header-notify-empty {
+            padding: 10px 16px;
             color: var(--text-muted);
+        }
+        .header-notify-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .header-notify-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 16px;
+            border-bottom: 1px solid rgba(122, 143, 110, 0.15);
+            color: var(--text-main);
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+        .header-notify-item:last-child { border-bottom: none; }
+        .header-notify-item-icon {
+            flex-shrink: 0;
+            width: 18px;
+            height: 18px;
+            margin-top: 1px;
+            color: var(--accent-solid);
         }
 
         .btn {
@@ -985,11 +994,22 @@
             border: 1px solid rgba(155, 139, 180, 0.22);
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: center;
+            align-items: center;
             text-align: center;
             min-height: 280px;
             position: relative;
             overflow: hidden;
+        }
+        .dash-quote-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            width: 100%;
+            padding: 24px 20px 56px;
+            z-index: 1;
         }
         .dash-quote-seedling {
             font-size: 42px;
@@ -2442,6 +2462,12 @@
             border: none;
             font-family: inherit;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
+            font-size: 13px;
+            padding: 8px 18px;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.42) !important;
+            border-color: rgba(255, 255, 255, 0.18) !important;
+            color: #fff !important;
         }
         .timer-target-trigger:hover {
             transform: scale(1.02);
@@ -2450,9 +2476,11 @@
             transform: rotate(180deg);
         }
         .timer-target-chevron {
-            width: 14px;
-            height: 14px;
-            opacity: 0.75;
+            width: 16px;
+            height: 16px;
+            opacity: 1;
+            color: #fff !important;
+            stroke: #fff;
             transition: transform 0.2s ease;
         }
         .timer-target-subject {
@@ -2460,6 +2488,16 @@
             font-weight: 800;
             text-transform: none;
             letter-spacing: 0;
+            color: #fff !important;
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-target-trigger {
+            background: rgba(0, 0, 0, 0.38) !important;
+            color: #fff !important;
+            border-color: rgba(255, 255, 255, 0.22) !important;
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-target-trigger .timer-target-subject,
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-target-trigger .timer-target-chevron {
+            color: #fff !important;
         }
         .timer-target-menu {
             position: absolute;
@@ -3261,7 +3299,6 @@
                         <img src="/static/brand/aurastudy-logo.jpg" alt="" class="brand-logo" width="40" height="40">
                         <span>AuraStudy</span>
                     </div>
-                    <span class="brand-tagline">Focus / Learn / Grow</span>
                 </button>
                 <button type="button" class="sidebar-collapse-btn" id="sidebar-collapse-toggle" aria-label="Collapse sidebar" title="Collapse sidebar" onclick="toggleSidebarCollapsed()">
                     <i data-lucide="panel-left-close"></i>
@@ -3338,13 +3375,13 @@
                 <div class="header-notify-wrap">
                     <button type="button" class="header-notify-btn" id="header-notify-btn" aria-label="Notifications" aria-haspopup="true" aria-expanded="false" aria-controls="header-notify-popover" onclick="toggleHeaderNotifyPopover(event)">
                         <i data-lucide="bell"></i>
+                        <span class="header-notify-badge" id="header-notify-badge" hidden>0</span>
                     </button>
-                    <div class="header-notify-popover" id="header-notify-popover" role="status" hidden>You&rsquo;re all caught up</div>
+                    <div class="header-notify-popover" id="header-notify-popover" role="status" hidden>
+                        <div class="header-notify-empty" id="header-notify-empty">You&rsquo;re all caught up</div>
+                        <ul class="header-notify-list" id="header-notify-list" hidden></ul>
+                    </div>
                 </div>
-                <button type="button" class="header-avatar-btn" id="header-avatar-btn" aria-label="Account">
-                    <span class="header-avatar-letter" id="header-avatar-letter">A</span>
-                    <i data-lucide="chevron-down" class="header-avatar-chevron"></i>
-                </button>
             </div>
         </div>
 
@@ -3504,7 +3541,7 @@
                 </div>
 
                 <div class="card dash-quote-card">
-                    <div>
+                    <div class="dash-quote-content">
                         <div class="dash-quote-seedling" aria-hidden="true">🌱</div>
                         <p class="dash-quote-text">Focus builds the life you want</p>
                     </div>
@@ -4055,10 +4092,7 @@
             profile: { email: "you@example.com", dailyGoalHours: 3, defaultTimerMinutes: 25, defaultBreakMinutes: 5, autoBreakAfterPomodoro: true },
             courses: ["Math", "Physics", "Chemistry", "Literature"],
             sessions: [],
-            todoItems: [
-                { id: 1, text: "Review today's lecture notes", completed: false },
-                { id: 2, text: "Finish a practice problem set", completed: true }
-            ],
+            todoItems: [],
             selectedCourse: "Math",
             selectedMode: "countdown",
             ambientKey: "pink-cottoncandy",
@@ -4390,6 +4424,7 @@
             // the 401 -> /login redirect and the one-time local -> account migration.
             AuraSync.bootstrap().then((accountUser) => {
                 loadStateFromLocalStorageRegister();
+                stripLegacyDefaultTodos();
                 applyAccountIdentity(accountUser);
                 if (window.AuraGuest && typeof AuraGuest.applyGuestNav === 'function') AuraGuest.applyGuestNav();
                 lucide.createIcons();
@@ -4425,13 +4460,15 @@
                 const activeViewKey = activePanel && activePanel.id ? activePanel.id.replace(/^view-/, '') : 'dashboard';
                 syncGlobalHeaderForView(activeViewKey);
                 refreshHeaderGreeting();
+                initPlaceholderFocusClearInputs();
+                refreshHeaderNotifications();
                 if (window.AuraGuest && typeof AuraGuest.maybePromptGuestLogin === 'function') {
                     const guestStudySecs = appState.sessions.reduce((acc, s) => acc + s.durationSeconds, 0);
                     AuraGuest.maybePromptGuestLogin(guestStudySecs);
                 }
                 clearTimeout(bootFinishTimer);
                 finishAppBoot();
-                if (window.AuraTour && typeof AuraTour.initAppTour === 'function') AuraTour.initAppTour();
+                if (window.AuraTour && typeof AuraTour.initAppTour === 'function') AuraTour.initAppTour(appState);
             }).catch(() => {
                 clearTimeout(bootFinishTimer);
                 finishAppBoot();
@@ -4541,9 +4578,131 @@
                 iconEl.setAttribute('data-lucide', getTimeGreetingIconName());
                 if (window.lucide) lucide.createIcons();
             }
-            const avatarLetter = document.getElementById('header-avatar-letter');
-            if (avatarLetter) {
-                avatarLetter.textContent = (firstName.charAt(0) || 'A').toUpperCase();
+        }
+
+        const LEGACY_DEFAULT_TODO_TEXTS = ["Review today's lecture notes", "Finish a practice problem set"];
+        let helpUnreadReplyCount = 0;
+
+        function stripLegacyDefaultTodos() {
+            if (!Array.isArray(appState.todoItems)) {
+                appState.todoItems = [];
+                return;
+            }
+            const before = appState.todoItems.length;
+            appState.todoItems = appState.todoItems.filter(item => {
+                return item && LEGACY_DEFAULT_TODO_TEXTS.indexOf(item.text) === -1;
+            });
+            if (appState.todoItems.length !== before) saveStateToLocalStorageRegister();
+        }
+
+        function bindPlaceholderFocusClear(inputEl) {
+            if (!inputEl || !inputEl.placeholder) return;
+            const savedPh = inputEl.placeholder;
+            inputEl.addEventListener('focus', function () {
+                inputEl.dataset.savedPlaceholder = savedPh;
+                inputEl.placeholder = '';
+            });
+            inputEl.addEventListener('blur', function () {
+                if (!inputEl.value.trim()) inputEl.placeholder = inputEl.dataset.savedPlaceholder || savedPh;
+            });
+        }
+
+        function initPlaceholderFocusClearInputs() {
+            bindPlaceholderFocusClear(document.getElementById('new-course-name'));
+            bindPlaceholderFocusClear(document.getElementById('todo-new-task-input'));
+        }
+
+        function collectUnseenAchievementNotifications() {
+            const items = [];
+            const seen = readSeenUnlocks();
+            if (seen === null) return items;
+            const seenSet = new Set(seen);
+            fullBadgesDatabase.forEach(b => {
+                if (b.check(appState) && !seenSet.has(b.id)) {
+                    items.push({ kind: 'achievement', text: 'Achievement unlocked: ' + b.title });
+                }
+            });
+            fullAchievementsDatabase.forEach(a => {
+                if (a.check(appState) && !seenSet.has(a.id)) {
+                    items.push({ kind: 'achievement', text: 'Achievement unlocked: ' + a.title });
+                }
+            });
+            return items;
+        }
+
+        function collectDailyGoalNotification() {
+            const today = getLocalDateStr();
+            let todaySecs = 0;
+            appState.sessions.forEach(s => { if (s.date === today) todaySecs += s.durationSeconds; });
+            const goalSecs = (appState.profile.dailyGoalHours || 0) * 3600;
+            if (goalSecs > 0 && todaySecs >= goalSecs) {
+                return { kind: 'goal', text: 'Daily goal reached — ' + formatDurationHM(todaySecs, { long: true }) + ' studied today' };
+            }
+            return null;
+        }
+
+        function collectStreakNotification() {
+            if ((appState.streak || 0) >= 2) {
+                return { kind: 'streak', text: 'Study streak: ' + appState.streak + ' days in a row' };
+            }
+            return null;
+        }
+
+        function buildHeaderNotificationItems() {
+            const items = [];
+            if (helpUnreadReplyCount > 0) {
+                items.push({
+                    kind: 'help',
+                    text: helpUnreadReplyCount === 1
+                        ? '1 unread reply in Help'
+                        : helpUnreadReplyCount + ' unread replies in Help'
+                });
+            }
+            collectUnseenAchievementNotifications().forEach(item => items.push(item));
+            const goalNote = collectDailyGoalNotification();
+            if (goalNote) items.push(goalNote);
+            const streakNote = collectStreakNotification();
+            if (streakNote) items.push(streakNote);
+            return items;
+        }
+
+        function refreshHeaderNotifications() {
+            const badge = document.getElementById('header-notify-badge');
+            const emptyEl = document.getElementById('header-notify-empty');
+            const listEl = document.getElementById('header-notify-list');
+            const btn = document.getElementById('header-notify-btn');
+            const items = buildHeaderNotificationItems();
+            const count = items.length;
+            if (badge) {
+                if (count > 0) {
+                    badge.textContent = count > 9 ? '9+' : String(count);
+                    badge.hidden = false;
+                } else {
+                    badge.hidden = true;
+                }
+            }
+            if (btn) btn.setAttribute('aria-label', count > 0 ? count + ' notifications' : 'Notifications');
+            if (emptyEl) emptyEl.hidden = count > 0;
+            if (listEl) {
+                listEl.innerHTML = '';
+                if (count > 0) {
+                    listEl.hidden = false;
+                    items.forEach(item => {
+                        const li = document.createElement('li');
+                        li.className = 'header-notify-item';
+                        const icon = document.createElement('i');
+                        icon.className = 'header-notify-item-icon';
+                        icon.setAttribute('data-lucide', item.kind === 'help' ? 'message-circle' : (item.kind === 'goal' ? 'target' : (item.kind === 'streak' ? 'flame' : 'star')));
+                        const text = document.createElement('span');
+                        text.textContent = item.text;
+                        li.appendChild(icon);
+                        li.appendChild(text);
+                        listEl.appendChild(li);
+                    });
+                    if (window.lucide) lucide.createIcons();
+                } else {
+                    listEl.hidden = true;
+                }
             }
         }
 
@@ -4553,6 +4712,7 @@
             const btn = document.getElementById('header-notify-btn');
             if (!pop || !btn) return;
             const willOpen = pop.hidden;
+            if (willOpen) refreshHeaderNotifications();
             pop.hidden = !willOpen;
             btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
             if (willOpen) {
@@ -5914,6 +6074,7 @@
                 else { if (sStr === getLocalDateStr(today)) { checkDate.setDate(checkDate.getDate() - 1); continue; } break; }
             }
             appState.streak = currentStreak; document.getElementById('streak-count-label').innerHTML = `Current Streak: <strong>${currentStreak} days</strong>`;
+            refreshHeaderNotifications();
         }
 
         // -- Leaderboard view (spec §7) ---------------------------------------
@@ -6564,6 +6725,12 @@
                     plugins: {
                         legend: { display: false },
                         tooltip: {
+                            padding: 16,
+                            titleFont: { size: 16, weight: '700', family: "'Source Sans 3', sans-serif" },
+                            bodyFont: { size: 15, weight: '600', family: "'Source Sans 3', sans-serif" },
+                            boxPadding: 8,
+                            cornerRadius: 10,
+                            displayColors: true,
                             callbacks: {
                                 label: (item) => formatDurationHM(Math.round((item.parsed.y || 0) * 3600), { long: true })
                             }
@@ -6603,14 +6770,16 @@
 
         function updateHelpUnreadBadge(count) {
             const badge = document.getElementById('help-unread-badge');
-            if (!badge) return;
-            const n = (typeof count === 'number' && count > 0) ? count : 0;
-            if (n > 0) {
-                badge.textContent = n > 9 ? '9+' : String(n);
-                badge.hidden = false;
-            } else {
-                badge.hidden = true;
+            helpUnreadReplyCount = (typeof count === 'number' && count > 0) ? count : 0;
+            if (badge) {
+                if (helpUnreadReplyCount > 0) {
+                    badge.textContent = helpUnreadReplyCount > 9 ? '9+' : String(helpUnreadReplyCount);
+                    badge.hidden = false;
+                } else {
+                    badge.hidden = true;
+                }
             }
+            refreshHeaderNotifications();
         }
 
         // Renders each message with textContent (never innerHTML) -- message
@@ -6949,6 +7118,7 @@
             document.getElementById('trophy-progress-fill-bar').style.width = `${Math.floor((unlockedCount/totalItems)*100)}%`;
             lucide.createIcons();
             celebrateNewUnlocks(newlyUnlocked);
+            refreshHeaderNotifications();
         }
 
         function readSeenUnlocks() {

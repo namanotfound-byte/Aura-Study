@@ -349,4 +349,21 @@
         });
     }
   });
+
+  function bindPlaceholderFocusClear(inputEl) {
+    if (!inputEl || !inputEl.placeholder) return;
+    var savedPh = inputEl.placeholder;
+    inputEl.addEventListener("focus", function () {
+      inputEl.dataset.savedPlaceholder = savedPh;
+      inputEl.placeholder = "";
+    });
+    inputEl.addEventListener("blur", function () {
+      if (!inputEl.value.trim()) inputEl.placeholder = inputEl.dataset.savedPlaceholder || savedPh;
+    });
+  }
+
+  if (form) {
+    var authInputs = form.querySelectorAll("input[placeholder]");
+    for (var pi = 0; pi < authInputs.length; pi++) bindPlaceholderFocusClear(authInputs[pi]);
+  }
 })();
