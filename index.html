@@ -1926,18 +1926,23 @@
             border-color: var(--neon-pink);
             color: var(--neon-pink);
         }
-        .timer-btn-primary-act {
-            background: var(--neon-pink);
-            color: #FFFFFF;
+        .timer-btn-primary-act,
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-btn-primary-act,
+        .timer-fullscreen-view.dark-mode-active .timer-btn-primary-act {
+            background: #FFFFFF;
+            color: #1C1816;
             border-color: transparent;
-            box-shadow: 0 8px 28px rgba(var(--accent-rgb), 0.38);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
             padding: 12px 32px;
             font-size: 15px;
         }
-        .timer-btn-primary-act:hover {
-            background: var(--accent-strong);
-            color: #FFFFFF;
-            box-shadow: 0 10px 32px rgba(var(--accent-rgb), 0.48);
+        .timer-btn-primary-act:hover,
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-btn-primary-act:hover,
+        .timer-fullscreen-view.dark-mode-active .timer-btn-primary-act:hover {
+            background: #F5F2EB;
+            color: #1C1816;
+            border-color: transparent;
+            box-shadow: 0 10px 32px rgba(0, 0, 0, 0.22);
         }
         .timer-btn-icon {
             padding: 11px;
@@ -2465,14 +2470,26 @@
             cursor: pointer;
             font-family: inherit;
         }
+        .timer-fullscreen-view .timer-target-menu-item {
+            color: rgba(255, 255, 255, 0.94);
+        }
         .timer-target-menu-item:hover,
         .timer-target-menu-item:focus-visible {
             background: rgba(var(--accent-rgb), 0.12);
             outline: none;
         }
+        .timer-fullscreen-view .timer-target-menu-item:hover,
+        .timer-fullscreen-view .timer-target-menu-item:focus-visible {
+            background: rgba(255, 255, 255, 0.12);
+            color: #FFFFFF;
+        }
         .timer-target-menu-item.is-active {
             background: rgba(var(--accent-rgb), 0.18);
             color: var(--neon-pink);
+        }
+        .timer-fullscreen-view .timer-target-menu-item.is-active {
+            background: rgba(255, 255, 255, 0.18);
+            color: #FFFFFF;
         }
         #timer-subject-pills { display: none !important; }
 
@@ -3439,9 +3456,9 @@
                         <i data-lucide="trending-up" style="color: var(--accent-strong);"></i>
                     </div>
                     <div class="dash-chart-toolbar" role="tablist" aria-label="Chart period">
-                        <button type="button" class="dash-chart-period-btn active" data-chart-period="7" onclick="setAnalyticsChartPeriod('7')">7 days</button>
+                        <button type="button" class="dash-chart-period-btn" data-chart-period="7" onclick="setAnalyticsChartPeriod('7')">7 days</button>
                         <button type="button" class="dash-chart-period-btn" data-chart-period="30" onclick="setAnalyticsChartPeriod('30')">30 days</button>
-                        <button type="button" class="dash-chart-period-btn" data-chart-period="all" onclick="setAnalyticsChartPeriod('all')">All time</button>
+                        <button type="button" class="dash-chart-period-btn active" data-chart-period="all" onclick="setAnalyticsChartPeriod('all')">All time</button>
                     </div>
                     <div class="analytics-chart-wrap">
                         <canvas id="analyticsChart"></canvas>
@@ -3866,38 +3883,46 @@
                 <p class="text-muted" style="font-size: 12px; margin-top: -10px; margin-bottom: 4px;">Keep your active study block visible even when you switch tabs or apps.</p>
 
                 <div class="focus-mode-row">
-                    <div class="focus-mode-row-label">Float the timer when I switch tabs</div>
-                    <div class="focus-mode-row-desc">Pops the timer into a small always-on-top window the moment you start a block, and best-effort when you switch away.</div>
-                    <label class="focus-toggle-checkbox">
+                    <div>
+                        <div class="focus-mode-row-label">Float the timer when I switch tabs</div>
+                        <div class="focus-mode-row-desc">Pops the timer into a small always-on-top window the moment you start a block, and best-effort when you switch away.</div>
+                    </div>
+                    <label class="focus-toggle-switch">
                         <input type="checkbox" id="focus-toggle-float" data-pref="floatTimer" onchange="AuraFocus.onPreferenceToggle(this)">
-                        <span class="focus-checkbox-box" aria-hidden="true"></span>
+                        <span class="focus-toggle-slider"></span>
                     </label>
                 </div>
 
                 <div class="focus-mode-row">
-                    <div class="focus-mode-row-label">Notify me if the timer is running in the background</div>
-                    <div class="focus-mode-row-desc">A browser notification plus a live countdown in the tab title when no floating window is open.</div>
-                    <label class="focus-toggle-checkbox">
+                    <div>
+                        <div class="focus-mode-row-label">Notify me if the timer is running in the background</div>
+                        <div class="focus-mode-row-desc">A browser notification plus a live countdown in the tab title when no floating window is open.</div>
+                    </div>
+                    <label class="focus-toggle-switch">
                         <input type="checkbox" id="focus-toggle-notify" data-pref="notify" onchange="AuraFocus.onPreferenceToggle(this)">
-                        <span class="focus-checkbox-box" aria-hidden="true"></span>
+                        <span class="focus-toggle-slider"></span>
                     </label>
                 </div>
 
                 <div class="focus-mode-row">
-                    <div class="focus-mode-row-label">Keep my screen awake during a session</div>
-                    <div class="focus-mode-row-desc">Prevents your phone or laptop from sleeping mid-block.</div>
-                    <label class="focus-toggle-checkbox">
+                    <div>
+                        <div class="focus-mode-row-label">Keep my screen awake during a session</div>
+                        <div class="focus-mode-row-desc">Prevents your phone or laptop from sleeping mid-block.</div>
+                    </div>
+                    <label class="focus-toggle-switch">
                         <input type="checkbox" id="focus-toggle-wakelock" data-pref="keepAwake" onchange="AuraFocus.onPreferenceToggle(this)">
-                        <span class="focus-checkbox-box" aria-hidden="true"></span>
+                        <span class="focus-toggle-slider"></span>
                     </label>
                 </div>
 
                 <div class="focus-mode-row">
-                    <div class="focus-mode-row-label">Play a sound when a session completes</div>
-                    <div class="focus-mode-row-desc">A short, gentle chime when a countdown finishes on its own -- so you notice even with the tab muted in the background.</div>
-                    <label class="focus-toggle-checkbox">
+                    <div>
+                        <div class="focus-mode-row-label">Play a sound when a session completes</div>
+                        <div class="focus-mode-row-desc">A short, gentle chime when a countdown finishes on its own -- so you notice even with the tab muted in the background.</div>
+                    </div>
+                    <label class="focus-toggle-switch">
                         <input type="checkbox" id="focus-toggle-sound" data-pref="completionSound" onchange="AuraFocus.onPreferenceToggle(this)">
-                        <span class="focus-checkbox-box" aria-hidden="true"></span>
+                        <span class="focus-toggle-slider"></span>
                     </label>
                 </div>
 
@@ -4672,7 +4697,7 @@
             }
         }
 
-        let analyticsChartPeriod = '7';
+        let analyticsChartPeriod = 'all';
 
         function setAnalyticsChartPeriod(period) {
             analyticsChartPeriod = period === '30' ? '30' : (period === 'all' ? 'all' : '7');
@@ -4807,6 +4832,7 @@
             countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
             countdownSecondsRemainingRegister = countdownTotalSeconds;
             updateEngineDisplayString();
+            updatePetEvolutionState();
         }
 
         // Jungle food-chain pet growth engine (hours to next level)
@@ -4843,9 +4869,23 @@
 
         function getSessionDurationSeconds(session) {
             if (!session) return 0;
-            const raw = session.durationSeconds != null ? session.durationSeconds : session.duration_seconds;
-            const n = Number(raw);
-            return isFinite(n) && n > 0 ? Math.floor(n) : 0;
+            if (session.durationSeconds != null) {
+                const ds = Number(session.durationSeconds);
+                if (isFinite(ds) && ds > 0) return Math.floor(ds);
+            }
+            if (session.duration_seconds != null) {
+                const ds2 = Number(session.duration_seconds);
+                if (isFinite(ds2) && ds2 > 0) return Math.floor(ds2);
+            }
+            for (const key of ['duration', 'seconds', 'length']) {
+                if (session[key] == null) continue;
+                const n = Number(session[key]);
+                if (!isFinite(n) || n <= 0) continue;
+                if (n > 300) return Math.floor(n);
+                if (n < 200) return Math.floor(n * 60);
+                return Math.floor(n);
+            }
+            return 0;
         }
 
         function normalizeSessionsDurations(sessions) {
@@ -4857,9 +4897,21 @@
             });
         }
 
-        function updatePetEvolutionState(retryOnce) {
+        function getPetTotalStudySeconds() {
             normalizeSessionsDurations(appState.sessions);
-            const totalSeconds = appState.sessions.reduce((acc, s) => acc + getSessionDurationSeconds(s), 0);
+            let totalSeconds = appState.sessions.reduce((acc, s) => acc + getSessionDurationSeconds(s), 0);
+            if (totalSeconds <= 0) {
+                if (leaderboardYouState && typeof leaderboardYouState.seconds === 'number' && leaderboardYouState.seconds > 0) {
+                    totalSeconds = Math.floor(leaderboardYouState.seconds);
+                } else if (typeof appState.totalSeconds === 'number' && appState.totalSeconds > 0) {
+                    totalSeconds = Math.floor(appState.totalSeconds);
+                }
+            }
+            return totalSeconds;
+        }
+
+        function updatePetEvolutionState(retryOnce) {
+            const totalSeconds = getPetTotalStudySeconds();
             const totalHours = totalSeconds / 3600;
 
             let level = 1;
@@ -5131,7 +5183,17 @@
             else if (targetPanelKey === 'courses') renderCoursesView();
             else if (targetPanelKey === 'sessions') renderSessionsTable();
             else if (targetPanelKey === 'trophies') evaluateCabinetTrophyMetrics();
-            else if (targetPanelKey === 'spotify' && typeof AuraSpotify !== 'undefined' && !(window.AuraGuest && AuraGuest.isGuest())) AuraSpotify.onViewShown();
+            else if (targetPanelKey === 'spotify') {
+                if (window.AuraGuest && AuraGuest.isGuest()) {
+                    if (typeof AuraGuest.initGuestExperience === 'function') {
+                        const spotifyPanel = document.getElementById('view-spotify');
+                        if (spotifyPanel && !spotifyPanel.querySelector('.guest-locked-panel')) AuraGuest.initGuestExperience();
+                    }
+                } else if (typeof AuraSpotify !== 'undefined') {
+                    AuraSpotify.init();
+                    AuraSpotify.onViewShown();
+                }
+            }
             else if (targetPanelKey === 'settings') {
                 refreshSettingsSpotifyStatus();
                 if (typeof AuraFocus !== 'undefined') {
@@ -6363,6 +6425,7 @@
             } else {
                 leaderboardYouState = you;
                 renderLeaderboardYouCard(you, participants, entries);
+                if (typeof you.seconds === 'number' && you.seconds > 0) updatePetEvolutionState();
             }
 
             if (participants === 0 && entries.length === 0) {

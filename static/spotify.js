@@ -336,6 +336,10 @@
     api('/api/spotify/status').then(function (r) {
       if (!r.ok) {
         if (r.status === 401) {
+          if (window.AuraGuest && typeof window.AuraGuest.isGuest === 'function' && window.AuraGuest.isGuest()) {
+            STATE.viewEl.innerHTML = '<div class="card as-card"><p class="as-note">Log in or sign up to connect Spotify.</p></div>';
+            return;
+          }
           window.location.replace('/login');
           return;
         }
@@ -427,6 +431,10 @@
       if (!body) return;
       if (!r.ok) {
         if (r.status === 401) {
+          if (window.AuraGuest && typeof window.AuraGuest.isGuest === 'function' && window.AuraGuest.isGuest()) {
+            STATE.viewEl.innerHTML = '<div class="card as-card"><p class="as-note">Log in or sign up to connect Spotify.</p></div>';
+            return;
+          }
           window.location.replace('/login');
           return;
         }
@@ -493,6 +501,10 @@
     api('/api/spotify/access-request', { method: 'POST', body: JSON.stringify({ spotify_email: email }) }).then(function (r) {
       if (!r.ok) {
         if (r.status === 401) {
+          if (window.AuraGuest && typeof window.AuraGuest.isGuest === 'function' && window.AuraGuest.isGuest()) {
+            STATE.viewEl.innerHTML = '<div class="card as-card"><p class="as-note">Log in or sign up to connect Spotify.</p></div>';
+            return;
+          }
           window.location.replace('/login');
           return;
         }
@@ -515,6 +527,10 @@
     api('/api/spotify/access-request', { method: 'DELETE' }).then(function (r) {
       if (!r.ok) {
         if (r.status === 401) {
+          if (window.AuraGuest && typeof window.AuraGuest.isGuest === 'function' && window.AuraGuest.isGuest()) {
+            STATE.viewEl.innerHTML = '<div class="card as-card"><p class="as-note">Log in or sign up to connect Spotify.</p></div>';
+            return;
+          }
           window.location.replace('/login');
           return;
         }
@@ -968,16 +984,20 @@
     });
   }
 
+  function ensureSpotifyPanelRendered() {
+    if (window.AuraGuest && typeof window.AuraGuest.isGuest === 'function' && window.AuraGuest.isGuest()) return;
+    var panel = document.getElementById('view-spotify');
+    if (!panel) return;
+    if (panel.querySelector('.guest-locked-panel')) panel.innerHTML = '';
+    if (!STATE.viewEl || STATE.viewEl !== panel || !panel.childElementCount) renderInto(panel);
+  }
+
   function init() {
-    if (STATE.inited) return;
-    STATE.inited = true;
     injectStyles();
     handleRedirectParams();
-
-    var panel = document.getElementById('view-spotify');
-    if (panel) renderInto(panel);
-
-    initTimerMusicPopover();
+    ensureSpotifyPanelRendered();
+    if (!STATE.inited) initTimerMusicPopover();
+    STATE.inited = true;
   }
 
   window.AuraSpotify = {
@@ -986,5 +1006,7 @@
     onViewHidden: onViewHidden,
     renderInto: renderInto,
     closeMusicPopover: closeMusicPopover,
+    ensureSpotifyPanelRendered: ensureSpotifyPanelRendered,
+    isInited: function () { return STATE.inited; },
   };
 })();

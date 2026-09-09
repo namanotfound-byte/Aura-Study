@@ -418,19 +418,53 @@ def test_placeholder_clears_on_focus_for_courses_and_auth():
     assert "/static/auth.js" in login_html
 
 
-def test_focus_mode_settings_use_visible_checkboxes():
+def test_focus_mode_settings_use_ios_style_switches():
     html = _read("index.html")
     settings_block = html[html.index('<!-- VIEW: SETTINGS -->'):html.index("<!-- Branded confirm dialog")]
     assert 'id="focus-toggle-float"' in settings_block
     assert 'id="focus-toggle-notify"' in settings_block
     assert 'id="focus-toggle-wakelock"' in settings_block
     assert 'id="focus-toggle-sound"' in settings_block
-    assert "focus-toggle-checkbox" in settings_block
+    assert "focus-toggle-switch" in settings_block
+    assert "focus-toggle-slider" in settings_block
+    assert "focus-toggle-checkbox" not in settings_block
     pip_js = _read("static", "pip.js")
+    assert ".focus-toggle-switch" in pip_js
+    assert ".focus-toggle-slider" in pip_js
     assert "function renderFocusSettingsUI" in pip_js
     assert "renderFocusSettingsUI: renderFocusSettingsUI" in pip_js
     assert "AuraFocus.init()" in html
     assert "AuraFocus.renderFocusSettingsUI()" in html
+
+
+def test_timer_primary_action_button_is_white_on_all_ambients():
+    html = _read("index.html")
+    block = html[html.index(".timer-btn-primary-act,"):html.index(".timer-btn-icon {")]
+    assert "background: #FFFFFF" in block
+    assert "color: #1C1816" in block
+    assert "background: #F5F2EB" in block
+    assert ".timer-fullscreen-view.dark-mode-active .timer-btn-primary-act" in block
+
+
+def test_analytics_chart_defaults_to_all_time():
+    html = _read("index.html")
+    assert "let analyticsChartPeriod = 'all';" in html
+    chart_btns = html[
+        html.index('class="dash-chart-period-btn" data-chart-period="7"')
+        : html.index("All time</button>") + len("All time</button>")
+    ]
+    assert 'class="dash-chart-period-btn active" data-chart-period="all"' in chart_btns
+
+
+def test_switchview_initializes_spotify_for_signed_in_users():
+    html = _read("index.html")
+    switch_block = html[html.index("function switchView(targetPanelKey"):html.index("function changeEngineMode")]
+    assert "AuraSpotify.init();" in switch_block
+    assert "AuraSpotify.onViewShown();" in switch_block
+    assert "initGuestExperience" in switch_block
+    spotify_js = _read("static", "spotify.js")
+    assert "function ensureSpotifyPanelRendered" in spotify_js
+    assert "isInited:" in spotify_js
 
 
 def test_close_pip_if_timer_view_respects_suppress_flag():

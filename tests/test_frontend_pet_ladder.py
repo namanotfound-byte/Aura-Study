@@ -42,7 +42,7 @@ def test_pet_cumulative_level_logic_present():
     assert "duration_seconds" in session_body
     update_body = _extract_function_body(html, "updatePetEvolutionState")
     assert "getPetCumulativeHoursForLevel(level + 1)" in update_body
-    assert "getSessionDurationSeconds" in update_body
+    assert "getPetTotalStudySeconds" in update_body
 
 
 def test_unicorn_forever_path_removed():
@@ -88,3 +88,27 @@ def test_no_sixty_minute_flat_level_formula():
     assert "Math.floor(netMinutes / 60)" not in body
     assert "netMinutes % 60" not in body
     assert "60 * 60" not in body or "nextCostSeconds" in body
+
+
+def test_session_duration_accepts_alternate_synced_fields():
+    html = _read("index.html")
+    body = _extract_function_body(html, "getSessionDurationSeconds")
+    for field in ("duration", "seconds", "length"):
+        assert field in body
+    assert "n > 300" in body
+    assert "n * 60" in body
+
+
+def test_pet_total_seconds_falls_back_to_leaderboard_lifetime():
+    html = _read("index.html")
+    assert "function getPetTotalStudySeconds" in html
+    body = _extract_function_body(html, "getPetTotalStudySeconds")
+    assert "leaderboardYouState" in body
+    assert "leaderboardYouState.seconds" in body
+    load_body = _extract_function_body(html, "loadStateFromLocalStorageRegister")
+    assert "updatePetEvolutionState();" in load_body
+    merge_block = html[
+        html.index("window.applyMergedSyncPayloadToAppState")
+        : html.index("function saveEngineWorkspaceBlockData")
+    ]
+    assert "updatePetEvolutionState();" in merge_block
