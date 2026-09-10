@@ -132,6 +132,7 @@
   var LEGACY_STORAGE_KEY = "aurastudy_girly_v8"; // pre-rebrand key name; fall back to it on read so existing local data isn't lost
   var META_STORAGE_KEY = "aurastudy_sync_meta_v1";
   var DEBOUNCE_MS = 2000;
+  var FACTORY_DEFAULT_COURSES = ["Math", "Physics", "Chemistry", "Literature"];
 
   var state = {
     version: 0,
@@ -205,6 +206,85 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }
 
+  // -------------------------------------------------------------- course merge
+
+  function coursesAreFactoryDefault(courses) {
+    if (!Array.isArray(courses) || courses.length === 0) return true;
+    if (courses.length !== FACTORY_DEFAULT_COURSES.length) return false;
+    for (var i = 0; i < FACTORY_DEFAULT_COURSES.length; i++) {
+      if (courses.indexOf(FACTORY_DEFAULT_COURSES[i]) < 0) return false;
+    }
+    return true;
+  }
+
+  function unionCoursesList(a, b) {
+    var out = [];
+    var seen = {};
+    (a || []).concat(b || []).forEach(function (c) {
+      if (!c || seen[c]) return;
+      seen[c] = true;
+      out.push(c);
+    });
+    return out;
+  }
+
+  function mergeCoursesField(baseCourses, otherCourses) {
+    var base = Array.isArray(baseCourses) ? baseCourses : [];
+    var other = Array.isArray(otherCourses) ? otherCourses : [];
+    if (other.length === 0) return base.slice();
+    if (base.length === 0 || coursesAreFactoryDefault(base)) {
+      if (!coursesAreFactoryDefault(other)) return other.slice();
+      return base.length ? base.slice() : other.slice();
+    }
+    if (coursesAreFactoryDefault(base) && !coursesAreFactoryDefault(other)) {
+      return unionCoursesList(other, base);
+    }
+    return unionCoursesList(base, other);
+  }
+
+  function localSessionsAreStrictSubset(localSessions, serverSessions) {
+    var local = Array.isArray(localSessions) ? localSessions : [];
+    var server = Array.isArray(serverSessions) ? serverSessions : [];
+    if (server.length === 0) return false;
+    if (local.length >= server.length) return false;
+    var seen = {};
+    local.forEach(function (s) {
+      seen[sessionMergeKey(s)] = true;
+    });
+    for (var i = 0; i < server.length; i++) {
+      if (!seen[sessionMergeKey(server[i])]) return true;
+    }
+    return local.length === 0;
+  }
+
+  function shouldSkipFactoryDefaultPush(localPayload, serverPayload, mergedPayload) {
+    if (!serverPayload || !mergedPayload) return false;
+    var localCourses = localPayload && localPayload.courses;
+    var serverCourses = serverPayload.courses;
+    var mergedCourses = mergedPayload.courses;
+    var localSessions = localPayload && localPayload.sessions;
+    var serverSessions = serverPayload.sessions;
+    if (
+      coursesAreFactoryDefault(localCourses) &&
+      serverCourses &&
+      serverCourses.length > 0 &&
+      !coursesAreFactoryDefault(serverCourses) &&
+      (coursesAreFactoryDefault(mergedCourses) || localSessionsAreStrictSubset(localSessions, serverSessions))
+    ) {
+      return true;
+    }
+    if (localSessionsAreStrictSubset(localSessions, serverSessions) && (!localSessions || localSessions.length === 0)) {
+      return true;
+    }
+    return false;
+  }
+
+  function canSyncToServer() {
+    if (isGuestMode()) return false;
+    if (typeof window.isAccountHydrated === "function" && !window.isAccountHydrated()) return false;
+    return true;
+  }
+
   // -------------------------------------------------------------- session merge
 
   function sessionSignature(s) {
@@ -255,6 +335,10 @@
       return true;
     });
     merged.sessions = dedupeBurstSessions(baseSessions.concat(missing));
+    merged.courses = mergeCoursesField(
+      Array.isArray(merged.courses) ? merged.courses : [],
+      other && other.courses
+    );
     // Never let a stale server/other payload clobber this device's last
     // chosen study target when it is still a valid course.
     if (
@@ -392,7 +476,12 @@
             if (local) {
               var merged = stateData.payload ? mergePayloads(local, stateData.payload) : local;
               writeLocalPayload(merged);
+              notifyAppOfMerge(merged);
               state.version = serverVersion;
+              if (stateData.payload && shouldSkipFactoryDefaultPush(local, stateData.payload, merged)) {
+                markSynced(serverVersion);
+                return user;
+              }
               return putServerState(merged, serverVersion)
                 .then(function (putResult) {
                   if (putResult.res.ok) {
@@ -466,7 +555,7 @@
   // -------------------------------------------------------------- push
 
   function doPush() {
-    if (isGuestMode()) return;
+    if (!canSyncToServer()) return;
     if (state.pushInFlight) {
       state.pushAgainAfter = true;
       return;
@@ -540,7 +629,7 @@
   // See the DURABILITY comment at the top of this file for why this is a
   // keepalive fetch and not navigator.sendBeacon.
   function keepaliveFlush() {
-    if (isGuestMode()) return;
+    if (!canSyncToServer()) return;
     var payload = readLocalPayload();
     if (!payload) return;
     if (state.debounceTimer) {

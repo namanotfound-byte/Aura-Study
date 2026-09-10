@@ -79,7 +79,7 @@
             background: rgba(20, 24, 32, 0.45);
             backdrop-filter: blur(4px);
         }
-        .aura-confirm-backdrop[hidden] { display: none !important; }
+        .aura-confirm-backdrop[hidden] { display: none !important; pointer-events: none !important; }
         .aura-confirm-card {
             width: min(440px, 100%);
             background: var(--bg-card);
@@ -163,7 +163,7 @@
             background: var(--bg-main);
             color: var(--text-main);
         }
-        #app-boot-overlay[hidden] { display: none !important; }
+        #app-boot-overlay[hidden] { display: none !important; pointer-events: none !important; }
         .app-boot-logo {
             display: flex;
             flex-direction: column;
@@ -500,6 +500,10 @@
         .mobile-nav-scrim.visible {
             display: block;
             opacity: 1;
+            pointer-events: auto;
+        }
+        .mobile-nav-scrim:not(.visible) {
+            pointer-events: none;
         }
         @media (prefers-reduced-motion: reduce) {
             .mobile-nav-scrim { transition: none; }
@@ -1469,7 +1473,45 @@
         .timer-corner > * { pointer-events: auto; }
         .timer-corner--tl {
             top: calc(16px + env(safe-area-inset-top));
-            left: 16px;
+            left: calc(16px + env(safe-area-inset-left));
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+            z-index: 200;
+        }
+        /* Timer-stage nav menu — visible on tablet/phone while global header is hidden */
+        .timer-nav-menu-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            min-height: 44px;
+            padding: 0;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            background: rgba(0, 0, 0, 0.38);
+            color: #fff;
+            cursor: pointer;
+            pointer-events: auto;
+            z-index: 200;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+        }
+        .timer-nav-menu-btn:hover {
+            transform: scale(1.04);
+            border-color: rgba(255, 255, 255, 0.55);
+        }
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-nav-menu-btn {
+            border-color: rgba(28, 24, 22, 0.18);
+            background: rgba(255, 255, 255, 0.82);
+            color: #1C1816;
+        }
+        body.timer-view-active .timer-nav-menu-btn { display: none; }
+        @media (max-width: 1024px) {
+            body.timer-view-active .timer-nav-menu-btn { display: inline-flex; }
         }
         .timer-stage-footer {
             position: absolute;
@@ -2418,9 +2460,9 @@
             font-size: 13px;
             padding: 8px 18px;
             gap: 8px;
-            background: rgba(0, 0, 0, 0.42) !important;
-            border-color: rgba(255, 255, 255, 0.18) !important;
-            color: #fff !important;
+            background: rgba(0, 0, 0, 0.42);
+            border: 1.5px solid rgba(255, 255, 255, 0.18);
+            color: rgba(255, 255, 255, 0.94);
         }
         .timer-target-trigger:hover {
             transform: scale(1.02);
@@ -2432,8 +2474,8 @@
             width: 16px;
             height: 16px;
             opacity: 1;
-            color: #fff !important;
-            stroke: #fff;
+            color: inherit;
+            stroke: currentColor;
             transition: transform 0.2s ease;
         }
         .timer-target-subject {
@@ -2441,16 +2483,22 @@
             font-weight: 800;
             text-transform: none;
             letter-spacing: 0;
-            color: #fff !important;
+            color: inherit;
         }
         .timer-fullscreen-view:not(.dark-mode-active) .timer-target-trigger {
-            background: rgba(0, 0, 0, 0.38) !important;
-            color: #fff !important;
-            border-color: rgba(255, 255, 255, 0.22) !important;
+            background: rgba(255, 255, 255, 0.78);
+            color: #1C1816;
+            border-color: rgba(28, 24, 22, 0.16);
+            box-shadow: 0 4px 18px rgba(42, 36, 32, 0.08);
         }
         .timer-fullscreen-view:not(.dark-mode-active) .timer-target-trigger .timer-target-subject,
         .timer-fullscreen-view:not(.dark-mode-active) .timer-target-trigger .timer-target-chevron {
-            color: #fff !important;
+            color: #1C1816;
+        }
+        .timer-fullscreen-view.dark-mode-active .timer-target-trigger {
+            background: rgba(0, 0, 0, 0.42);
+            color: rgba(255, 255, 255, 0.94);
+            border-color: rgba(255, 255, 255, 0.18);
         }
         .timer-target-menu {
             position: absolute;
@@ -2486,7 +2534,10 @@
             cursor: pointer;
             font-family: inherit;
         }
-        .timer-fullscreen-view .timer-target-menu-item {
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-target-menu-item {
+            color: #1C1816;
+        }
+        .timer-fullscreen-view.dark-mode-active .timer-target-menu-item {
             color: rgba(255, 255, 255, 0.94);
         }
         .timer-target-menu-item:hover,
@@ -2494,8 +2545,13 @@
             background: rgba(var(--accent-rgb), 0.12);
             outline: none;
         }
-        .timer-fullscreen-view .timer-target-menu-item:hover,
-        .timer-fullscreen-view .timer-target-menu-item:focus-visible {
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-target-menu-item:hover,
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-target-menu-item:focus-visible {
+            background: rgba(28, 24, 22, 0.06);
+            color: #1C1816;
+        }
+        .timer-fullscreen-view.dark-mode-active .timer-target-menu-item:hover,
+        .timer-fullscreen-view.dark-mode-active .timer-target-menu-item:focus-visible {
             background: rgba(255, 255, 255, 0.12);
             color: #FFFFFF;
         }
@@ -2503,7 +2559,11 @@
             background: rgba(var(--accent-rgb), 0.18);
             color: var(--neon-pink);
         }
-        .timer-fullscreen-view .timer-target-menu-item.is-active {
+        .timer-fullscreen-view:not(.dark-mode-active) .timer-target-menu-item.is-active {
+            background: rgba(var(--accent-rgb), 0.18);
+            color: var(--neon-pink);
+        }
+        .timer-fullscreen-view.dark-mode-active .timer-target-menu-item.is-active {
             background: rgba(255, 255, 255, 0.18);
             color: #FFFFFF;
         }
@@ -2586,7 +2646,8 @@
             z-index: 10000;
             border: 2px solid var(--border-color);
         }
-        .toast-notification.show { transform: translateY(0); opacity: 1; }
+        .toast-notification.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        .toast-notification:not(.show) { pointer-events: none; }
 
         /* ============================================================
            RESPONSIVE / CROSS-DEVICE STYLES (Phase 2, Part B)
@@ -2794,7 +2855,8 @@
             .todo-delete-btn { min-width: 44px; min-height: 44px; }
             .ambient-preset-dot { width: 30px; height: 30px; }
             .form-control { min-height: 44px; }
-            .mobile-nav-toggle { width: 44px; height: 44px; }
+            .mobile-nav-toggle,
+            .timer-nav-menu-btn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
             /* Supplementary info chip inside a dense table cell -- not a
                primary action, so a smaller bump than the full 44px rather
                than breaking the Sessions table layout. */
@@ -3528,8 +3590,11 @@
                     <div class="timer-atmo-skyline"></div>
                 </div>
 
-                <!-- Top-left: brain dump chip -->
+                <!-- Top-left: nav menu (tablet/phone) + brain dump chip -->
                 <div class="timer-corner timer-corner--tl">
+                    <button class="timer-nav-menu-btn" id="timer-nav-menu-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="app-sidebar" onclick="toggleMobileNav()">
+                        <i data-lucide="menu" id="timer-nav-menu-toggle-icon"></i>
+                    </button>
                     <button class="timer-floating-interactive-trigger-btn" onclick="toggleBrainDumpPostitPopoverState()" title="Brain Dump Note">
                         <i data-lucide="sticky-note" style="width:14px; height:14px;"></i>
                         <span class="tfi-label">Note</span>
@@ -4033,10 +4098,12 @@
             return day + suffix + ' ' + monthNames[monthIndex] + ' ' + year;
         }
 
+        const FACTORY_DEFAULT_COURSES = ["Math", "Physics", "Chemistry", "Literature"];
+
         // Core State Engine Allocation
         let appState = {
             profile: { email: "you@example.com", dailyGoalHours: 3, defaultTimerMinutes: 25, defaultBreakMinutes: 5, autoBreakAfterPomodoro: true },
-            courses: ["Math", "Physics", "Chemistry", "Literature"],
+            courses: FACTORY_DEFAULT_COURSES.slice(),
             sessions: [],
             todoItems: [],
             selectedCourse: "Math",
@@ -4062,6 +4129,17 @@
         let engineBlockLoggedThisSession = false;
         const POMODORO_DURATION_SECONDS = 25 * 60;
         let appBootFinished = false;
+        let accountHydrated = false;
+
+        function isGuestAccountMode() {
+            return !!(window.AuraGuest && typeof AuraGuest.isGuest === 'function' && AuraGuest.isGuest());
+        }
+
+        function canPersistAccountState() {
+            return isGuestAccountMode() || accountHydrated;
+        }
+
+        window.isAccountHydrated = function () { return accountHydrated; };
 
         // ---- Running-timer durability (never lose an in-flight session) ------
         // The timer engine above only ever lived in JS variables: closing the
@@ -4515,6 +4593,7 @@
                 switchView('timer', document.getElementById('nav-item-timer-toggle'));
             }
             AuraSync.bootstrap().then((accountUser) => {
+                accountHydrated = true;
                 loadStateFromLocalStorageRegister();
                 stripLegacyDefaultTodos();
                 applyAccountIdentity(accountUser);
@@ -4561,6 +4640,7 @@
                 syncGlobalHeaderForView(activeViewKey);
                 refreshHeaderGreeting();
             }).catch(() => {
+                accountHydrated = true;
                 clearTimeout(bootFinishTimer);
                 finishAppBoot();
             });
@@ -4851,42 +4931,42 @@
             else openMobileNav();
         }
 
+        function syncMobileNavToggleUi(isOpen) {
+            [
+                { btn: 'mobile-nav-toggle', icon: 'mobile-nav-toggle-icon' },
+                { btn: 'timer-nav-menu-toggle', icon: 'timer-nav-menu-toggle-icon' }
+            ].forEach(function (pair) {
+                const toggleBtn = document.getElementById(pair.btn);
+                const icon = document.getElementById(pair.icon);
+                if (toggleBtn) {
+                    toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                    toggleBtn.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
+                }
+                if (icon) {
+                    icon.setAttribute('data-lucide', isOpen ? 'x' : 'menu');
+                }
+            });
+            if (window.lucide) lucide.createIcons();
+        }
+
         function openMobileNav() {
             const sidebar = document.getElementById('app-sidebar');
             const scrim = document.getElementById('mobile-nav-scrim');
-            const toggleBtn = document.getElementById('mobile-nav-toggle');
-            const icon = document.getElementById('mobile-nav-toggle-icon');
             if (!sidebar) return;
             sidebar.classList.add('mobile-nav-open');
             if (scrim) scrim.classList.add('visible');
             document.body.classList.add('mobile-nav-locked');
-            if (toggleBtn) {
-                toggleBtn.setAttribute('aria-expanded', 'true');
-                toggleBtn.setAttribute('aria-label', 'Close navigation menu');
-            }
-            if (icon) {
-                icon.setAttribute('data-lucide', 'x');
-                if (window.lucide) lucide.createIcons();
-            }
+            syncMobileNavToggleUi(true);
         }
 
         function closeMobileNav() {
             const sidebar = document.getElementById('app-sidebar');
             if (!sidebar || !sidebar.classList.contains('mobile-nav-open')) return;
             const scrim = document.getElementById('mobile-nav-scrim');
-            const toggleBtn = document.getElementById('mobile-nav-toggle');
-            const icon = document.getElementById('mobile-nav-toggle-icon');
             sidebar.classList.remove('mobile-nav-open');
             if (scrim) scrim.classList.remove('visible');
             document.body.classList.remove('mobile-nav-locked');
-            if (toggleBtn) {
-                toggleBtn.setAttribute('aria-expanded', 'false');
-                toggleBtn.setAttribute('aria-label', 'Open navigation menu');
-            }
-            if (icon) {
-                icon.setAttribute('data-lucide', 'menu');
-                if (window.lucide) lucide.createIcons();
-            }
+            syncMobileNavToggleUi(false);
         }
 
         document.addEventListener('keydown', (e) => {
@@ -4911,6 +4991,7 @@
         }
 
         function saveStateToLocalStorageRegister() {
+            if (!canPersistAccountState()) return;
             localStorage.setItem('aurastudy_state_v1', JSON.stringify(appState));
         }
 

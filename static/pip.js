@@ -162,6 +162,7 @@
   // -- small helpers ---------------------------------------------------
 
   function prefs() {
+    ensureProfileDefaults();
     return appState.profile.focusMode;
   }
 

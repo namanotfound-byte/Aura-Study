@@ -283,7 +283,8 @@ def test_timer_target_cluster_centered_with_more_gap():
     assert "align-self: center" in badge_block
     assert "width: fit-content" in badge_block
     assert "font-size: 13px" in target_block
-    assert "color: #fff !important" in target_block
+    assert "color: #1C1816" in target_block
+    assert "color: #fff !important" not in target_block
     assert "padding: 8px 18px" in target_block
 
 

@@ -185,3 +185,43 @@ def test_selected_course_persists_across_log_reset_and_load():
     merge_block = sync_js[sync_js.index("function mergePayloads"):sync_js.index("function notifyAppOfMerge")]
     assert "aurastudy_last_target" in merge_block
     assert "merged.selectedCourse = base.selectedCourse" in merge_block
+
+
+def test_timer_stage_nav_menu_exists_for_tablet_escape():
+    html = _read("index.html")
+    assert 'id="timer-nav-menu-toggle"' in html
+    assert "timer-nav-menu-btn" in html
+    assert "body.timer-view-active .timer-nav-menu-btn" in html
+    assert "max-width: 1024px" in html[html.index("body.timer-view-active .timer-nav-menu-btn"):html.index("body.timer-view-active .timer-nav-menu-btn") + 200]
+    assert "toggleMobileNav()" in html[html.index('id="timer-nav-menu-toggle"'):html.index('id="timer-nav-menu-toggle"') + 280]
+    assert "syncMobileNavToggleUi" in html
+
+
+def test_merge_payloads_rejects_factory_default_course_clobber():
+    sync_js = _read("static", "sync.js")
+    assert 'FACTORY_DEFAULT_COURSES = ["Math", "Physics", "Chemistry", "Literature"]' in sync_js
+    assert "function coursesAreFactoryDefault(" in sync_js
+    assert "function mergeCoursesField(" in sync_js
+    merge_block = sync_js[sync_js.index("function mergePayloads"):sync_js.index("function notifyAppOfMerge")]
+    assert "mergeCoursesField(" in merge_block
+    assert "shouldSkipFactoryDefaultPush" in sync_js
+
+
+def test_account_state_persist_gated_until_hydrate():
+    html = _read("index.html")
+    assert "let accountHydrated = false" in html
+    assert "function canPersistAccountState()" in html
+    assert "window.isAccountHydrated" in html
+    save_body = _extract_function_body(html, "saveStateToLocalStorageRegister")
+    assert "canPersistAccountState()" in save_body
+    sync_js = _read("static", "sync.js")
+    assert "function canSyncToServer(" in sync_js
+    assert "window.isAccountHydrated" in sync_js
+    assert "if (!canSyncToServer()) return;" in sync_js
+
+
+def test_light_ambient_timer_target_uses_dark_text():
+    html = _read("index.html")
+    light_block = html[html.index(".timer-fullscreen-view:not(.dark-mode-active) .timer-target-trigger {"):html.index(".timer-fullscreen-view.dark-mode-active .timer-target-trigger {")]
+    assert "color: #1C1816" in light_block
+    assert "#fff !important" not in light_block
