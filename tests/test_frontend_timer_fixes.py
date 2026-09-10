@@ -67,16 +67,16 @@ def test_log_button_reentrancy_and_immediate_reset():
     assert "resetEngineDisplayState(true)" in save_body
     assert "updateTimerTargetBadge()" in save_body
     assert "renderTimerTargetMenu()" in save_body
+    assert "armEngineTickMute" in save_body
+    assert "forceClearRunningTimerSnapshot()" in save_body
     reset_body = _extract_function_body(html, "resetEngineDisplayState")
     assert "finalizeEngineResetDisplay()" in reset_body
-    assert "function forceWriteEngineDisplayAfterReset" in html
-    force_body = _extract_function_body(html, "forceWriteEngineDisplayAfterReset")
-    assert 'getElementById(\'timer-display\')' in force_body or 'getElementById("timer-display")' in force_body
-    assert "clearRunningTimerSnapshot()" in force_body
-    assert "updateEngineDisplayString()" in force_body
-    assert "requestAnimationFrame" in force_body
+    assert "function paintFreshIdleClock" in html
+    paint_body = _extract_function_body(html, "paintFreshIdleClock")
+    assert 'getElementById(\'timer-display\')' in paint_body or 'writeTimerDisplayFromWholeSeconds' in paint_body
+    assert "forceClearRunningTimerSnapshot()" in paint_body
     finalize_body = _extract_function_body(html, "finalizeEngineResetDisplay")
-    assert "forceWriteEngineDisplayAfterReset()" in finalize_body
+    assert "paintFreshIdleClock()" in finalize_body
     assert "syncTimerBreakStepperVisibility()" in finalize_body
     assert "updateTimerTargetBadge()" in finalize_body
     assert "updateTimerCountdownStepperDisabled" in html[html.index("function syncTimerBreakStepperVisibility"):html.index("function updateTimerBreakStepperDisabled") + 400]
@@ -101,14 +101,50 @@ def test_burst_dedupe_on_load_merge_and_sync():
 def test_countdown_reset_restores_configured_focus_length():
     html = _read("index.html")
     reset_body = _extract_function_body(html, "resetEngineDisplayState")
+    assert "finalizeEngineResetDisplay()" in reset_body
+    paint_body = _extract_function_body(html, "paintFreshIdleClock")
     assert re.search(
         r"countdownTotalSeconds = wholeSeconds\(appState\.profile\.defaultTimerMinutes \* 60,\s*25 \* 60\)",
-        reset_body,
+        paint_body,
     )
-    assert "countdownSecondsRemainingRegister = countdownTotalSeconds" in reset_body
-    assert "finalizeEngineResetDisplay()" in reset_body
-    force_body = _extract_function_body(html, "forceWriteEngineDisplayAfterReset")
-    assert "countdownSecondsRemainingRegister = countdownTotalSeconds" in force_body
+    assert "countdownSecondsRemainingRegister = countdownTotalSeconds" in paint_body
+    assert "writeTimerDisplayFromWholeSeconds(countdownSecondsRemainingRegister)" in paint_body
+
+
+def test_log_path_clears_running_timer_snapshot_unconditionally():
+    html = _read("index.html")
+    save_body = _extract_function_body(html, "saveEngineWorkspaceBlockData")
+    clear_pos = save_body.index("forceClearRunningTimerSnapshot()")
+    mute_pos = save_body.index("armEngineTickMute")
+    assert mute_pos < clear_pos
+    assert "RUNNING_TIMER_STORAGE_KEY" in html
+    assert "function forceClearRunningTimerSnapshot" in html
+
+
+def test_engine_tick_handler_bails_when_muted_or_not_running():
+    html = _read("index.html")
+    tick_body = _extract_function_body(html, "engineTickHandler")
+    assert re.search(r"if\s*\(\s*!isEngineActivelyRunning\s*\|\|\s*isEngineTickMuted\(\)\s*\)\s*return", tick_body)
+
+
+def test_paint_fresh_idle_clock_stopwatch_shows_zero():
+    html = _read("index.html")
+    paint_body = _extract_function_body(html, "paintFreshIdleClock")
+    assert "writeTimerDisplayFromWholeSeconds(0)" in paint_body
+    assert "runningAccumulatedSeconds = 0" in paint_body
+    assert "bankedElapsedSeconds = 0" in paint_body
+
+
+def test_persist_keep_guard_skipped_on_log_reset():
+    html = _read("index.html")
+    persist_body = _extract_function_body(html, "persistRunningTimerSnapshot")
+    assert "isEngineTickMuted()" in persist_body
+    assert "options.forceClear" in persist_body
+    assert "forceClearRunningTimerSnapshot()" in persist_body
+    recovery_body = _extract_function_body(html, "attemptRunningTimerRecovery")
+    assert "isEngineTickMuted()" in recovery_body
+    flush_body = _extract_function_body(html, "flushRunningTimerOnPageLeave")
+    assert "isEngineTickMuted()" in flush_body
 
 
 def test_fullscreen_reparents_confirm_and_toast_into_timer_container():

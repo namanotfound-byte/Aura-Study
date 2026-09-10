@@ -4080,6 +4080,7 @@
         let lastTimerPersistMs = 0;
         let lastSyncClockMs = null; // wall-clock time of the previous syncEngineRegistersFromClock() call -- the gap guard's reference point
         let runningTimerRecoveryCompleted = false; // true once attemptRunningTimerRecovery() has handled a >=5s snapshot -- prevents a second boot pass from clearing or re-prompting
+        let engineIgnoreTicksUntilMs = 0; // after log/reset: mute ticks, persist, and recovery until this wall time (or Start clears it)
 
         // ---- Whole-seconds invariant --------------------------------------
         // The five timer registers (runningAccumulatedSeconds,
@@ -4236,37 +4237,61 @@
             return appState.selectedCourse;
         }
 
-        function forceWriteEngineDisplayAfterReset() {
+        function isEngineTickMuted() {
+            return Date.now() < engineIgnoreTicksUntilMs;
+        }
+
+        function armEngineTickMute(durationMs) {
+            engineIgnoreTicksUntilMs = Date.now() + (typeof durationMs === 'number' ? durationMs : 2000);
+        }
+
+        function writeTimerDisplayFromWholeSeconds(totalRunningSecondsMap) {
+            const timerEl = document.getElementById('timer-display');
+            if (!timerEl) return;
+            const secs = (typeof totalRunningSecondsMap === 'number' && isFinite(totalRunningSecondsMap) && totalRunningSecondsMap > 0)
+                ? Math.floor(totalRunningSecondsMap) : 0;
+            if (secs >= 3600) {
+                const hours = Math.floor(secs / 3600);
+                const mins = Math.floor((secs % 3600) / 60);
+                timerEl.innerText = hours + 'h ' + mins.toString().padStart(2, '0') + 'm';
+                timerEl.classList.add('timer-clock-display--hours');
+            } else {
+                const mins = Math.floor(secs / 60);
+                const rem = secs % 60;
+                timerEl.innerText = `${mins.toString().padStart(2, '0')}:${rem.toString().padStart(2, '0')}`;
+                timerEl.classList.remove('timer-clock-display--hours');
+            }
+        }
+
+        // Single authoritative idle clock paint after log/reset -- zeros registers,
+        // writes #timer-display directly, and deletes the running-timer snapshot.
+        function paintFreshIdleClock() {
             clearInterval(engineIntervalRegister);
             engineIntervalRegister = null;
             isEngineActivelyRunning = false;
             engineAnchorMs = null;
             lastSyncClockMs = null;
             bankedElapsedSeconds = 0;
+            runningAccumulatedSeconds = 0;
             if (isEngineInBreakPhase()) {
                 countdownTotalSeconds = wholeSeconds(appState.profile.defaultBreakMinutes * 60, 5 * 60) || 5 * 60;
                 countdownSecondsRemainingRegister = countdownTotalSeconds;
+                writeTimerDisplayFromWholeSeconds(countdownSecondsRemainingRegister);
             } else if (appState.selectedMode === 'countdown') {
                 countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
                 countdownSecondsRemainingRegister = countdownTotalSeconds;
-                runningAccumulatedSeconds = 0;
+                writeTimerDisplayFromWholeSeconds(countdownSecondsRemainingRegister);
             } else {
-                runningAccumulatedSeconds = 0;
+                writeTimerDisplayFromWholeSeconds(0);
             }
-            clearRunningTimerSnapshot();
-            updateEngineDisplayString();
-            const timerEl = document.getElementById('timer-display');
-            const forcedText = timerEl ? timerEl.innerText : '00:00';
-            if (timerEl) timerEl.innerText = forcedText;
-            requestAnimationFrame(function () { updateEngineDisplayString(); });
-            setTimeout(function () { updateEngineDisplayString(); }, 0);
+            forceClearRunningTimerSnapshot();
         }
 
         function finalizeEngineResetDisplay() {
             initialBlockTimestampString = '';
             engineBlockLoggedThisSession = false;
             engineLogSaveInFlight = false;
-            forceWriteEngineDisplayAfterReset();
+            paintFreshIdleClock();
             syncTimerBreakStepperVisibility();
             updateTimerLogButtonDisabled();
             updateTimerTargetBadge();
@@ -5607,7 +5632,7 @@
         }
 
         function engineTickHandler() {
-            if (!isEngineActivelyRunning) return;
+            if (!isEngineActivelyRunning || isEngineTickMuted()) return;
             syncEngineRegistersFromClock();
             updateEngineDisplayString();
             if (Date.now() - lastTimerPersistMs >= TIMER_PERSIST_THROTTLE_MS) {
@@ -5667,20 +5692,30 @@
         // to every TIMER_PERSIST_THROTTLE_MS while actively running
         // (engineTickHandler), and unconditionally from pagehide / beforeunload /
         // visibilitychange-hidden so a closed tab's snapshot is current.
-        function persistRunningTimerSnapshot() {
+        function persistRunningTimerSnapshot(options) {
+            options = options || {};
             try {
                 if (isEngineInBreakPhase()) {
                     localStorage.removeItem(RUNNING_TIMER_STORAGE_KEY);
                     return;
                 }
+                if (isEngineTickMuted() && !isEngineActivelyRunning) {
+                    forceClearRunningTimerSnapshot();
+                    return;
+                }
                 if (engineAnchorMs === null && !isEngineActivelyRunning && bankedElapsedSeconds < 5) {
+                    if (options.forceClear) {
+                        forceClearRunningTimerSnapshot();
+                        return;
+                    }
                     const existingElapsed = getExistingSnapshotElapsedSeconds();
                     if (existingElapsed >= 5) {
                         // In-memory engine looks idle but localStorage still holds
                         // a real session (common when bootstrap hung on a cold start).
+                        // Skipped after an explicit log/reset (tick mute / forceClear).
                         return;
                     }
-                    localStorage.removeItem(RUNNING_TIMER_STORAGE_KEY);
+                    forceClearRunningTimerSnapshot();
                     return;
                 }
                 if (isEngineActivelyRunning) {
@@ -5708,15 +5743,23 @@
         }
 
         function flushRunningTimerOnPageLeave() {
+            if (isEngineTickMuted() && !isEngineActivelyRunning) {
+                forceClearRunningTimerSnapshot();
+                return;
+            }
             if (isEngineActivelyRunning) syncEngineRegistersFromClock();
             persistRunningTimerSnapshot();
         }
 
         window.persistRunningTimerSnapshotBeforeAuthRedirect = flushRunningTimerOnPageLeave;
 
-        function clearRunningTimerSnapshot() {
+        function forceClearRunningTimerSnapshot() {
             try { localStorage.removeItem(RUNNING_TIMER_STORAGE_KEY); } catch (e) {}
             lastTimerPersistMs = 0;
+        }
+
+        function clearRunningTimerSnapshot() {
+            forceClearRunningTimerSnapshot();
         }
 
         function toggleEngineExecutionLoop() {
@@ -5750,6 +5793,7 @@
                     document.getElementById('timer-start-timestamp').innerText = 'Break started.';
                 }
 
+                engineIgnoreTicksUntilMs = 0;
                 engineAnchorMs = Date.now();
                 lastSyncClockMs = null; // fresh start/resume -- the next sync must not compare against a stale pre-pause timestamp (see syncEngineRegistersFromClock's gap guard)
                 isEngineActivelyRunning = true;
@@ -5823,24 +5867,14 @@
                 }
                 return;
             }
+            armEngineTickMute(2000);
+            forceClearRunningTimerSnapshot();
             const wasBreak = isEngineInBreakPhase();
-            clearInterval(engineIntervalRegister);
-            engineIntervalRegister = null;
-            isEngineActivelyRunning = false;
-            engineAnchorMs = null;
-            lastSyncClockMs = null;
-            bankedElapsedSeconds = 0;
-            runningAccumulatedSeconds = 0;
             if (wasBreak) {
                 exitBreakMode();
-                finalizeEngineResetDisplay();
-                return;
             }
-            countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
-            countdownSecondsRemainingRegister = countdownTotalSeconds;
             document.getElementById('timer-start-btn').innerHTML = '<i data-lucide="play-circle"></i> Start Block';
             document.getElementById('timer-start-timestamp').innerText = "Timer reset.";
-            clearRunningTimerSnapshot();
             lucide.createIcons();
             finalizeEngineResetDisplay();
         }
@@ -5964,6 +5998,8 @@
             updateTimerLogButtonDisabled();
             try {
                 syncEngineRegistersFromClock();
+                armEngineTickMute(2000);
+                forceClearRunningTimerSnapshot();
                 clearInterval(engineIntervalRegister);
                 engineIntervalRegister = null;
                 isEngineActivelyRunning = false;
@@ -6049,6 +6085,10 @@
         // trusted outright; see MAX_PLAUSIBLE_RECOVERY_SECONDS above.
         function attemptRunningTimerRecovery() {
             if (runningTimerRecoveryCompleted) return;
+            if (isEngineTickMuted()) {
+                forceClearRunningTimerSnapshot();
+                return;
+            }
             let snapshot;
             try {
                 const raw = localStorage.getItem(RUNNING_TIMER_STORAGE_KEY);
