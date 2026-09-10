@@ -115,6 +115,16 @@
         }
         .aura-confirm-actions .btn[hidden] { display: none !important; }
 
+        /* Confirm + toast must paint above timer chrome when reparented into fullscreen container */
+        #timer-view-container:fullscreen .aura-confirm-backdrop,
+        #timer-view-container:-webkit-full-screen .aura-confirm-backdrop {
+            z-index: 13000;
+        }
+        #timer-view-container:fullscreen .toast-notification,
+        #timer-view-container:-webkit-full-screen .toast-notification {
+            z-index: 10000;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -4061,6 +4071,7 @@
         // seconds so a reload can reconstruct (not silently invent) elapsed
         // time -- see persistRunningTimerSnapshot / attemptRunningTimerRecovery.
         const RUNNING_TIMER_STORAGE_KEY = 'aurastudy_running_timer_v1';
+        const LAST_TARGET_STORAGE_KEY = 'aurastudy_last_target';
         const ACTIVE_VIEW_STORAGE_KEY = 'aurastudy_active_view';
         const GUEST_LOCKED_VIEWS = ['spotify', 'help'];
         const TIMER_PERSIST_THROTTLE_MS = 5000;        // how often the live heartbeat snapshot is rewritten while running
@@ -4197,13 +4208,68 @@
             logBtn.disabled = engineLogSaveInFlight || engineBlockLoggedThisSession;
         }
 
+        function persistLastTargetCourse(courseName) {
+            if (!courseName || typeof courseName !== 'string') return;
+            try { localStorage.setItem(LAST_TARGET_STORAGE_KEY, courseName); } catch (e) { /* ignore */ }
+        }
+
+        function restoreLastTargetCourse(courses) {
+            try {
+                const last = localStorage.getItem(LAST_TARGET_STORAGE_KEY);
+                if (last && Array.isArray(courses) && courses.includes(last)) return last;
+            } catch (e) { /* ignore */ }
+            return null;
+        }
+
+        function resolveSelectedCourseOnLoad(parsed) {
+            const courses = (parsed && Array.isArray(parsed.courses)) ? parsed.courses : appState.courses;
+            const fromLast = restoreLastTargetCourse(courses);
+            if (fromLast) return fromLast;
+            if (parsed && parsed.selectedCourse && courses.includes(parsed.selectedCourse)) {
+                return parsed.selectedCourse;
+            }
+            if (parsed && Array.isArray(parsed.sessions) && parsed.sessions.length > 0) {
+                const newest = parsed.sessions[0];
+                if (newest && newest.course && courses.includes(newest.course)) return newest.course;
+            }
+            return appState.selectedCourse;
+        }
+
+        function forceWriteEngineDisplayAfterReset() {
+            clearInterval(engineIntervalRegister);
+            engineIntervalRegister = null;
+            isEngineActivelyRunning = false;
+            engineAnchorMs = null;
+            lastSyncClockMs = null;
+            bankedElapsedSeconds = 0;
+            if (isEngineInBreakPhase()) {
+                countdownTotalSeconds = wholeSeconds(appState.profile.defaultBreakMinutes * 60, 5 * 60) || 5 * 60;
+                countdownSecondsRemainingRegister = countdownTotalSeconds;
+            } else if (appState.selectedMode === 'countdown') {
+                countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
+                countdownSecondsRemainingRegister = countdownTotalSeconds;
+                runningAccumulatedSeconds = 0;
+            } else {
+                runningAccumulatedSeconds = 0;
+            }
+            clearRunningTimerSnapshot();
+            updateEngineDisplayString();
+            const timerEl = document.getElementById('timer-display');
+            const forcedText = timerEl ? timerEl.innerText : '00:00';
+            if (timerEl) timerEl.innerText = forcedText;
+            requestAnimationFrame(function () { updateEngineDisplayString(); });
+            setTimeout(function () { updateEngineDisplayString(); }, 0);
+        }
+
         function finalizeEngineResetDisplay() {
             initialBlockTimestampString = '';
             engineBlockLoggedThisSession = false;
             engineLogSaveInFlight = false;
-            updateEngineDisplayString();
+            forceWriteEngineDisplayAfterReset();
             syncTimerBreakStepperVisibility();
             updateTimerLogButtonDisabled();
+            updateTimerTargetBadge();
+            renderTimerTargetMenu();
         }
 
         function commitTimerCountdownMinutesFromInput() {
@@ -4842,7 +4908,8 @@
                         }
                     }
                     if(parsed.todoItems) appState.todoItems = parsed.todoItems;
-                    if(parsed.selectedCourse) appState.selectedCourse = parsed.selectedCourse;
+                    appState.selectedCourse = resolveSelectedCourseOnLoad(parsed);
+                    persistLastTargetCourse(appState.selectedCourse);
                     if(parsed.colourTheme) appState.colourTheme = parsed.colourTheme;
                     if(parsed.ambientKey) appState.ambientKey = parsed.ambientKey;
                     if(typeof parsed.isDarkAmbient === 'boolean') appState.isDarkAmbient = parsed.isDarkAmbient;
@@ -4990,11 +5057,44 @@
             return !!(fs && containerNode && (fs === containerNode || containerNode.contains(fs)));
         }
 
+        const fullscreenOverlayAnchors = new Map();
+
+        function reparentTimerOverlaysForFullscreen() {
+            const containerNode = document.getElementById('timer-view-container');
+            if (!containerNode) return;
+            ['aura-confirm-modal', 'toast-alert'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (!el || el.parentElement === containerNode) return;
+                fullscreenOverlayAnchors.set(id, { parent: el.parentNode, next: el.nextSibling });
+                containerNode.appendChild(el);
+            });
+        }
+
+        function restoreTimerOverlaysFromFullscreen() {
+            ['aura-confirm-modal', 'toast-alert'].forEach(function (id) {
+                const el = document.getElementById(id);
+                const anchor = fullscreenOverlayAnchors.get(id);
+                if (!el || !anchor || !anchor.parent) return;
+                if (anchor.next && anchor.next.parentNode === anchor.parent) {
+                    anchor.parent.insertBefore(el, anchor.next);
+                } else {
+                    anchor.parent.appendChild(el);
+                }
+                fullscreenOverlayAnchors.delete(id);
+            });
+        }
+
+        function syncFullscreenOverlays() {
+            if (isTimerElementFullscreen()) reparentTimerOverlaysForFullscreen();
+            else restoreTimerOverlaysFromFullscreen();
+        }
+
         function syncFullscreenIcon() {
             const iconNode = document.getElementById('fullscreen-icon-indicator');
             if (!iconNode) return;
             iconNode.setAttribute('data-lucide', isTimerElementFullscreen() ? 'minimize-2' : 'maximize-2');
             if (window.lucide) lucide.createIcons();
+            syncFullscreenOverlays();
         }
 
         function toggleNativeWindowFullscreenEngine() {
@@ -5126,6 +5226,7 @@
         let auraConfirmMode = 'binary';
 
         function showAuraConfirmDialog(options) {
+            if (isTimerElementFullscreen()) reparentTimerOverlaysForFullscreen();
             const modal = document.getElementById('aura-confirm-modal');
             const titleEl = document.getElementById('aura-confirm-title');
             const messageEl = document.getElementById('aura-confirm-message');
@@ -5850,6 +5951,7 @@
                     // sync.js's debounce -- see static/sync.js's flush().
                     if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
 
+                    persistLastTargetCourse(appState.selectedCourse);
                     triggerAlertToast(
                         "Logged",
                         `Logged ${formatDurationHM(finalDuration)} into ${appState.selectedCourse}.`,
@@ -5864,6 +5966,8 @@
                 if (!(options && options.deferReset)) {
                     resetEngineDisplayState(true);
                 }
+                updateTimerTargetBadge();
+                renderTimerTargetMenu();
             } finally {
                 engineLogSaveInFlight = false;
                 updateTimerLogButtonDisabled();
@@ -6059,9 +6163,11 @@
 
         function selectTimerTargetCourse(courseName) {
             appState.selectedCourse = courseName;
+            persistLastTargetCourse(courseName);
             updateTimerTargetBadge();
             renderTimerTargetMenu();
             saveStateToLocalStorageRegister();
+            if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
             closeTimerTargetMenu();
         }
 
@@ -7659,6 +7765,7 @@
         }
 
         function triggerAlertToast(title, desc, useSparklesIcon = true) {
+            if (isTimerElementFullscreen()) reparentTimerOverlaysForFullscreen();
             const toast = document.getElementById('toast-alert');
             document.getElementById('toast-title').innerText = title;
             document.getElementById('toast-desc').innerText = desc;

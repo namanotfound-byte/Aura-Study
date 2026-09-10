@@ -260,6 +260,25 @@
       return true;
     });
     merged.sessions = dedupeBurstSessions(baseSessions.concat(missing));
+    // Never let a stale server/other payload clobber this device's last
+    // chosen study target when it is still a valid course.
+    if (
+      base.selectedCourse &&
+      Array.isArray(merged.courses) &&
+      merged.courses.indexOf(base.selectedCourse) >= 0
+    ) {
+      merged.selectedCourse = base.selectedCourse;
+    }
+    try {
+      var lastTarget = localStorage.getItem("aurastudy_last_target");
+      if (
+        lastTarget &&
+        Array.isArray(merged.courses) &&
+        merged.courses.indexOf(lastTarget) >= 0
+      ) {
+        merged.selectedCourse = lastTarget;
+      }
+    } catch (e) {}
     return merged;
   }
 
@@ -395,7 +414,12 @@
           }
 
           if (stateData.payload) {
-            writeLocalPayload(stateData.payload);
+            var localBeforeServer = readLocalPayload();
+            var serverPayload = stateData.payload;
+            if (localBeforeServer && typeof localBeforeServer === "object") {
+              serverPayload = mergePayloads(localBeforeServer, serverPayload);
+            }
+            writeLocalPayload(serverPayload);
             markSynced(serverVersion);
             return user;
           }
