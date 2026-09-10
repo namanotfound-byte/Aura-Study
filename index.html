@@ -4079,6 +4079,7 @@
         const MAX_PLAUSIBLE_RECOVERY_SECONDS = 4 * 60 * 60; // beyond this a *recovered* (post-reload) session is capped and confirmed with the user rather than trusted silently -- see attemptRunningTimerRecovery
         let lastTimerPersistMs = 0;
         let lastSyncClockMs = null; // wall-clock time of the previous syncEngineRegistersFromClock() call -- the gap guard's reference point
+        let runningTimerRecoveryCompleted = false; // true once attemptRunningTimerRecovery() has handled a >=5s snapshot -- prevents a second boot pass from clearing or re-prompting
 
         // ---- Whole-seconds invariant --------------------------------------
         // The five timer registers (runningAccumulatedSeconds,
@@ -4479,11 +4480,15 @@
         window.addEventListener('DOMContentLoaded', () => {
             handleVerifiedRedirectParam();
             const bootFinishTimer = setTimeout(finishAppBoot, 8000);
-            // Auth gate + account state hydration must resolve BEFORE the app reads
-            // localStorage, so that if the server has a saved copy of this account's
-            // state it lands in localStorage first and the app boots from account data
-            // instead of whatever was cached locally. AuraSync.bootstrap() also handles
-            // the 401 -> /login redirect and the one-time local -> account migration.
+            // LOCAL-FIRST: never wait on Render/auth to restore a live timer. If the
+            // server is cold-starting or offline, the running-timer snapshot and
+            // aurastudy_state_v1 in localStorage are the only copy -- hydrate from
+            // them immediately, then merge account state when bootstrap completes.
+            loadStateFromLocalStorageRegister();
+            attemptRunningTimerRecovery();
+            if (runningTimerRecoveryCompleted) {
+                switchView('timer', document.getElementById('nav-item-timer-toggle'));
+            }
             AuraSync.bootstrap().then((accountUser) => {
                 loadStateFromLocalStorageRegister();
                 stripLegacyDefaultTodos();
@@ -4494,10 +4499,10 @@
                 renderCoursesView();
                 updateTimerTargetBadge();
                 renderTimerTargetMenu();
-                // Must run after state has loaded (needs appState.courses/
-                // selectedCourse as fallbacks) but before the user can start a
-                // NEW timer block over an unrecovered one.
-                attemptRunningTimerRecovery();
+                // Only recover if local-first boot did not already restore a block.
+                if (!runningTimerRecoveryCompleted) {
+                    attemptRunningTimerRecovery();
+                }
                 renderSessionsTable();
                 evaluateCabinetTrophyMetrics();
                 normalizeSessionsDurations(appState.sessions);
@@ -4926,14 +4931,23 @@
             const autoBreakEl = document.getElementById('settings-auto-break');
             if (autoBreakEl) autoBreakEl.checked = appState.profile.autoBreakAfterPomodoro !== false;
             refreshAutoBreakLabel();
-            // appState.profile was just overwritten wholesale from whatever
-            // JSON was in localStorage/synced from the server above -- it may
-            // be stale, hand-edited, or from an older/buggier build, so
-            // defaultTimerMinutes is not trustworthy as-is. wholeSeconds()
-            // floors/validates it before it becomes a timer register.
-            countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
-            countdownSecondsRemainingRegister = countdownTotalSeconds;
-            updateEngineDisplayString();
+            // Safe to call twice (local-first boot, then post-bootstrap merge): do
+            // not reset timer registers when a live or paused block is already on
+            // the clock from attemptRunningTimerRecovery().
+            const preserveTimerRegisters = runningTimerRecoveryCompleted
+                || isEngineActivelyRunning
+                || bankedElapsedSeconds >= 5
+                || runningAccumulatedSeconds >= 5;
+            if (!preserveTimerRegisters) {
+                // appState.profile was just overwritten wholesale from whatever
+                // JSON was in localStorage/synced from the server above -- it may
+                // be stale, hand-edited, or from an older/buggier build, so
+                // defaultTimerMinutes is not trustworthy as-is. wholeSeconds()
+                // floors/validates it before it becomes a timer register.
+                countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
+                countdownSecondsRemainingRegister = countdownTotalSeconds;
+                updateEngineDisplayString();
+            }
             updatePetEvolutionState();
         }
 
@@ -5623,18 +5637,36 @@
             }
         }
 
+        // Reads elapsed seconds implied by an existing snapshot without trusting
+        // in-memory engine state -- used to avoid wiping a real session when RAM
+        // looks idle (e.g. bootstrap hung and the UI still shows 25:00).
+        function getExistingSnapshotElapsedSeconds() {
+            try {
+                const raw = localStorage.getItem(RUNNING_TIMER_STORAGE_KEY);
+                if (!raw) return 0;
+                const snap = JSON.parse(raw);
+                if (Number.isFinite(snap.elapsedSeconds)) {
+                    return wholeSeconds(snap.elapsedSeconds);
+                }
+                const banked = wholeSeconds(snap.bankedElapsedSeconds);
+                const anchor = snap.engineAnchorMs;
+                if (snap.isRunning && Number.isFinite(anchor) && Number.isFinite(snap.savedAtMs)) {
+                    return wholeSeconds(banked + Math.floor(Math.max(0, (snap.savedAtMs - anchor) / 1000)));
+                }
+                return banked;
+            } catch (e) {
+                return 0;
+            }
+        }
+
         // Persists enough of the running timer's state to reconstruct elapsed
-        // time after a reload/crash: the wall-clock anchor, banked seconds,
-        // and which course/mode it belongs to. `savedAtMs` is the important
-        // field for recovery -- it's the last moment we know for certain this
-        // tab was alive, so attemptRunningTimerRecovery() below can compute
-        // elapsed-as-of-that-heartbeat instead of elapsed-as-of-now, which
-        // would otherwise silently count all the time the tab was closed as
-        // if it had kept running. Called on every start/pause/mode-change
-        // (state transitions), throttled to every TIMER_PERSIST_THROTTLE_MS
-        // while actively running (engineTickHandler), and unconditionally
-        // from the pagehide/visibilitychange-hidden flush (see AuraSync wiring
-        // below) so a closed tab's snapshot is current to the moment it closed.
+        // time after a reload/crash: explicit elapsedSeconds plus the wall-clock
+        // anchor, banked seconds, and which course/mode it belongs to.
+        // `savedAtMs` is the last moment we know for certain this tab was alive.
+        // Called on every start/pause/mode-change (state transitions), throttled
+        // to every TIMER_PERSIST_THROTTLE_MS while actively running
+        // (engineTickHandler), and unconditionally from pagehide / beforeunload /
+        // visibilitychange-hidden so a closed tab's snapshot is current.
         function persistRunningTimerSnapshot() {
             try {
                 if (isEngineInBreakPhase()) {
@@ -5642,12 +5674,23 @@
                     return;
                 }
                 if (engineAnchorMs === null && !isEngineActivelyRunning && bankedElapsedSeconds < 5) {
-                    // Nothing worth recovering (idle/freshly-reset timer) -- don't
-                    // leave a stale snapshot around to be "recovered" later.
+                    const existingElapsed = getExistingSnapshotElapsedSeconds();
+                    if (existingElapsed >= 5) {
+                        // In-memory engine looks idle but localStorage still holds
+                        // a real session (common when bootstrap hung on a cold start).
+                        return;
+                    }
                     localStorage.removeItem(RUNNING_TIMER_STORAGE_KEY);
                     return;
                 }
+                if (isEngineActivelyRunning) {
+                    syncEngineRegistersFromClock();
+                }
+                const elapsedSeconds = wholeSeconds(
+                    isEngineActivelyRunning ? runningAccumulatedSeconds : bankedElapsedSeconds
+                );
                 localStorage.setItem(RUNNING_TIMER_STORAGE_KEY, JSON.stringify({
+                    elapsedSeconds: elapsedSeconds,
                     engineAnchorMs: engineAnchorMs,
                     bankedElapsedSeconds: bankedElapsedSeconds,
                     isRunning: isEngineActivelyRunning,
@@ -5663,6 +5706,13 @@
                 // recovery just won't be possible if this tab goes away now.
             }
         }
+
+        function flushRunningTimerOnPageLeave() {
+            if (isEngineActivelyRunning) syncEngineRegistersFromClock();
+            persistRunningTimerSnapshot();
+        }
+
+        window.persistRunningTimerSnapshotBeforeAuthRedirect = flushRunningTimerOnPageLeave;
 
         function clearRunningTimerSnapshot() {
             try { localStorage.removeItem(RUNNING_TIMER_STORAGE_KEY); } catch (e) {}
@@ -5717,11 +5767,17 @@
 
         // Chrome freezes or slows timers in background tabs, so re-sync the moment the tab is visible again.
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && isEngineActivelyRunning) engineTickHandler();
+            if (document.hidden) {
+                flushRunningTimerOnPageLeave();
+            } else if (isEngineActivelyRunning) {
+                engineTickHandler();
+            }
         });
         window.addEventListener('focus', () => {
             if (isEngineActivelyRunning) engineTickHandler();
         });
+        window.addEventListener('pagehide', flushRunningTimerOnPageLeave);
+        window.addEventListener('beforeunload', flushRunningTimerOnPageLeave);
 
         function resetEngineDisplayState(skipConfirm) {
             // Reset throws away time already on the clock, so confirm when
@@ -5992,6 +6048,7 @@
         // forgotten) is capped and confirmed with the user rather than
         // trusted outright; see MAX_PLAUSIBLE_RECOVERY_SECONDS above.
         function attemptRunningTimerRecovery() {
+            if (runningTimerRecoveryCompleted) return;
             let snapshot;
             try {
                 const raw = localStorage.getItem(RUNNING_TIMER_STORAGE_KEY);
@@ -6015,14 +6072,20 @@
             // values in one place, and floors anything else -- a corrupt or
             // hand-edited snapshot's bankedElapsedSeconds can be any of those.
             const banked = wholeSeconds(snapshot.bankedElapsedSeconds);
-            let confirmedElapsed = banked;
-            if (snapshot.isRunning && Number.isFinite(anchor)) {
-                // Floored, matching syncEngineRegistersFromClock's own
-                // Math.floor -- otherwise a fractional-second gap produces a
-                // non-integer `secs` value downstream, and
-                // updateEngineDisplayString renders it verbatim (e.g.
-                // "00:10.775" instead of "00:10").
-                confirmedElapsed = banked + Math.floor(Math.max(0, (snapshot.savedAtMs - anchor) / 1000));
+            let confirmedElapsed = 0;
+            if (Number.isFinite(snapshot.elapsedSeconds)) {
+                confirmedElapsed = wholeSeconds(snapshot.elapsedSeconds);
+            }
+            if (confirmedElapsed < 5) {
+                confirmedElapsed = banked;
+                if (snapshot.isRunning && Number.isFinite(anchor)) {
+                    // Floored, matching syncEngineRegistersFromClock's own
+                    // Math.floor -- otherwise a fractional-second gap produces a
+                    // non-integer `secs` value downstream, and
+                    // updateEngineDisplayString renders it verbatim (e.g.
+                    // "00:10.775" instead of "00:10").
+                    confirmedElapsed = banked + Math.floor(Math.max(0, (snapshot.savedAtMs - anchor) / 1000));
+                }
             }
             const snapshotMode = snapshot.mode === 'countdown' ? 'countdown' : 'stopwatch';
             // Same reasoning as the countdownTotalSeconds fix in
@@ -6043,6 +6106,7 @@
                 return;
             }
 
+            runningTimerRecoveryCompleted = true;
             const courseLabel = (typeof snapshot.course === 'string' && snapshot.course) ? snapshot.course : appState.selectedCourse;
 
             if (confirmedElapsed <= MAX_PLAUSIBLE_RECOVERY_SECONDS) {

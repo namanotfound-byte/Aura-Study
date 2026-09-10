@@ -125,6 +125,14 @@ def test_fullscreen_reparents_confirm_and_toast_into_timer_container():
     assert "reparentTimerOverlaysForFullscreen()" in _extract_function_body(html, "triggerAlertToast")
 
 
+def test_load_state_preserves_recovered_timer_on_second_call():
+    html = _read("index.html")
+    load_body = _extract_function_body(html, "loadStateFromLocalStorageRegister")
+    assert "preserveTimerRegisters" in load_body
+    assert "runningTimerRecoveryCompleted" in load_body
+    assert re.search(r"if \(!preserveTimerRegisters\)", load_body)
+
+
 def test_selected_course_persists_across_log_reset_and_load():
     html = _read("index.html")
     assert "LAST_TARGET_STORAGE_KEY = 'aurastudy_last_target'" in html

@@ -286,6 +286,65 @@ def test_recovery_never_auto_logs_a_session_without_a_decision_point():
     assert "Resume Block" in plausible_branch
 
 
+def test_local_first_boot_restores_timer_before_bootstrap():
+    """Running-timer recovery must not wait on AuraSync.bootstrap() -- a hung
+    /api/auth/me or /api/state cold start must not block localStorage restore."""
+    html = _read("index.html")
+    dom_block = html[html.index("window.addEventListener('DOMContentLoaded'"):html.index("document.addEventListener('fullscreenchange', syncFullscreenIcon)")]
+    bootstrap_pos = dom_block.index("AuraSync.bootstrap()")
+    first_load = dom_block.index("loadStateFromLocalStorageRegister();")
+    first_recovery = dom_block.index("attemptRunningTimerRecovery();")
+    assert first_load < bootstrap_pos, "loadStateFromLocalStorageRegister must run before AuraSync.bootstrap()"
+    assert first_recovery < bootstrap_pos, "attemptRunningTimerRecovery must run before AuraSync.bootstrap()"
+    assert "if (!runningTimerRecoveryCompleted)" in dom_block
+    assert "runningTimerRecoveryCompleted" in dom_block
+
+
+def test_running_timer_snapshot_includes_explicit_elapsed_seconds():
+    html = _read("index.html")
+    persist_body = html[html.index("function persistRunningTimerSnapshot("):html.index("function clearRunningTimerSnapshot(")]
+    assert "elapsedSeconds:" in persist_body
+    assert re.search(r"elapsedSeconds:\s*elapsedSeconds", persist_body)
+
+
+def test_persist_does_not_delete_existing_snapshot_when_ram_idle():
+    """Starting a fresh timer while bootstrap is hung must not removeItem() a
+    snapshot that already holds >=5s of real study time."""
+    html = _read("index.html")
+    persist_body = html[html.index("function persistRunningTimerSnapshot("):html.index("function clearRunningTimerSnapshot(")]
+    assert "getExistingSnapshotElapsedSeconds" in persist_body
+    idle_guard = persist_body[persist_body.index("bankedElapsedSeconds < 5"):persist_body.index("if (isEngineActivelyRunning)")]
+    assert "if (existingElapsed >= 5)" in idle_guard
+    assert "return;" in idle_guard.split("if (existingElapsed >= 5)")[1].split("localStorage.removeItem")[0]
+
+
+def test_pagehide_and_visibility_hidden_persist_running_timer():
+    html = _read("index.html")
+    assert "function flushRunningTimerOnPageLeave(" in html
+    assert "addEventListener('pagehide', flushRunningTimerOnPageLeave)" in html or 'addEventListener("pagehide", flushRunningTimerOnPageLeave)' in html
+    assert "addEventListener('beforeunload', flushRunningTimerOnPageLeave)" in html or 'addEventListener("beforeunload", flushRunningTimerOnPageLeave)' in html
+    assert re.search(
+        r"document\.addEventListener\('visibilitychange',\s*\(\)\s*=>\s*\{[\s\S]*?document\.hidden[\s\S]*?flushRunningTimerOnPageLeave\(\)",
+        html,
+    )
+
+
+def test_auth_redirect_persists_running_timer_snapshot():
+    js = _read("static", "sync.js")
+    go_block = js[js.index("function goToLogin("):js.index("function localDateParam(")]
+    assert "persistRunningTimerSnapshotBeforeAuthRedirect" in go_block
+
+
+def test_recovery_prefers_explicit_elapsed_seconds_field():
+    html = _read("index.html")
+    recovery_block = html[html.index("function attemptRunningTimerRecovery("):html.index("function updateTimerTargetBadge(")]
+    assert "snapshot.elapsedSeconds" in recovery_block
+    assert re.search(
+        r"if \(Number\.isFinite\(snapshot\.elapsedSeconds\)\)",
+        recovery_block,
+    )
+
+
 def test_gap_guard_excludes_sleep_suspend_time_from_the_live_timer():
     """Same failure mode, but for a timer that's still running IN THE SAME
     PAGE LIFE after the device wakes from sleep (no reload involved) --

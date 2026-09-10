@@ -23,19 +23,14 @@
  *          <script src="/static/sync.js"></script>
  *          <script src="/static/spotify.js"></script>
  *
- *   2. The app's own DOMContentLoaded handler currently calls
- *      loadStateFromLocalStorageRegister() synchronously, first thing. That
- *      call must instead wait on AuraSync.bootstrap() so that, if the server
- *      has a copy of this user's state, it gets written into
- *      localStorage["aurastudy_state_v1"] BEFORE the app hydrates from it:
- *
- *          window.addEventListener('DOMContentLoaded', () => {
- *            AuraSync.bootstrap().finally(() => {
- *              loadStateFromLocalStorageRegister();
- *              lucide.createIcons();
- *              // ...rest of the existing boot sequence, unchanged
- *            });
- *          });
+ *   2. The app's DOMContentLoaded handler must be LOCAL-FIRST for the running
+ *      timer: loadStateFromLocalStorageRegister() and
+ *      attemptRunningTimerRecovery() run synchronously BEFORE
+ *      AuraSync.bootstrap(), so a cold-starting server cannot leave the UI on
+ *      a virgin 25:00 timer while a real snapshot sits in localStorage.
+ *      After bootstrap resolves, loadStateFromLocalStorageRegister() runs
+ *      again to merge account state, but recovery is skipped if already done
+ *      and timer registers are not reset when a block is on the clock.
  *
  *      AuraSync.bootstrap() returns a Promise that:
  *        - calls GET /api/auth/me (redirects to /login on 401 and never
@@ -299,6 +294,11 @@
   }
 
   function goToLogin() {
+    if (typeof window.persistRunningTimerSnapshotBeforeAuthRedirect === "function") {
+      try {
+        window.persistRunningTimerSnapshotBeforeAuthRedirect();
+      } catch (e) {}
+    }
     window.location.replace("/login");
   }
 
