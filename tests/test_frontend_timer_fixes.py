@@ -64,13 +64,13 @@ def test_log_button_reentrancy_and_immediate_reset():
     assert re.search(r"if\s*\(\s*engineLogSaveInFlight\s*\|\|\s*engineBlockLoggedThisSession\s*\)\s*return", save_body)
     assert "updateTimerLogButtonDisabled()" in save_body
     assert '"Logged"' in save_body
-    assert "resetEngineDisplayState(true)" in save_body
+    assert "resetEngineDisplayState(true, { keepLogLock: engineBlockLoggedThisSession })" in save_body
     assert "updateTimerTargetBadge()" in save_body
     assert "renderTimerTargetMenu()" in save_body
     assert "armEngineTickMute" in save_body
     assert "forceClearRunningTimerSnapshot()" in save_body
     reset_body = _extract_function_body(html, "resetEngineDisplayState")
-    assert "finalizeEngineResetDisplay()" in reset_body
+    assert "finalizeEngineResetDisplay(options)" in reset_body
     assert "function paintFreshIdleClock" in html
     paint_body = _extract_function_body(html, "paintFreshIdleClock")
     assert 'getElementById(\'timer-display\')' in paint_body or 'writeTimerDisplayFromWholeSeconds' in paint_body
@@ -79,6 +79,17 @@ def test_log_button_reentrancy_and_immediate_reset():
     assert "paintFreshIdleClock()" in finalize_body
     assert "syncTimerBreakStepperVisibility()" in finalize_body
     assert "updateTimerTargetBadge()" in finalize_body
+    assert "options.keepLogLock" in finalize_body
+    assert re.search(
+        r"if\s*\(\s*!options\.keepLogLock\s*\)\s*\{\s*engineBlockLoggedThisSession = false;",
+        finalize_body,
+    )
+    assert "resetEngineDisplayState(true, { keepLogLock: engineBlockLoggedThisSession })" in save_body
+    toggle_body = _extract_function_body(html, "toggleEngineExecutionLoop")
+    assert re.search(
+        r"engineBlockLoggedThisSession = false;\s*updateTimerLogButtonDisabled\(\);",
+        toggle_body,
+    )
     assert "updateTimerCountdownStepperDisabled" in html[html.index("function syncTimerBreakStepperVisibility"):html.index("function updateTimerBreakStepperDisabled") + 400]
 
 
@@ -101,7 +112,7 @@ def test_burst_dedupe_on_load_merge_and_sync():
 def test_countdown_reset_restores_configured_focus_length():
     html = _read("index.html")
     reset_body = _extract_function_body(html, "resetEngineDisplayState")
-    assert "finalizeEngineResetDisplay()" in reset_body
+    assert "finalizeEngineResetDisplay(options)" in reset_body
     paint_body = _extract_function_body(html, "paintFreshIdleClock")
     assert re.search(
         r"countdownTotalSeconds = wholeSeconds\(appState\.profile\.defaultTimerMinutes \* 60,\s*25 \* 60\)",

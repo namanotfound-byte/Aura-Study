@@ -4365,9 +4365,12 @@
             forceClearRunningTimerSnapshot();
         }
 
-        function finalizeEngineResetDisplay() {
+        function finalizeEngineResetDisplay(options) {
+            options = options || {};
             initialBlockTimestampString = '';
-            engineBlockLoggedThisSession = false;
+            if (!options.keepLogLock) {
+                engineBlockLoggedThisSession = false;
+            }
             engineLogSaveInFlight = false;
             paintFreshIdleClock();
             syncTimerBreakStepperVisibility();
@@ -5860,6 +5863,8 @@
                 updateTimerCountdownStepperDisabled();
             } else {
                 if (runningAccumulatedSeconds === 0 && !isEngineInBreakPhase()) {
+                    engineBlockLoggedThisSession = false;
+                    updateTimerLogButtonDisabled();
                     if (appState.selectedMode === "countdown") {
                         countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
                         countdownSecondsRemainingRegister = countdownTotalSeconds;
@@ -5904,7 +5909,7 @@
         window.addEventListener('pagehide', flushRunningTimerOnPageLeave);
         window.addEventListener('beforeunload', flushRunningTimerOnPageLeave);
 
-        function resetEngineDisplayState(skipConfirm) {
+        function resetEngineDisplayState(skipConfirm, options) {
             // Reset throws away time already on the clock, so confirm when
             // there is something to lose. Silent loss of a running session
             // is exactly what this app must not do.
@@ -5957,7 +5962,7 @@
             document.getElementById('timer-start-btn').innerHTML = '<i data-lucide="play-circle"></i> Start Block';
             document.getElementById('timer-start-timestamp').innerText = "Timer reset.";
             lucide.createIcons();
-            finalizeEngineResetDisplay();
+            finalizeEngineResetDisplay(options);
         }
 
         function sessionSignature(s) {
@@ -6137,7 +6142,7 @@
                 // to log), so there is nothing left on the clock to lose and no
                 // reason to ask. deferReset: pomodoro auto-break will enter break mode.
                 if (!(options && options.deferReset)) {
-                    resetEngineDisplayState(true);
+                    resetEngineDisplayState(true, { keepLogLock: engineBlockLoggedThisSession });
                 }
                 updateTimerTargetBadge();
                 renderTimerTargetMenu();
