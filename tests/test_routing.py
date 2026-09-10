@@ -57,6 +57,7 @@ def test_app_serves_the_study_app_when_authenticated(client, outbox):
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert 'id="view-timer"' in body
+    assert resp.headers.get("Cache-Control") == "no-store"
 
 
 def test_login_page_redirects_authenticated_user_to_app(client, outbox):

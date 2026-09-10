@@ -125,11 +125,38 @@ def test_countdown_reset_restores_configured_focus_length():
 def test_log_path_clears_running_timer_snapshot_unconditionally():
     html = _read("index.html")
     save_body = _extract_function_body(html, "saveEngineWorkspaceBlockData")
+    duration_pos = save_body.index("const finalDuration = wholeSeconds(runningAccumulatedSeconds)")
+    zero_pos = save_body.index("runningAccumulatedSeconds = 0")
     clear_pos = save_body.index("forceClearRunningTimerSnapshot()")
     mute_pos = save_body.index("armEngineTickMute")
-    assert mute_pos < clear_pos
+    assert duration_pos < zero_pos
+    assert zero_pos < clear_pos
+    assert clear_pos < mute_pos
     assert "RUNNING_TIMER_STORAGE_KEY" in html
     assert "function forceClearRunningTimerSnapshot" in html
+
+
+def test_log_captures_duration_then_zeros_stopwatch_display_before_persist():
+    html = _read("index.html")
+    save_body = _extract_function_body(html, "saveEngineWorkspaceBlockData")
+    duration_pos = save_body.index("const finalDuration = wholeSeconds(runningAccumulatedSeconds)")
+    display_pos = save_body.index("writeTimerDisplayFromWholeSeconds(0)")
+    merge_pos = save_body.index("mergeSessionsFromOtherTabs()")
+    assert duration_pos < display_pos
+    assert display_pos < merge_pos
+    assert re.search(
+        r"if\s*\(\s*appState\.selectedMode === 'countdown'\s*\)\s*\{[\s\S]*writeTimerDisplayFromWholeSeconds\(countdownSecondsRemainingRegister\);[\s\S]*\}\s*else\s*\{\s*writeTimerDisplayFromWholeSeconds\(0\);\s*\}",
+        save_body,
+    )
+    lock_pos = save_body.index("engineBlockLoggedThisSession = true")
+    reset_pos = save_body.index("resetEngineDisplayState(true, { keepLogLock: engineBlockLoggedThisSession })")
+    assert lock_pos < reset_pos
+    assert save_body.index("engineBlockLoggedThisSession = true") < save_body.index("mergeSessionsFromOtherTabs()")
+
+
+def test_app_html_response_has_no_store_cache_control():
+    app_py = _read("server", "app.py")
+    assert '"Cache-Control": "no-store"' in app_py or "'Cache-Control': 'no-store'" in app_py
 
 
 def test_engine_tick_handler_bails_when_muted_or_not_running():

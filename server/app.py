@@ -149,7 +149,11 @@ def _register_page_routes(app: flask.Flask) -> None:
         with open(index_path, "r", encoding="utf-8") as handle:
             html = handle.read()
         html = guest_module.inject_guest_context(html, guest_ctx)
-        return flask.Response(html, mimetype="text/html")
+        return flask.Response(
+            html,
+            mimetype="text/html",
+            headers={"Cache-Control": "no-store"},
+        )
 
     @app.route("/app")
     def index():

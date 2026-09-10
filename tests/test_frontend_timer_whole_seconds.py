@@ -248,7 +248,7 @@ def test_default_timer_minutes_from_profile_cannot_inject_a_bad_countdown_total(
         r"countdownTotalSeconds = wholeSeconds\(appState\.profile\.defaultTimerMinutes \* 60,\s*25 \* 60\)",
         html,
     )
-    assert len(guarded) == 5, "expected all 5 call sites (load, changeEngineMode, start-fresh, reset, exitBreakMode) to be guarded, found {}".format(len(guarded))
+    assert len(guarded) == 6, "expected all 6 call sites (load, changeEngineMode, start-fresh, reset, exitBreakMode, log) to be guarded, found {}".format(len(guarded))
 
 
 def test_default_break_minutes_exists_and_enter_break_mode_uses_whole_seconds():

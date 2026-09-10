@@ -6084,20 +6084,32 @@
             updateTimerLogButtonDisabled();
             try {
                 syncEngineRegistersFromClock();
-                armEngineTickMute(2000);
-                forceClearRunningTimerSnapshot();
-                clearInterval(engineIntervalRegister);
-                engineIntervalRegister = null;
-                isEngineActivelyRunning = false;
-                engineAnchorMs = null;
-                lastSyncClockMs = null;
-                // Last line of defence before a duration is written into a
-                // session and propagates into the leaderboard, the charts and
-                // the pet: never trust runningAccumulatedSeconds to already be a
-                // whole number, no matter how many upstream writers floor it.
+                // Capture elapsed time first -- never re-read registers after
+                // the immediate zero below.
                 const finalDuration = wholeSeconds(runningAccumulatedSeconds);
 
+                // Zero registers and paint stopwatch 00:00 in the same turn as
+                // Log, before flush/toast/dashboard/reset can re-read stale time.
+                runningAccumulatedSeconds = 0;
+                bankedElapsedSeconds = 0;
+                engineAnchorMs = null;
+                lastSyncClockMs = null;
+                isEngineActivelyRunning = false;
+                clearInterval(engineIntervalRegister);
+                engineIntervalRegister = null;
+                forceClearRunningTimerSnapshot();
+                armEngineTickMute(2000);
+                if (appState.selectedMode === 'countdown') {
+                    countdownTotalSeconds = wholeSeconds(appState.profile.defaultTimerMinutes * 60, 25 * 60) || 25 * 60;
+                    countdownSecondsRemainingRegister = countdownTotalSeconds;
+                    writeTimerDisplayFromWholeSeconds(countdownSecondsRemainingRegister);
+                } else {
+                    writeTimerDisplayFromWholeSeconds(0);
+                }
+
                 if (finalDuration >= 5) {
+                    engineBlockLoggedThisSession = true;
+                    updateTimerLogButtonDisabled();
                     const logDataNode = {
                         // Client-generated unique id, not the server's -- lets
                         // mergeSessionsFromOtherTabs() and the 409-conflict merge
@@ -6116,25 +6128,27 @@
                     // A completed session is exactly the moment durability matters
                     // most -- merge in whatever another tab already logged first,
                     // so neither tab's work is lost to a last-write-wins overwrite.
-                    mergeSessionsFromOtherTabs();
-                    appState.sessions.unshift(logDataNode);
-                    dedupeBurstSessionsInPlace();
-                    saveStateToLocalStorageRegister();
-                    updatePetEvolutionState();
-                    initDashboardMetricsAndCharts();
-                    maybeNudgeGuestAfterStudy();
-                    engineBlockLoggedThisSession = true;
-                    updateTimerLogButtonDisabled();
-                    // Flush to the server immediately rather than waiting out
-                    // sync.js's debounce -- see static/sync.js's flush().
-                    if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
-
-                    persistLastTargetCourse(appState.selectedCourse);
-                    triggerAlertToast(
-                        "Logged",
-                        `Logged ${formatDurationHM(finalDuration)} into ${appState.selectedCourse}.`,
-                        true
-                    );
+                    try {
+                        mergeSessionsFromOtherTabs();
+                        appState.sessions.unshift(logDataNode);
+                        dedupeBurstSessionsInPlace();
+                        saveStateToLocalStorageRegister();
+                        updatePetEvolutionState();
+                        initDashboardMetricsAndCharts();
+                        maybeNudgeGuestAfterStudy();
+                        // Flush to the server immediately rather than waiting out
+                        // sync.js's debounce -- see static/sync.js's flush().
+                        if (window.AuraSync && typeof AuraSync.flush === 'function') AuraSync.flush();
+                        persistLastTargetCourse(appState.selectedCourse);
+                        triggerAlertToast(
+                            "Logged",
+                            `Logged ${formatDurationHM(finalDuration)} into ${appState.selectedCourse}.`,
+                            true
+                        );
+                    } catch (persistErr) {
+                        // Session is already in memory; never skip the post-log reset
+                        // because dashboard/chart code threw (e.g. headless Chart.js).
+                    }
                 } else {
                     triggerAlertToast("Too Short!", "Session was too short to archive. Keep going next time!", false);
                 }
