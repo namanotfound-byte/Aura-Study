@@ -177,8 +177,8 @@ def test_countdown_stepper_and_target_picker_exist():
 def test_tour_overlay_and_storage_key_exist():
     html = _read("index.html")
     tour_js = _read("static", "tour.js")
-    assert "/static/tour.js" in html
-    assert "/static/tour.css" in html
+    assert '/static/tour.js?v=guest-tour-2' in html
+    assert '/static/tour.css?v=guest-tour-2' in html
     assert "aurastudy_tour_done" in tour_js
     assert "aura-tour-overlay" in tour_js
     assert "hasExistingStudyData" in tour_js
@@ -191,13 +191,21 @@ def test_tour_overlay_and_storage_key_exist():
     assert "changeEngineMode('countdown')" in countdown_step
     assert "syncTimerCountdownStepperVisibility()" in countdown_step
     dashboard_step = tour_js[tour_js.index("title: 'Dashboard'"):tour_js.index("title: 'Dashboard'") + 520]
-    assert "aurastudy_active_view" in dashboard_step
+    assert "switchView('dashboard'" in dashboard_step
+    assert "aurastudy_active_view" not in dashboard_step
 
 
 def test_guest_app_tour_always_plays_despite_persisted_state():
     """Guests always get the in-app tour on /app boot, even with prior localStorage."""
     tour_js = _read("static", "tour.js")
     html = _read("index.html")
+
+    is_guest = tour_js[tour_js.index("function isGuestUser"):tour_js.index("function markTourDoneIfReturningUser")]
+    assert "__AURA_GUEST_CTX__" in is_guest
+    assert "AuraGuest.isGuest()" in is_guest
+    assert "hasGuestQueryParam()" in is_guest
+    assert "hasGuestCookie()" in is_guest
+    assert "aurastudy_guest=" in tour_js
 
     should_play = tour_js[tour_js.index("function shouldPlayTour"):tour_js.index("function prefersReducedMotion")]
     assert "isGuestUser()" in should_play
@@ -211,13 +219,15 @@ def test_guest_app_tour_always_plays_despite_persisted_state():
 
     start_tour = tour_js[tour_js.index("function startTour"):tour_js.index("function onResize")]
     assert "isGuestUser()" in start_tour
+    assert "paintStepCentered" in tour_js
+    assert "overlay.hidden = false" in start_tour
 
     mark_done = tour_js[tour_js.index("function markTourDoneIfReturningUser"):tour_js.index("function shouldPlayTour")]
     assert "if (isGuestUser()) return" in mark_done
 
     boot_block = html[html.index("function completeBootSequence"):html.index("function completeBootSequence") + 900]
     assert "isGuestBoot" in boot_block
-    assert "AuraGuest.isGuest()" in boot_block
+    assert "AuraTour.isGuestUser()" in boot_block
     assert "isGuestBoot || AuraTour.shouldPlayTour" in boot_block
 
 

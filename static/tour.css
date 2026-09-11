@@ -34,6 +34,11 @@
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-6px); }
 }
+.aura-tour-card-centered {
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+}
 .aura-tour-card {
     position: fixed;
     z-index: 99994;

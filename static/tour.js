@@ -20,11 +20,16 @@
     var outsideHandler = null;
 
     function tourDone() {
-        try { localStorage.setItem(TOUR_DONE_KEY, '1'); } catch (e) { /* ignore */ }
+        if (isGuestUser()) {
+            try { localStorage.removeItem(TOUR_DONE_KEY); } catch (e) { /* ignore */ }
+        } else {
+            try { localStorage.setItem(TOUR_DONE_KEY, '1'); } catch (e) { /* ignore */ }
+        }
         teardown();
     }
 
     function isTourDone() {
+        if (isGuestUser()) return false;
         try { return localStorage.getItem(TOUR_DONE_KEY) === '1'; } catch (e) { return false; }
     }
 
@@ -45,6 +50,7 @@
     }
 
     function hasExistingStudyData(appState) {
+        if (isGuestUser()) return false;
         if (appState && Array.isArray(appState.sessions) && appState.sessions.length > 0) return true;
         var persisted = readPersistedState();
         if (persisted && Array.isArray(persisted.sessions) && persisted.sessions.length > 0) return true;
@@ -56,8 +62,26 @@
         return false;
     }
 
+    function hasGuestCookie() {
+        try {
+            return document.cookie.split(';').some(function (part) {
+                return part.trim().indexOf('aurastudy_guest=') === 0;
+            });
+        } catch (e) { return false; }
+    }
+
+    function hasGuestQueryParam() {
+        try {
+            return new URLSearchParams(window.location.search).get('guest') === '1';
+        } catch (e) { return false; }
+    }
+
     function isGuestUser() {
-        return !!(window.AuraGuest && typeof window.AuraGuest.isGuest === 'function' && window.AuraGuest.isGuest());
+        if (window.__AURA_GUEST_CTX__ && window.__AURA_GUEST_CTX__.is_guest) return true;
+        if (window.AuraGuest && typeof window.AuraGuest.isGuest === 'function' && window.AuraGuest.isGuest()) return true;
+        if (hasGuestQueryParam()) return true;
+        if (hasGuestCookie()) return true;
+        return false;
     }
 
     function markTourDoneIfReturningUser(appState) {
@@ -142,6 +166,13 @@
             overlay.hidden = true;
             overlay.setAttribute('aria-hidden', 'true');
         }
+        if (card) {
+            card.classList.remove('aura-tour-card-centered');
+            card.style.transform = '';
+            card.style.top = '';
+            card.style.left = '';
+        }
+        if (arrow) arrow.hidden = false;
         activeStep = -1;
         steps = [];
     }
@@ -155,6 +186,9 @@
 
     function positionUi(target, step) {
         if (!target || !spotlight || !arrow || !card) return;
+        card.classList.remove('aura-tour-card-centered');
+        card.style.transform = '';
+        arrow.hidden = false;
         var rect = target.getBoundingClientRect();
         var pad = step.pad || 8;
         var top = Math.max(8, rect.top - pad);
@@ -187,6 +221,19 @@
         arrow.style.left = Math.min(Math.max(12, arrowLeft), window.innerWidth - 40) + 'px';
     }
 
+    function positionUiCentered() {
+        if (!spotlight || !card) return;
+        card.classList.add('aura-tour-card-centered');
+        card.style.top = '50%';
+        card.style.left = '50%';
+        card.style.transform = 'translate(-50%, -50%)';
+        spotlight.style.top = '50%';
+        spotlight.style.left = '50%';
+        spotlight.style.width = '0px';
+        spotlight.style.height = '0px';
+        if (arrow) arrow.hidden = true;
+    }
+
     function runBeforeShow(step) {
         if (!step.beforeShow) return Promise.resolve(true);
         try {
@@ -198,18 +245,22 @@
         }
     }
 
+    function updateStepChrome(index) {
+        card.querySelector('.aura-tour-card-title').textContent = steps[index].title || '';
+        card.querySelector('.aura-tour-card-body').textContent = steps[index].body || '';
+        var prevBtn = card.querySelector('[data-tour-action="prev"]');
+        var nextBtn = card.querySelector('[data-tour-action="next"]');
+        prevBtn.hidden = index <= 0;
+        nextBtn.textContent = index >= steps.length - 1 ? 'Done' : 'Next';
+    }
+
     function paintStep(index, target, step) {
         target.classList.add('aura-tour-target-active');
         if (step.scroll !== false) {
             try { target.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' }); } catch (e) { /* ignore */ }
         }
 
-        card.querySelector('.aura-tour-card-title').textContent = step.title || '';
-        card.querySelector('.aura-tour-card-body').textContent = step.body || '';
-        var prevBtn = card.querySelector('[data-tour-action="prev"]');
-        var nextBtn = card.querySelector('[data-tour-action="next"]');
-        prevBtn.hidden = index <= 0;
-        nextBtn.textContent = index >= steps.length - 1 ? 'Done' : 'Next';
+        updateStepChrome(index);
 
         overlay.hidden = false;
         overlay.setAttribute('aria-hidden', 'false');
@@ -228,6 +279,15 @@
         }
     }
 
+    function paintStepCentered(index, step) {
+        updateStepChrome(index);
+        overlay.hidden = false;
+        overlay.setAttribute('aria-hidden', 'false');
+        window.requestAnimationFrame(function () {
+            positionUiCentered();
+        });
+    }
+
     function renderStep(index) {
         var step = steps[index];
         if (!step) return;
@@ -241,12 +301,12 @@
 
         runBeforeShow(step).then(function (ready) {
             if (!ready) {
-                advance(1);
+                paintStepCentered(index, step);
                 return;
             }
             var target = resolveTarget(step);
             if (!target) {
-                advance(1);
+                paintStepCentered(index, step);
                 return;
             }
             paintStep(index, target, step);
@@ -257,7 +317,10 @@
         var next = activeStep + delta;
         if (next >= steps.length) {
             if (steps === LANDING_STEPS) landingPhaseDone();
-            tourDone();
+            if (!isGuestUser()) {
+                try { localStorage.setItem(TOUR_DONE_KEY, '1'); } catch (e) { /* ignore */ }
+            }
+            teardown();
             return;
         }
         if (next < 0) next = 0;
@@ -266,12 +329,22 @@
     }
 
     function startTour(stepList) {
-        if ((!isGuestUser() && isTourDone()) || tourRunning || !stepList || !stepList.length) return;
+        if (!isGuestUser() && isTourDone()) return;
+        if (tourRunning && !isGuestUser()) return;
+        if (!stepList || !stepList.length) return;
+
         tourRunning = true;
         ensureDom();
+        if (overlay) {
+            overlay.hidden = false;
+            overlay.setAttribute('aria-hidden', 'false');
+        }
         steps = stepList;
         activeStep = 0;
 
+        if (keyHandler) {
+            document.removeEventListener('keydown', keyHandler, true);
+        }
         keyHandler = function (ev) {
             if (ev.key === 'Escape') {
                 ev.preventDefault();
@@ -290,6 +363,9 @@
         };
         document.addEventListener('keydown', keyHandler, true);
 
+        if (outsideHandler) {
+            document.removeEventListener('click', outsideHandler, true);
+        }
         outsideHandler = function (ev) {
             if (card && card.contains(ev.target)) return;
             if (spotlight && ev.target === spotlight) return;
@@ -304,6 +380,10 @@
 
     function onResize() {
         if (activeStep < 0 || !steps[activeStep]) return;
+        if (card && card.classList.contains('aura-tour-card-centered')) {
+            positionUiCentered();
+            return;
+        }
         var target = resolveTarget(steps[activeStep]);
         if (target) positionUi(target, steps[activeStep]);
     }
@@ -336,11 +416,7 @@
             body: 'Your study overview — daily progress, streaks, charts, and your evolving pet.',
             beforeShow: function () {
                 if (typeof switchView === 'function') {
-                    var savedView = null;
-                    try { savedView = localStorage.getItem('aurastudy_active_view'); } catch (e) { /* ignore */ }
-                    if (!savedView || savedView === 'dashboard') {
-                        switchView('dashboard', document.querySelector('#app-sidebar .nav-item[title="Dashboard"]'));
-                    }
+                    switchView('dashboard', document.querySelector('#app-sidebar .nav-item[title="Dashboard"]'));
                 }
                 return true;
             }
@@ -467,6 +543,7 @@
         initLandingTour: initLandingTour,
         initAppTour: initAppTour,
         isTourDone: isTourDone,
+        isGuestUser: isGuestUser,
         hasExistingStudyData: hasExistingStudyData,
         markTourDoneIfReturningUser: markTourDoneIfReturningUser,
         shouldPlayTour: shouldPlayTour,

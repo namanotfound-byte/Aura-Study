@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/tour.css">
+    <link rel="stylesheet" href="/static/tour.css?v=guest-tour-2">
     <script>
         (function () {
             try {
@@ -4563,9 +4563,31 @@
             });
         }
 
+        function computeBadgeUnlockStatus(state) {
+            const todayStr = getLocalDateStr();
+            let todaySecs = 0;
+            state.sessions.forEach(s => { if (s.date === todayStr) todaySecs += s.durationSeconds; });
+            return {
+                b_active_day: state.sessions.some(s => s.date === todayStr),
+                b_early_bird: state.sessions.some(s => s.date === todayStr && s.hourOfDayExecuted >= 3 && s.hourOfDayExecuted < 7),
+                b_night_owl: state.sessions.some(s => s.date === todayStr && (s.hourOfDayExecuted >= 23 || s.hourOfDayExecuted < 3)),
+                b_daily_goal: todaySecs >= (state.profile.dailyGoalHours * 3600),
+                b_bronze_medal: todaySecs >= (180 * 60),
+                b_silver_medal: todaySecs >= (240 * 60),
+                b_gold_medal: todaySecs >= (300 * 60),
+                b_weekly_goal: state.sessions.length >= 3,
+                b_bronze_week: state.streak >= 3,
+                b_silver_week: state.streak >= 5,
+                b_golden_week: state.streak >= 7,
+                b_monthly_goal: state.sessions.length >= 10,
+                b_course_goal: state.sessions.length >= 4,
+                b_school_year: getTotalFocusHours(state) >= 15
+            };
+        }
+
         function completeBootSequence(appState) {
             finishAppBoot();
-            const isGuestBoot = !!(window.AuraGuest && typeof AuraGuest.isGuest === 'function' && AuraGuest.isGuest());
+            const isGuestBoot = !!(window.AuraTour && typeof AuraTour.isGuestUser === 'function' && AuraTour.isGuestUser());
             if (window.AuraTour && typeof AuraTour.initAppTour === 'function') {
                 if (isGuestBoot || AuraTour.shouldPlayTour(appState)) {
                     const origTourTeardown = AuraTour.teardown;
@@ -4798,8 +4820,9 @@
             const seen = readSeenUnlocks();
             if (seen === null) return items;
             const seenSet = new Set(seen);
+            const badgeStatus = computeBadgeUnlockStatus(appState);
             fullBadgesDatabase.forEach(b => {
-                if (b.check(appState) && !seenSet.has(b.id)) {
+                if (badgeStatus[b.id] && !seenSet.has(b.id)) {
                     items.push({ kind: 'achievement', text: 'Achievement unlocked: ' + b.title });
                 }
             });
@@ -7550,16 +7573,7 @@
             let todaySecs = 0; appState.sessions.forEach(s => { if(s.date === todayStr) todaySecs += s.durationSeconds; });
             const newlyUnlocked = [];
 
-            const badgeStatus = {
-                b_active_day: appState.sessions.some(s => s.date === todayStr),
-                b_early_bird: appState.sessions.some(s => s.date === todayStr && s.hourOfDayExecuted >= 3 && s.hourOfDayExecuted < 7),
-                b_night_owl: appState.sessions.some(s => s.date === todayStr && (s.hourOfDayExecuted >= 23 || s.hourOfDayExecuted < 3)),
-                b_daily_goal: todaySecs >= (appState.profile.dailyGoalHours * 3600),
-                b_bronze_medal: todaySecs >= (180 * 60),
-                b_silver_medal: todaySecs >= (240 * 60),
-                b_gold_medal: todaySecs >= (300 * 60),
-                b_weekly_goal: appState.sessions.length >= 3, b_bronze_week: appState.streak >= 3, b_silver_week: appState.streak >= 5, b_golden_week: appState.streak >= 7, b_monthly_goal: appState.sessions.length >= 10, b_course_goal: appState.sessions.length >= 4, b_school_year: getTotalFocusHours(appState) >= 15
-            };
+            const badgeStatus = computeBadgeUnlockStatus(appState);
 
             function trophyHueClass(category) {
                 const map = {
@@ -7993,7 +8007,7 @@
     <!-- Server sync + Spotify integration, loaded AFTER the inline app script so
          appState / saveStateToLocalStorageRegister / switchView already exist. -->
     <!-- Guest trial locks load before sync so bootstrap skips server calls. -->
-    <script src="/static/tour.js"></script>
+    <script src="/static/tour.js?v=guest-tour-2"></script>
     <script src="/static/guest.js"></script>
     <script src="/static/sync.js"></script>
     <script src="/static/spotify.js"></script>
