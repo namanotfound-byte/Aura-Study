@@ -194,6 +194,33 @@ def test_tour_overlay_and_storage_key_exist():
     assert "aurastudy_active_view" in dashboard_step
 
 
+def test_guest_app_tour_always_plays_despite_persisted_state():
+    """Guests always get the in-app tour on /app boot, even with prior localStorage."""
+    tour_js = _read("static", "tour.js")
+    html = _read("index.html")
+
+    should_play = tour_js[tour_js.index("function shouldPlayTour"):tour_js.index("function prefersReducedMotion")]
+    assert "isGuestUser()" in should_play
+    assert "if (isGuestUser()) return true" in should_play
+
+    init_app = tour_js[tour_js.index("function initAppTour"):tour_js.index("window.AuraTour")]
+    assert "if (isGuestUser())" in init_app
+    guest_init_block = init_app[init_app.index("if (isGuestUser())"):init_app.index("markTourDoneIfReturningUser")]
+    assert "markTourDoneIfReturningUser" not in guest_init_block
+    assert "startTour(APP_STEPS)" in guest_init_block
+
+    start_tour = tour_js[tour_js.index("function startTour"):tour_js.index("function onResize")]
+    assert "isGuestUser()" in start_tour
+
+    mark_done = tour_js[tour_js.index("function markTourDoneIfReturningUser"):tour_js.index("function shouldPlayTour")]
+    assert "if (isGuestUser()) return" in mark_done
+
+    boot_block = html[html.index("function completeBootSequence"):html.index("function completeBootSequence") + 900]
+    assert "isGuestBoot" in boot_block
+    assert "AuraGuest.isGuest()" in boot_block
+    assert "isGuestBoot || AuraTour.shouldPlayTour" in boot_block
+
+
 def test_leaderboard_row_tooltip_helpers_exist():
     html = _read("index.html")
     assert "bindLeaderboardHoverTooltip" in html

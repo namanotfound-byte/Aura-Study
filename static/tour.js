@@ -56,12 +56,18 @@
         return false;
     }
 
+    function isGuestUser() {
+        return !!(window.AuraGuest && typeof window.AuraGuest.isGuest === 'function' && window.AuraGuest.isGuest());
+    }
+
     function markTourDoneIfReturningUser(appState) {
+        if (isGuestUser()) return;
         if (isTourDone()) return;
         if (hasExistingStudyData(appState)) tourDone();
     }
 
     function shouldPlayTour(appState) {
+        if (isGuestUser()) return true;
         if (isTourDone()) return false;
         return !hasExistingStudyData(appState);
     }
@@ -260,7 +266,7 @@
     }
 
     function startTour(stepList) {
-        if (isTourDone() || tourRunning || !stepList || !stepList.length) return;
+        if ((!isGuestUser() && isTourDone()) || tourRunning || !stepList || !stepList.length) return;
         tourRunning = true;
         ensureDom();
         steps = stepList;
@@ -441,6 +447,13 @@
     }
 
     function initAppTour(appState) {
+        if (isGuestUser()) {
+            if (!document.getElementById('app-sidebar')) return;
+            window.setTimeout(function () {
+                startTour(APP_STEPS);
+            }, 600);
+            return;
+        }
         markTourDoneIfReturningUser(appState);
         if (!shouldPlayTour(appState)) return;
         if (!document.getElementById('app-sidebar')) return;

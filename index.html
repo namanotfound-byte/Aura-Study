@@ -4565,8 +4565,9 @@
 
         function completeBootSequence(appState) {
             finishAppBoot();
+            const isGuestBoot = !!(window.AuraGuest && typeof AuraGuest.isGuest === 'function' && AuraGuest.isGuest());
             if (window.AuraTour && typeof AuraTour.initAppTour === 'function') {
-                if (AuraTour.shouldPlayTour(appState)) {
+                if (isGuestBoot || AuraTour.shouldPlayTour(appState)) {
                     const origTourTeardown = AuraTour.teardown;
                     AuraTour.teardown = function () {
                         origTourTeardown.apply(this, arguments);
