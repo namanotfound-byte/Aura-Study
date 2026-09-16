@@ -95,11 +95,11 @@ body {
   gap: 12px;
 }
 
-/* Hero book-opening flip — logo + wordmark open like pages from the spine */
+/* Hero book-opening flip — stacked column layout stays fixed; pages rotate open */
 .landing-book-stage {
   position: relative;
   perspective: 1400px;
-  perspective-origin: 50% 44%;
+  perspective-origin: 50% 46%;
 }
 
 .landing-book-spread {
@@ -110,107 +110,49 @@ body {
   transform-style: preserve-3d;
 }
 
-.landing-book-spine {
-  position: absolute;
-  left: 50%;
-  top: 8%;
-  bottom: 8%;
-  width: 4px;
-  margin-left: -2px;
-  border-radius: 2px;
-  pointer-events: none;
-  z-index: 3;
-  opacity: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(107, 144, 128, 0.05) 0%,
-    rgba(107, 144, 128, 0.55) 18%,
-    rgba(61, 68, 81, 0.72) 50%,
-    rgba(107, 144, 128, 0.55) 82%,
-    rgba(107, 144, 128, 0.05) 100%
-  );
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.35),
-    0 0 18px rgba(107, 144, 128, 0.22);
-}
-
 .landing-book-page {
   transform-style: preserve-3d;
   backface-visibility: hidden;
-  will-change: transform, opacity;
-}
-
-/* First visit: spread horizontally and flip pages open from the spine */
-html.landing-animate .landing-book-spread {
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
+  will-change: transform;
 }
 
 html.landing-animate .landing-book-page--logo {
-  transform-origin: right center;
-  animation: landingBookPageLeft 1.45s cubic-bezier(0.18, 0.92, 0.22, 1) 0.08s forwards;
+  transform-origin: center bottom;
+  animation: landingBookPageLeft 1.5s cubic-bezier(0.2, 0.88, 0.24, 1) 0.06s forwards;
 }
 
 html.landing-animate .landing-book-page--wordmark {
-  transform-origin: left center;
-  animation: landingBookPageRight 1.45s cubic-bezier(0.18, 0.92, 0.22, 1) 0.22s forwards;
-}
-
-html.landing-animate .landing-book-spine {
-  animation: landingBookSpine 0.72s ease-out 0.35s forwards;
-}
-
-html.landing-animate.landing-book-settled .landing-book-spread {
-  flex-direction: column;
-  gap: 12px;
-  transition: gap 0.42s ease;
-}
-
-html.landing-animate.landing-book-settled .landing-book-spine {
-  opacity: 0 !important;
-  transition: opacity 0.35s ease;
+  transform-origin: center top;
+  animation: landingBookPageRight 1.5s cubic-bezier(0.2, 0.88, 0.24, 1) 0.18s forwards;
 }
 
 @keyframes landingBookPageLeft {
   0% {
-    opacity: 0.15;
-    transform: rotateY(118deg) translateX(18px) scale(0.78);
-  }
-  38% {
     opacity: 1;
-    transform: rotateY(-16deg) translateX(-4px) scale(1.06);
+    transform: rotateX(92deg) scale(0.84);
+  }
+  42% {
+    opacity: 1;
+    transform: rotateX(-12deg) scale(1.04);
   }
   100% {
     opacity: 1;
-    transform: rotateY(0deg) translateX(0) scale(1);
+    transform: rotateX(0deg) scale(1);
   }
 }
 
 @keyframes landingBookPageRight {
   0% {
-    opacity: 0.15;
-    transform: rotateY(-118deg) translateX(-18px) scale(0.78);
-  }
-  38% {
     opacity: 1;
-    transform: rotateY(16deg) translateX(4px) scale(1.06);
+    transform: rotateX(-92deg) scale(0.84);
+  }
+  42% {
+    opacity: 1;
+    transform: rotateX(12deg) scale(1.04);
   }
   100% {
     opacity: 1;
-    transform: rotateY(0deg) translateX(0) scale(1);
-  }
-}
-
-@keyframes landingBookSpine {
-  0% {
-    opacity: 0;
-    transform: scaleY(0.35);
-  }
-  100% {
-    opacity: 1;
-    transform: scaleY(1);
+    transform: rotateX(0deg) scale(1);
   }
 }
 
@@ -371,7 +313,6 @@ html.js-enabled:not(.skip-anim) .cta-row {
 
 @media (prefers-reduced-motion: reduce) {
   html.js-enabled .landing-book-page,
-  html.js-enabled .landing-book-spine,
   html.js-enabled .wordmark .letters,
   html.js-enabled .wordmark .letters.is-split .letter,
   html.js-enabled .tagline,
@@ -384,7 +325,6 @@ html.js-enabled:not(.skip-anim) .cta-row {
 }
 
 html.skip-anim .landing-book-page,
-html.skip-anim .landing-book-spine,
 html.skip-anim .wordmark .letters,
 html.skip-anim .wordmark .letters.is-split .letter,
 html.skip-anim .tagline,

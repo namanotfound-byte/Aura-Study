@@ -519,7 +519,7 @@
         if (!document.getElementById('letters') && !document.querySelector('.landing-logo')) return;
         window.setTimeout(function () {
             startTour(LANDING_STEPS);
-        }, prefersReducedMotion() ? 400 : 1800);
+        }, prefersReducedMotion() ? 400 : 2100);
     }
 
     function initAppTour(appState) {

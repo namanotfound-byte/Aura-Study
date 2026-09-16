@@ -80,9 +80,8 @@
 
   // ---------------- 1. Landing page (full reveal) ----------------
 
-  var TOTAL_ANIMATION_MS = 2800; // book flip + settle + tagline/CTA fade-in
+  var TOTAL_ANIMATION_MS = 2600; // book flip + tagline/CTA fade-in
   var INSTANT_NAV_DELAY_MS = 250; // just enough for the finished title to register
-  var BOOK_SETTLE_MS = 1850; // wordmark page finishes ~1.75s; settle shortly after
 
   function initLanding() {
     var brand = document.getElementById('landing-brand');
@@ -91,14 +90,9 @@
     var root = document.documentElement;
     var body = document.body;
     var authenticated = body.getAttribute('data-authenticated') === 'true';
-    var wordmarkPage = brand.querySelector('.landing-book-page--wordmark');
 
     function goToApp() {
       window.location.href = '/app';
-    }
-
-    function finishBookHero() {
-      root.classList.add('landing-book-settled');
     }
 
     if (prefersReducedMotion) {
@@ -109,15 +103,6 @@
         window.AuraTour.initLandingTour();
       }
       return;
-    }
-
-    if (wordmarkPage) {
-      wordmarkPage.addEventListener('animationend', function onBookDone(evt) {
-        if (evt.animationName !== 'landingBookPageRight') return;
-        wordmarkPage.removeEventListener('animationend', onBookDone);
-        finishBookHero();
-      });
-      window.setTimeout(finishBookHero, BOOK_SETTLE_MS);
     }
 
     if (authenticated) window.setTimeout(goToApp, TOTAL_ANIMATION_MS);
