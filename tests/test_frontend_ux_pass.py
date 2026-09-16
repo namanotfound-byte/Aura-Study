@@ -499,6 +499,18 @@ def test_analytics_chart_defaults_to_all_time():
     assert 'class="dash-chart-period-btn active" data-chart-period="all"' in chart_btns
 
 
+def test_analytics_chart_fills_zero_days_and_uses_step_interpolation():
+    html = _read("index.html")
+    chart_block = html[html.index("function buildAnalyticsDailySeries"):html.index("function formatHelpTimestamp")]
+    assert "function buildAnalyticsDailySeries()" in chart_block
+    assert "dayBuckets[checkStr] || 0" in chart_block
+    assert "cursor.setDate(cursor.getDate() + 1)" in chart_block
+    assert "sortedDates.slice(sliceStart)" not in html
+    assert "stepped: true," in chart_block
+    assert "tension: 0," in chart_block
+    assert "tension: 0.42" not in html
+
+
 def test_switchview_initializes_spotify_for_signed_in_users():
     html = _read("index.html")
     switch_block = html[html.index("function switchView(targetPanelKey"):html.index("function changeEngineMode")]

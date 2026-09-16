@@ -7349,44 +7349,60 @@
                 .finally(() => { el.disabled = false; });
         }
 
+        function sumSessionsIntoDayBuckets() {
+            const dayBuckets = {};
+            appState.sessions.forEach(s => {
+                if (!s || !s.date) return;
+                dayBuckets[s.date] = (dayBuckets[s.date] || 0) + (s.durationSeconds || 0);
+            });
+            return dayBuckets;
+        }
+
+        // One label + hours value per calendar day in range; missing days are 0.
+        function buildAnalyticsDailySeries() {
+            const dayBuckets = sumSessionsIntoDayBuckets();
+            const labels = [];
+            const dataPoints = [];
+            const endDate = new Date();
+            endDate.setHours(12, 0, 0, 0);
+            let startDate;
+
+            if (analyticsChartPeriod === 'all') {
+                const sessionDates = Object.keys(dayBuckets).sort();
+                if (!sessionDates.length) {
+                    return { labels: ['—'], dataPoints: [0] };
+                }
+                startDate = new Date(sessionDates[0] + 'T12:00:00');
+                if (isNaN(startDate.getTime())) {
+                    return { labels: ['—'], dataPoints: [0] };
+                }
+            } else {
+                const span = analyticsChartPeriod === '30' ? 29 : 6;
+                startDate = new Date(endDate);
+                startDate.setDate(startDate.getDate() - span);
+            }
+
+            const labelOpts = analyticsChartPeriod === 'all'
+                ? { month: 'short', day: 'numeric' }
+                : { weekday: 'short', day: 'numeric' };
+
+            for (let cursor = new Date(startDate); cursor <= endDate; cursor.setDate(cursor.getDate() + 1)) {
+                const checkStr = getLocalDateStr(cursor);
+                labels.push(cursor.toLocaleDateString(undefined, labelOpts));
+                const secs = dayBuckets[checkStr] || 0;
+                dataPoints.push(Math.round((secs / 3600) * 10) / 10);
+            }
+
+            return { labels, dataPoints };
+        }
+
         function buildAnalyticsChartCanvasComponent() {
             const canvas = document.getElementById('analyticsChart');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             if (operationalBarChartInstance) operationalBarChartInstance.destroy();
 
-            const labels = [];
-            const dataPoints = [];
-            const dayBuckets = {};
-
-            if (analyticsChartPeriod === 'all') {
-                appState.sessions.forEach(s => {
-                    if (!s || !s.date) return;
-                    dayBuckets[s.date] = (dayBuckets[s.date] || 0) + (s.durationSeconds || 0);
-                });
-                const sortedDates = Object.keys(dayBuckets).sort();
-                const sliceStart = Math.max(0, sortedDates.length - 30);
-                sortedDates.slice(sliceStart).forEach(dateStr => {
-                    const d = new Date(dateStr + 'T12:00:00');
-                    labels.push(isNaN(d.getTime()) ? dateStr : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
-                    dataPoints.push(Math.round((dayBuckets[dateStr] / 3600) * 10) / 10);
-                });
-                if (!labels.length) {
-                    labels.push('—');
-                    dataPoints.push(0);
-                }
-            } else {
-                const span = analyticsChartPeriod === '30' ? 29 : 6;
-                for (let i = span; i >= 0; i--) {
-                    const d = new Date();
-                    d.setDate(d.getDate() - i);
-                    labels.push(d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }));
-                    const checkStr = getLocalDateStr(d);
-                    let mSum = 0;
-                    appState.sessions.forEach(s => { if (s.date === checkStr) mSum += s.durationSeconds; });
-                    dataPoints.push(Math.round((mSum / 3600) * 10) / 10);
-                }
-            }
+            const { labels, dataPoints } = buildAnalyticsDailySeries();
 
             const sageRgb = '107, 144, 128';
             const sageSolid = readThemeToken('--accent-strong', '#6B9080');
@@ -7406,7 +7422,8 @@
                         backgroundColor: fillGradient,
                         borderWidth: 2.5,
                         fill: true,
-                        tension: 0.42,
+                        tension: 0,
+                        stepped: true,
                         pointRadius: 3,
                         pointBackgroundColor: sageSolid,
                         pointBorderColor: '#fff',
