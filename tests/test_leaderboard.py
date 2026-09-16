@@ -825,6 +825,24 @@ def test_pet_leaderboard_backfills_missing_lifetime_rows(client, app, outbox):
     assert "sur" in names
 
 
+def test_monthly_leaderboard_backfills_missing_month_rows(client, app, outbox):
+    register_verify(client, outbox, "manal-month@example.com")
+    set_name(client, "Manal")
+    week_seconds = 6 * 3600
+    put_state(client, [session_today(week_seconds)])
+    with app.app_context():
+        from server.db import get_db
+        db = get_db()
+        db.execute("DELETE FROM leaderboard_months")
+        db.commit()
+    lb = client.get("/api/leaderboard?period=month", headers=JSON_HEADERS).get_json()
+    names = [e["name"] for e in lb["entries"]]
+    assert "Manal" in names
+    assert lb["you"]["seconds"] == week_seconds
+    assert lb["entries"][0]["name"] == "Manal"
+    assert lb["entries"][0]["seconds"] == week_seconds
+
+
 def test_invalid_leaderboard_period_rejected(client, outbox):
     register_verify(client, outbox, "badperiod@example.com")
     resp = client.get("/api/leaderboard?period=year", headers=JSON_HEADERS)

@@ -14,7 +14,7 @@ from .auth import bp as auth_bp
 from .state import bp as state_bp
 from .spotify import bp as spotify_bp
 from .spotify_requests import bp as spotify_requests_bp, list_all_requests, mark_request_added
-from .leaderboard import bp as leaderboard_bp
+from .leaderboard import bp as leaderboard_bp, backfill_months_from_user_state
 from .support import bp as support_bp
 from . import admin as admin_module
 from . import support as support_module
@@ -57,6 +57,9 @@ def create_app() -> flask.Flask:
     init_hardening(app)
 
     init_db(app)
+
+    with app.app_context():
+        backfill_months_from_user_state(get_db())
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(state_bp, url_prefix="/api")

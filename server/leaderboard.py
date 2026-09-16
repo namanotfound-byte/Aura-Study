@@ -651,6 +651,7 @@ def get_leaderboard():
             return flask.jsonify(body)
         if period == "month":
             month_start_str = current_month_start(local_date).isoformat()
+            backfill_months_from_user_state(db, local_date=local_date)
             body = _board_guest_view(db, "leaderboard_months", "month_start", month_start_str)
             body["period"] = "month"
             body["month_start"] = month_start_str
@@ -670,6 +671,7 @@ def get_leaderboard():
         return flask.jsonify(body)
     if period == "month":
         month_start_str = current_month_start(local_date).isoformat()
+        backfill_months_from_user_state(db, local_date=local_date)
         body = _board_from_table(db, user, "leaderboard_months", "month_start", month_start_str)
         body["period"] = "month"
         body["month_start"] = month_start_str
@@ -682,6 +684,17 @@ def get_leaderboard():
     return flask.jsonify(body)
 
 
+def _payload_from_user_state_row(raw):
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return None
+    if isinstance(raw, dict):
+        return raw
+    return None
+
+
 def backfill_lifetime_from_user_state(db) -> None:
     """Fill leaderboard_lifetime from saved study payloads.
 
@@ -692,15 +705,8 @@ def backfill_lifetime_from_user_state(db) -> None:
     rows = db.execute("SELECT user_id, payload FROM user_state").fetchall()
     now = utcnow_iso()
     for row in rows:
-        raw = row["payload"]
-        if isinstance(raw, str):
-            try:
-                payload = json.loads(raw)
-            except (TypeError, ValueError, json.JSONDecodeError):
-                continue
-        elif isinstance(raw, dict):
-            payload = raw
-        else:
+        payload = _payload_from_user_state_row(row["payload"])
+        if payload is None:
             continue
         seconds = compute_lifetime_seconds(payload)
         db.execute(
@@ -712,6 +718,44 @@ def backfill_lifetime_from_user_state(db) -> None:
                 updated_at = excluded.updated_at
             """,
             (row["user_id"], seconds, now),
+        )
+    db.commit()
+
+
+def backfill_months_from_user_state(db, local_date=None) -> None:
+    """Fill leaderboard_months from saved study payloads.
+
+    The monthly table was added after some accounts already had week rows
+    from PUT /api/state. Without this, those people (e.g. Manal) stay
+    invisible on the monthly board until they happen to sync again.
+    """
+    month_start = current_month_start(local_date)
+    month_start_str = month_start.isoformat()
+    week_start_str = current_week_start(local_date).isoformat()
+    rows = db.execute("SELECT user_id, payload FROM user_state").fetchall()
+    now = utcnow_iso()
+    for row in rows:
+        payload = _payload_from_user_state_row(row["payload"])
+        if payload is None:
+            continue
+        seconds = compute_month_seconds(payload, month_start)
+        opt_row = db.execute(
+            """
+            SELECT opted_in FROM leaderboard_weeks
+            WHERE user_id = %s AND week_start = %s
+            """,
+            (row["user_id"], week_start_str),
+        ).fetchone()
+        opted_in = bool(opt_row["opted_in"]) if opt_row is not None else True
+        db.execute(
+            """
+            INSERT INTO leaderboard_months (user_id, month_start, seconds, opted_in, updated_at)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (user_id, month_start) DO UPDATE SET
+                seconds = excluded.seconds,
+                updated_at = excluded.updated_at
+            """,
+            (row["user_id"], month_start_str, seconds, opted_in, now),
         )
     db.commit()
 
