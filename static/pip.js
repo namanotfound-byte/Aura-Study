@@ -292,10 +292,15 @@
     };
   }
 
+  function isPageVisible() {
+    return document.visibilityState === "visible";
+  }
+
   function postTimerMessageToServiceWorker(type) {
     if (!STATE.swReady || !STATE.swRegistration) return Promise.resolve(false);
     if (!prefs().notify) return Promise.resolve(false);
     if (Notification.permission !== "granted") return Promise.resolve(false);
+    if (type === "TIMER_SHOW" && isPageVisible()) return Promise.resolve(false);
     var payload = buildTimerStatePayload();
     payload.type = type;
     var target = STATE.swRegistration.active;
@@ -343,12 +348,16 @@
   }
 
   function syncPersistentSessionNotification(force) {
-    if (!prefs().notify) {
-      clearPersistentSessionNotification();
+    if (!prefs().notify || !isEngineActivelyRunning) {
+      if (!isEngineActivelyRunning) clearPersistentSessionNotification();
       return;
     }
-    if (!isEngineActivelyRunning) {
-      clearPersistentSessionNotification();
+    if (isPageVisible()) {
+      updateMediaSession();
+      return;
+    }
+    if (STATE.pipMode) {
+      updateMediaSession();
       return;
     }
     if (Notification.permission === "default") {
@@ -356,6 +365,7 @@
       return;
     }
     if (Notification.permission !== "granted") {
+      updateMediaSession();
       return;
     }
 
@@ -384,6 +394,28 @@
     postTimerMessageToServiceWorker("TIMER_CLEAR");
     clearActiveNotification();
     clearMediaSession();
+  }
+
+  function resetNotificationDismissState() {
+    if (!STATE.swReady || !STATE.swRegistration) return;
+    var target = STATE.swRegistration.active;
+    if (!target && STATE.swRegistration.waiting) target = STATE.swRegistration.waiting;
+    if (!target) return;
+    try {
+      target.postMessage({ type: "TIMER_RESET_DISMISS" });
+    } catch (e) {}
+  }
+
+  function onPageVisible() {
+    clearPersistentSessionNotification();
+    resetNotificationDismissState();
+    closeFloatingWindow();
+  }
+
+  function showBackgroundControls() {
+    if (!isEngineActivelyRunning || isPageVisible()) return;
+    if (prefs().floatTimer && attemptOpenFloatingWindow("tabswitch")) return;
+    syncPersistentSessionNotification(true);
   }
 
   function clearActiveNotification() {
@@ -858,6 +890,10 @@
     } else if (STATE.pipMode === "video") {
       paintVideoCanvasFrame();
     }
+    if (isPageVisible()) {
+      if (isEngineActivelyRunning && prefs().notify) updateMediaSession();
+      return;
+    }
     syncPersistentSessionNotification(false);
   }
 
@@ -868,7 +904,8 @@
   function maybeFloatOnLeavingTimer() {
     if (!prefs().floatTimer) return;
     if (!isEngineActivelyRunning) return;
-    if (STATE.pipMode) return; // already open, nothing to do
+    if (isPageVisible()) return;
+    if (STATE.pipMode) return;
     attemptOpenFloatingWindow("navaway");
   }
 
@@ -876,7 +913,11 @@
     if (isEngineActivelyRunning) {
       requestWakeLock();
       requestNotificationPermissionIfNeeded();
-      syncPersistentSessionNotification(true);
+      if (document.hidden) {
+        showBackgroundControls();
+      } else {
+        updateMediaSession();
+      }
       // Warm up (or resume) the AudioContext on this same Start/Resume
       // gesture so the completion chime -- fired with no fresh gesture of
       // its own, whenever the countdown naturally reaches zero later -- is
@@ -993,35 +1034,28 @@
     return !!(panel && panel.classList.contains("active"));
   }
 
-  function closePipIfTimerViewVisible() {
-    if (STATE.suppressPipClose) return;
-    if (!document.hidden && isTimerViewActive() && STATE.pipMode) {
-      closeFloatingWindow();
+  function onVisibilityChange() {
+    if (document.hidden) {
+      if (isEngineActivelyRunning) showBackgroundControls();
+    } else {
+      onPageVisible();
+      if (isEngineActivelyRunning) {
+        reacquireWakeLockIfNeeded();
+        updateMediaSession();
+      }
     }
   }
 
-  function onVisibilityChange() {
-    if (document.hidden) {
-      if (isEngineActivelyRunning) {
-        if (!STATE.pipMode && prefs().floatTimer) {
-          try {
-            attemptOpenFloatingWindow("tabswitch");
-          } catch (e) {
-            /* NotAllowedError -- no transient activation here, expected */
-          }
-        }
-        if (!STATE.pipMode) {
-          syncPersistentSessionNotification(true);
-        }
+  function handleServiceWorkerMessage(event) {
+    var data = event.data || {};
+    if (data.type === "AURASTUDY_PAUSE") {
+      if (isEngineActivelyRunning && typeof toggleEngineExecutionLoop === "function") {
+        toggleEngineExecutionLoop();
       }
-    } else {
-      if (isEngineActivelyRunning) {
-        syncPersistentSessionNotification(true);
-      } else {
-        clearPersistentSessionNotification();
-      }
-      reacquireWakeLockIfNeeded();
-      closePipIfTimerViewVisible();
+      return;
+    }
+    if (data.type === "AURASTUDY_LOG") {
+      if (typeof saveEngineWorkspaceBlockData === "function") saveEngineWorkspaceBlockData();
     }
   }
 
@@ -1141,10 +1175,18 @@
   });
 
   document.addEventListener("visibilitychange", onVisibilityChange);
-  window.addEventListener("focus", closePipIfTimerViewVisible);
+  window.addEventListener("focus", function () {
+    if (!document.hidden) onPageVisible();
+  });
+  window.addEventListener("pageshow", function () {
+    if (!document.hidden) onPageVisible();
+  });
   window.addEventListener("beforeunload", function () {
     closeFloatingWindow();
   });
+  if (CAP.serviceWorker && navigator.serviceWorker.addEventListener) {
+    navigator.serviceWorker.addEventListener("message", handleServiceWorkerMessage);
+  }
 
   // -- public API --------------------------------------------------------
 
@@ -1156,7 +1198,7 @@
     injectSettingsCardStyles();
     renderFocusSettingsUI();
     registerServiceWorker().then(function () {
-      if (isEngineActivelyRunning) syncPersistentSessionNotification(true);
+      if (isEngineActivelyRunning && document.hidden) showBackgroundControls();
     });
     if (backfilled && typeof saveStateToLocalStorageRegister === "function") {
       saveStateToLocalStorageRegister();

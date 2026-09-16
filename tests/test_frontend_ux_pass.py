@@ -512,7 +512,7 @@ def test_switchview_initializes_spotify_for_signed_in_users():
 
 def test_close_pip_if_timer_view_respects_suppress_flag():
     pip_js = _read("static", "pip.js")
-    m = re.search(r"function closePipIfTimerViewVisible\(\)\s*\{", pip_js)
+    m = re.search(r'wrapGlobalFn\("switchView", function \(original, thisArg, args\) \{', pip_js)
     assert m
     start = m.end()
     depth = 1

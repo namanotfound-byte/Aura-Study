@@ -1,11 +1,14 @@
 /*!
- * AuraStudy service worker — persistent study-timer notification (Clock/Spotify-style).
+ * AuraStudy service worker — persistent study-timer notification (fallback path).
  * Registered at /sw.js (scope /). The page posts TIMER_SHOW / TIMER_UPDATE /
- * TIMER_CLEAR messages with wall-clock anchors so this worker can refresh the
- * notification body even when the tab is frozen or the screen is off.
+ * TIMER_CLEAR / TIMER_RESET_DISMISS with wall-clock anchors so this worker
+ * can refresh the notification body when the tab is hidden.
+ *
+ * SW_VERSION: 2026-09-16-notify-v2 — dismiss-respecting fallback chip.
  */
 "use strict";
 
+var SW_VERSION = "2026-09-16-notify-v2";
 var TIMER_TAG = "aurastudy-timer-ongoing";
 var ICON = "/static/brand/aurastudy-icon-192.png";
 var UPDATE_INTERVAL_MS = 15000;
@@ -21,6 +24,8 @@ var UPDATE_INTERVAL_MS = 15000;
  * }} */
 var timerState = null;
 var updateTimerId = null;
+var notificationDismissed = false;
+var notificationActive = false;
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -46,13 +51,12 @@ function computeElapsedSeconds(state) {
 function buildNotificationPayload(state) {
   var elapsed = computeElapsedSeconds(state);
   var course = (state.course || "Study session").trim();
-  var timeText = formatHMS(elapsed);
 
   if (state.phase === "break") {
-    var remaining = Math.max(0, Math.floor((state.countdownTotalSeconds || 0) - elapsed));
+    var breakRemaining = Math.max(0, Math.floor((state.countdownTotalSeconds || 0) - elapsed));
     return {
-      title: "AuraStudy — Break",
-      body: formatHMS(remaining) + " left on your break",
+      title: formatHMS(breakRemaining),
+      body: "Break",
     };
   }
 
@@ -60,14 +64,14 @@ function buildNotificationPayload(state) {
     var total = Math.max(1, Math.floor(state.countdownTotalSeconds || 0));
     var left = Math.max(0, total - elapsed);
     return {
-      title: "AuraStudy — " + timeText,
-      body: formatHMS(left) + " left · " + course,
+      title: formatHMS(left),
+      body: course,
     };
   }
 
   return {
-    title: "AuraStudy — " + timeText,
-    body: timeText + " elapsed · " + course,
+    title: formatHMS(elapsed),
+    body: course,
   };
 }
 
@@ -79,14 +83,16 @@ function stopNotificationUpdates() {
 }
 
 function startNotificationUpdates() {
+  if (notificationDismissed) return;
   stopNotificationUpdates();
   updateTimerId = setInterval(function () {
-    if (!timerState) return;
+    if (!timerState || notificationDismissed) return;
     showTimerNotification(buildNotificationPayload(timerState)).catch(function () {});
   }, UPDATE_INTERVAL_MS);
 }
 
 function showTimerNotification(payload) {
+  if (notificationDismissed || !timerState) return Promise.resolve();
   var options = {
     body: payload.body,
     tag: TIMER_TAG,
@@ -95,15 +101,20 @@ function showTimerNotification(payload) {
     requireInteraction: true,
     icon: ICON,
     badge: ICON,
-    data: { url: "/app", kind: "timer" },
-    actions: [{ action: "open", title: "Open AuraStudy" }],
+    data: { kind: "timer" },
+    actions: [
+      { action: "pause", title: "Pause" },
+      { action: "log", title: "Log" },
+    ],
   };
-  return self.registration.showNotification(payload.title || "AuraStudy", options);
+  notificationActive = true;
+  return self.registration.showNotification(payload.title || "00:00", options);
 }
 
 function clearTimerNotification() {
   stopNotificationUpdates();
   timerState = null;
+  notificationActive = false;
   return self.registration.getNotifications({ tag: TIMER_TAG }).then(function (list) {
     list.forEach(function (n) {
       try {
@@ -116,6 +127,10 @@ function clearTimerNotification() {
 function handleTimerMessage(data) {
   if (data.type === "TIMER_CLEAR") {
     return clearTimerNotification();
+  }
+  if (data.type === "TIMER_RESET_DISMISS") {
+    notificationDismissed = false;
+    return Promise.resolve();
   }
   if (data.type !== "TIMER_SHOW" && data.type !== "TIMER_UPDATE") return Promise.resolve();
 
@@ -132,8 +147,29 @@ function handleTimerMessage(data) {
     phase: data.phase === "break" ? "break" : "study",
   };
 
-  if (data.type === "TIMER_SHOW") startNotificationUpdates();
+  if (notificationDismissed) {
+    stopNotificationUpdates();
+    return Promise.resolve();
+  }
+
+  if (data.type === "TIMER_SHOW") {
+    startNotificationUpdates();
+    return showTimerNotification(buildNotificationPayload(timerState));
+  }
+
+  if (!notificationActive) return Promise.resolve();
   return showTimerNotification(buildNotificationPayload(timerState));
+}
+
+function broadcastToClients(message) {
+  return self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (clients) {
+    clients.forEach(function (client) {
+      try {
+        client.postMessage(message);
+      } catch (e) {}
+    });
+    return clients;
+  });
 }
 
 self.addEventListener("install", function (event) {
@@ -152,9 +188,39 @@ self.addEventListener("message", function (event) {
   }
 });
 
+self.addEventListener("notificationclose", function (event) {
+  if (!event.notification || event.notification.tag !== TIMER_TAG) return;
+  notificationDismissed = true;
+  notificationActive = false;
+  stopNotificationUpdates();
+});
+
 self.addEventListener("notificationclick", function (event) {
   event.notification.close();
-  var targetUrl = (event.notification && event.notification.data && event.notification.data.url) || "/app";
+  var action = event.action;
+
+  if (action === "pause") {
+    event.waitUntil(
+      broadcastToClients({ type: "AURASTUDY_PAUSE" }).then(function (clients) {
+        for (var i = 0; i < clients.length; i++) {
+          if ("focus" in clients[i]) return clients[i].focus();
+        }
+      })
+    );
+    return;
+  }
+
+  if (action === "log") {
+    event.waitUntil(
+      broadcastToClients({ type: "AURASTUDY_LOG" }).then(function (clients) {
+        for (var i = 0; i < clients.length; i++) {
+          if ("focus" in clients[i]) return clients[i].focus();
+        }
+      })
+    );
+    return;
+  }
+
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (clients) {
       for (var i = 0; i < clients.length; i++) {
@@ -163,7 +229,7 @@ self.addEventListener("notificationclick", function (event) {
           return client.focus();
         }
       }
-      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+      if (self.clients.openWindow) return self.clients.openWindow("/app");
     })
   );
 });

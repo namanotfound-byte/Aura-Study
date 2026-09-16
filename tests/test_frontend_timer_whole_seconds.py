@@ -399,14 +399,16 @@ def test_mode_switch_while_running_confirms_before_switching():
 
 
 def test_pip_closes_when_returning_to_timer_view():
-    """PiP must close on tab focus/visibility when #view-timer is active."""
+    """PiP and SW notification must clear when the tab becomes visible again."""
     pip_js = _read("static", "pip.js")
-    assert "function isTimerViewActive()" in pip_js
-    assert "function closePipIfTimerViewVisible()" in pip_js
-    assert "closePipIfTimerViewVisible()" in pip_js
-    assert 'window.addEventListener("focus", closePipIfTimerViewVisible)' in pip_js
-    assert 'panel.classList.contains("active")' in pip_js
-    assert 'id === "view-timer"' in pip_js or "id === 'view-timer'" in pip_js
+    assert "function onPageVisible()" in pip_js
+    assert "function showBackgroundControls()" in pip_js
+    assert 'document.addEventListener("visibilitychange", onVisibilityChange)' in pip_js
+    assert 'window.addEventListener("focus"' in pip_js
+    assert "onPageVisible()" in pip_js
+    assert 'window.addEventListener("pageshow"' in pip_js
+    assert 'postTimerMessageToServiceWorker("TIMER_CLEAR")' in pip_js
+    assert "TIMER_RESET_DISMISS" in pip_js
 
 
 def test_mode_tab_buttons_suppress_default_focus_ring():

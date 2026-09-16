@@ -372,3 +372,15 @@ def test_pwa_manifest_and_service_worker_are_wired():
     pip_js = _read("static", "pip.js")
     assert 'register("/sw.js"' in pip_js or "register('/sw.js'" in pip_js
     assert "TIMER_SHOW" in pip_js
+
+
+def test_service_worker_respects_notification_dismiss_and_actions():
+    sw_js = _read("static", "sw.js")
+    assert "notificationclose" in sw_js
+    assert "notificationDismissed" in sw_js
+    assert "TIMER_RESET_DISMISS" in sw_js
+    assert '{ action: "pause", title: "Pause" }' in sw_js
+    assert '{ action: "log", title: "Log" }' in sw_js
+    assert "AURASTUDY_PAUSE" in sw_js
+    assert "AURASTUDY_LOG" in sw_js
+    assert "AuraStudy —" not in sw_js
