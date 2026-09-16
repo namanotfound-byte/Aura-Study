@@ -246,17 +246,23 @@ def test_running_timer_recovery_exists_and_runs_on_boot():
     assert "attemptRunningTimerRecovery();" in html
 
 
-def test_recovery_uses_last_heartbeat_not_wall_clock_now():
-    """The reconstructed elapsed time for a closed/crashed tab must be
-    computed from the last confirmed-alive heartbeat (`savedAtMs`), not
-    Date.now() -- otherwise the entire time the tab was closed gets counted
-    as if the timer had kept running, silently inventing study time. Also
-    pins a bug found in manual browser verification: the gap must be
-    Math.floor()'d -- an un-floored fractional-second value flowed into
-    `secs` in updateEngineDisplayString and rendered the timer as literally
-    "00:10.775" instead of "00:10" after a recovery."""
+def test_recovery_uses_last_heartbeat_for_paused_sessions():
+    """Paused sessions must freeze at the last confirmed-alive heartbeat
+    (`savedAtMs`), not advance with Date.now(). Running sessions are handled
+    separately and must keep accruing wall-clock time."""
     html = _read("index.html")
-    assert re.search(r"confirmedElapsed = banked \+ Math\.floor\(Math\.max\(0, \(snapshot\.savedAtMs - anchor\)", html)
+    recovery_block = html[html.index("function attemptRunningTimerRecovery("):html.index("function updateTimerTargetBadge(")]
+    assert "snapshot.isRunning === true" in recovery_block
+    assert re.search(r"confirmedElapsed = banked \+ Math\.floor\(Math\.max\(0, \(snapshot\.savedAtMs - anchor\)", recovery_block)
+
+
+def test_recovery_advances_running_sessions_with_wall_clock():
+    """A running session recovered after a killed tab must include time since
+    the last heartbeat using Date.now(), so sleep/background gaps count."""
+    html = _read("index.html")
+    recovery_block = html[html.index("function attemptRunningTimerRecovery("):html.index("function updateTimerTargetBadge(")]
+    assert re.search(r"\(wallNow - snapshot\.savedAtMs\)", recovery_block)
+    assert re.search(r"\(wallNow - anchor\)", recovery_block)
 
 
 def test_recovery_caps_and_prompts_for_implausibly_long_sessions():
@@ -345,12 +351,24 @@ def test_recovery_prefers_explicit_elapsed_seconds_field():
     )
 
 
-def test_gap_guard_excludes_sleep_suspend_time_from_the_live_timer():
-    """Same failure mode, but for a timer that's still running IN THE SAME
-    PAGE LIFE after the device wakes from sleep (no reload involved) --
-    syncEngineRegistersFromClock must exclude an unobserved gap rather than
-    rolling the wall-clock anchor straight through it."""
+def test_live_timer_uses_wall_clock_through_sleep_and_background():
+    """While a session is running in the same page life, sleep/background must
+    keep accruing via engineAnchorMs + Date.now(), not freeze or exclude gaps."""
     html = _read("index.html")
-    assert "MAX_UNOBSERVED_GAP_SECONDS" in html
-    assert "lastSyncClockMs" in html
-    assert re.search(r"\(nowMs - lastSyncClockMs\) / 1000 > MAX_UNOBSERVED_GAP_SECONDS", html)
+    sync_body = html[html.index("function syncEngineRegistersFromClock("):html.index("function engineTickHandler(")]
+    assert "MAX_UNOBSERVED_GAP_SECONDS" not in sync_body
+    assert "that gap wasn't counted" not in sync_body
+    assert re.search(r"bankedElapsedSeconds \+ Math\.floor\(\(nowMs - engineAnchorMs\) / 1000\)", sync_body)
+
+
+def test_pwa_manifest_and_service_worker_are_wired():
+    html = _read("index.html")
+    assert 'rel="manifest"' in html
+    assert "/manifest.webmanifest" in html
+    app_py = _read("server", "app.py")
+    assert '"/sw.js"' in app_py or "'/sw.js'" in app_py
+    assert "manifest.webmanifest" in app_py
+    assert _read("static", "sw.js")
+    pip_js = _read("static", "pip.js")
+    assert 'register("/sw.js"' in pip_js or "register('/sw.js'" in pip_js
+    assert "TIMER_SHOW" in pip_js

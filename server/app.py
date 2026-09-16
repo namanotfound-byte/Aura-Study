@@ -135,6 +135,48 @@ def _register_page_routes(app: flask.Flask) -> None:
     def healthz():
         return flask.jsonify({"status": "ok"})
 
+    @app.route("/sw.js")
+    def service_worker():
+        sw_path = os.path.join(STATIC_DIR, "sw.js")
+        with open(sw_path, "r", encoding="utf-8") as handle:
+            body = handle.read()
+        return flask.Response(
+            body,
+            mimetype="application/javascript",
+            headers={
+                "Cache-Control": "no-cache",
+                "Service-Worker-Allowed": "/",
+            },
+        )
+
+    @app.route("/manifest.webmanifest")
+    def web_manifest():
+        manifest_path = os.path.join(STATIC_DIR, "manifest.webmanifest")
+        with open(manifest_path, "r", encoding="utf-8") as handle:
+            body = handle.read()
+        return flask.Response(
+            body,
+            mimetype="application/manifest+json",
+            headers={"Cache-Control": "no-cache"},
+        )
+
+    @app.route("/favicon.ico")
+    def favicon():
+        resp = flask.send_from_directory(
+            os.path.join(STATIC_DIR, "brand"),
+            "favicon.ico",
+            mimetype="image/vnd.microsoft.icon",
+        )
+        resp.headers["Cache-Control"] = "public, max-age=3600, must-revalidate"
+        return resp
+
+    @app.after_request
+    def _brand_favicon_cache(resp):
+        path = flask.request.path or ""
+        if path.startswith("/static/brand/favicon") or path.startswith("/static/brand/apple-touch-icon"):
+            resp.headers["Cache-Control"] = "public, max-age=3600, must-revalidate"
+        return resp
+
     @app.route("/")
     def landing_page():
         # Unauthenticated landing page -- always renders, logged in or not

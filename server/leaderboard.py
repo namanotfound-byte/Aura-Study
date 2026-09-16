@@ -35,6 +35,7 @@ bp = flask.Blueprint("leaderboard", __name__)
 # A week's study time is bounded above by 7*24h -- see compute_week_seconds.
 MAX_WEEK_SECONDS = 7 * 24 * 60 * 60
 MAX_DAY_SECONDS = 24 * 60 * 60
+MAX_MONTH_SECONDS = 31 * 24 * 60 * 60
 MAX_LIFETIME_SECONDS = 10 * 365 * 24 * 60 * 60
 TOP_N = 20
 PET_TOP_N = 10
@@ -335,6 +336,49 @@ def current_day(local_date=None) -> datetime.date:
     return _parse_client_local_date(local_date) or utcnow().date()
 
 
+def month_start_for(value) -> datetime.date:
+    """First day of the calendar month containing `value` (a date or datetime)."""
+    d = value.date() if isinstance(value, datetime.datetime) else value
+    return d.replace(day=1)
+
+
+def current_month_start(local_date=None) -> datetime.date:
+    """First day of the calendar month for the client's local date (or UTC today)."""
+    return month_start_for(current_day(local_date))
+
+
+def compute_month_seconds(payload, month_start: datetime.date) -> int:
+    """Sum session durations whose `date` falls within the calendar month
+    starting at `month_start` (inclusive through the last day of that month)."""
+    if month_start.day != 1:
+        month_start = month_start_for(month_start)
+    if month_start.month == 12:
+        month_end = datetime.date(month_start.year + 1, 1, 1)
+    else:
+        month_end = datetime.date(month_start.year, month_start.month + 1, 1)
+
+    sessions = payload.get("sessions") if isinstance(payload, dict) else None
+    if not isinstance(sessions, list):
+        return 0
+
+    total = 0.0
+    for entry in sessions:
+        if not isinstance(entry, dict):
+            continue
+        date_raw = entry.get("date")
+        if not isinstance(date_raw, str):
+            continue
+        try:
+            entry_date = datetime.date.fromisoformat(date_raw[:10])
+        except ValueError:
+            continue
+        if not (month_start <= entry_date < month_end):
+            continue
+        total += _session_seconds(entry)
+
+    return min(int(total), MAX_MONTH_SECONDS)
+
+
 def upsert_day_seconds(db, user_id: int, payload, local_date=None) -> None:
     day = current_day(local_date)
     seconds = compute_day_seconds(payload, day)
@@ -348,6 +392,22 @@ def upsert_day_seconds(db, user_id: int, payload, local_date=None) -> None:
             updated_at = excluded.updated_at
         """,
         (user_id, day.isoformat(), seconds, True, now),
+    )
+
+
+def upsert_month_seconds(db, user_id: int, payload, local_date=None) -> None:
+    month_start = current_month_start(local_date)
+    seconds = compute_month_seconds(payload, month_start)
+    now = utcnow_iso()
+    db.execute(
+        """
+        INSERT INTO leaderboard_months (user_id, month_start, seconds, opted_in, updated_at)
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (user_id, month_start) DO UPDATE SET
+            seconds = excluded.seconds,
+            updated_at = excluded.updated_at
+        """,
+        (user_id, month_start.isoformat(), seconds, True, now),
     )
 
 
@@ -396,6 +456,7 @@ def upsert_week_seconds(db, user_id: int, payload, local_date=None) -> None:
         (user_id, week_start.isoformat(), seconds, True, now),
     )
     upsert_day_seconds(db, user_id, payload, local_date=local_date)
+    upsert_month_seconds(db, user_id, payload, local_date=local_date)
     upsert_lifetime_seconds(db, user_id, payload)
 
 
@@ -570,163 +631,16 @@ def _pet_entries_guest_view(db, week_start_str):
     }
 
 
-def _board_from_lifetime(db, user, local_date=None, limit=TOP_N):
-    """All-time study leaderboard ranked by leaderboard_lifetime.seconds."""
-    backfill_lifetime_from_user_state(db)
-    user_id = user["id"]
-    my_public_name = user["public_name"]
-    week_start_str = current_week_start(local_date).isoformat()
-
-    my_life = db.execute(
-        "SELECT seconds FROM leaderboard_lifetime WHERE user_id = %s",
-        (user_id,),
-    ).fetchone()
-    my_seconds = my_life["seconds"] if my_life is not None else 0
-
-    opt_row = db.execute(
-        "SELECT opted_in FROM leaderboard_weeks WHERE user_id = %s AND week_start = %s",
-        (user_id, week_start_str),
-    ).fetchone()
-    my_opted_in = bool(opt_row["opted_in"]) if opt_row is not None else True
-    my_pet = pet_fields_from_lifetime_seconds(my_seconds)
-
-    top_rows = db.execute(
-        """
-        SELECT ll.user_id, ll.seconds, u.public_name
-        FROM leaderboard_lifetime ll
-        JOIN users u ON u.id = ll.user_id
-        LEFT JOIN leaderboard_weeks lw
-            ON lw.user_id = ll.user_id AND lw.week_start = %s
-        WHERE ll.seconds > 0 AND u.public_name IS NOT NULL
-              AND (lw.opted_in IS NULL OR lw.opted_in = %s)
-        ORDER BY ll.seconds DESC, ll.user_id ASC
-        LIMIT %s
-        """,
-        (week_start_str, True, limit),
-    ).fetchall()
-
-    entries = []
-    my_rank = None
-    for idx, row in enumerate(top_rows, start=1):
-        pet = pet_fields_from_lifetime_seconds(row["seconds"])
-        entries.append({
-            "rank": idx,
-            "name": row["public_name"],
-            "seconds": row["seconds"],
-            "level": pet["level"],
-            "form": pet["form"],
-            "emoji": pet["emoji"],
-        })
-        if row["user_id"] == user_id:
-            my_rank = idx
-
-    listed = my_opted_in and my_public_name is not None and my_seconds > 0
-    if listed and my_rank is None:
-        better = db.execute(
-            """
-            SELECT COUNT(*) AS c
-            FROM leaderboard_lifetime ll
-            JOIN users u ON u.id = ll.user_id
-            LEFT JOIN leaderboard_weeks lw
-                ON lw.user_id = ll.user_id AND lw.week_start = %s
-            WHERE ll.seconds > %s AND u.public_name IS NOT NULL
-                  AND (lw.opted_in IS NULL OR lw.opted_in = %s)
-            """,
-            (week_start_str, my_seconds, True),
-        ).fetchone()
-        my_rank = better["c"] + 1
-    elif not listed:
-        my_rank = None
-
-    participants_row = db.execute(
-        """
-        SELECT COUNT(*) AS c
-        FROM leaderboard_lifetime ll
-        JOIN users u ON u.id = ll.user_id
-        LEFT JOIN leaderboard_weeks lw
-            ON lw.user_id = ll.user_id AND lw.week_start = %s
-        WHERE ll.seconds > 0 AND u.public_name IS NOT NULL
-              AND (lw.opted_in IS NULL OR lw.opted_in = %s)
-        """,
-        (week_start_str, True),
-    ).fetchone()
-
-    return {
-        "you": {
-            "rank": my_rank,
-            "seconds": my_seconds,
-            "public_name": my_public_name,
-            "opted_in": my_opted_in,
-            "level": my_pet["level"],
-            "form": my_pet["form"],
-            "emoji": my_pet["emoji"],
-        },
-        "entries": entries,
-        "participants": participants_row["c"],
-    }
-
-
-def _board_lifetime_guest_view(db, local_date=None, limit=TOP_N):
-    backfill_lifetime_from_user_state(db)
-    week_start_str = current_week_start(local_date).isoformat()
-    top_rows = db.execute(
-        """
-        SELECT ll.user_id, ll.seconds, u.public_name
-        FROM leaderboard_lifetime ll
-        JOIN users u ON u.id = ll.user_id
-        LEFT JOIN leaderboard_weeks lw
-            ON lw.user_id = ll.user_id AND lw.week_start = %s
-        WHERE ll.seconds > 0 AND u.public_name IS NOT NULL
-              AND (lw.opted_in IS NULL OR lw.opted_in = %s)
-        ORDER BY ll.seconds DESC, ll.user_id ASC
-        LIMIT %s
-        """,
-        (week_start_str, True, limit),
-    ).fetchall()
-
-    entries = []
-    for idx, row in enumerate(top_rows, start=1):
-        pet = pet_fields_from_lifetime_seconds(row["seconds"])
-        entries.append({
-            "rank": idx,
-            "name": row["public_name"],
-            "seconds": row["seconds"],
-            "level": pet["level"],
-            "form": pet["form"],
-            "emoji": pet["emoji"],
-        })
-
-    participants_row = db.execute(
-        """
-        SELECT COUNT(*) AS c
-        FROM leaderboard_lifetime ll
-        JOIN users u ON u.id = ll.user_id
-        LEFT JOIN leaderboard_weeks lw
-            ON lw.user_id = ll.user_id AND lw.week_start = %s
-        WHERE ll.seconds > 0 AND u.public_name IS NOT NULL
-              AND (lw.opted_in IS NULL OR lw.opted_in = %s)
-        """,
-        (week_start_str, True),
-    ).fetchone()
-
-    return {
-        "you": None,
-        "entries": entries,
-        "participants": participants_row["c"],
-        "guest_view": True,
-    }
-
-
 @bp.route("/leaderboard", methods=["GET"])
 @login_or_guest_read
 def get_leaderboard():
     db = get_db()
     local_date = flask.request.args.get("local_date")
     period = (flask.request.args.get("period") or "week").strip().lower()
-    if period == "all":
-        period = "lifetime"
-    if period not in ("week", "day", "lifetime"):
-        return json_error("validation_error", "period must be week, day, or lifetime.", 400)
+    if period in ("all", "lifetime"):
+        period = "month"
+    if period not in ("week", "day", "month"):
+        return json_error("validation_error", "period must be week, day, or month.", 400)
 
     if flask.g.get("guest_readonly"):
         if period == "day":
@@ -735,9 +649,11 @@ def get_leaderboard():
             body["period"] = "day"
             body["day"] = day_str
             return flask.jsonify(body)
-        if period == "lifetime":
-            body = _board_lifetime_guest_view(db, local_date)
-            body["period"] = "lifetime"
+        if period == "month":
+            month_start_str = current_month_start(local_date).isoformat()
+            body = _board_guest_view(db, "leaderboard_months", "month_start", month_start_str)
+            body["period"] = "month"
+            body["month_start"] = month_start_str
             return flask.jsonify(body)
         week_start_str = current_week_start(local_date).isoformat()
         body = _board_guest_view(db, "leaderboard_weeks", "week_start", week_start_str)
@@ -752,9 +668,11 @@ def get_leaderboard():
         body["period"] = "day"
         body["day"] = day_str
         return flask.jsonify(body)
-    if period == "lifetime":
-        body = _board_from_lifetime(db, user, local_date)
-        body["period"] = "lifetime"
+    if period == "month":
+        month_start_str = current_month_start(local_date).isoformat()
+        body = _board_from_table(db, user, "leaderboard_months", "month_start", month_start_str)
+        body["period"] = "month"
+        body["month_start"] = month_start_str
         return flask.jsonify(body)
 
     week_start_str = current_week_start(local_date).isoformat()
@@ -924,6 +842,17 @@ def put_opt():
             updated_at = excluded.updated_at
         """,
         (user_id, day_str, opted_in, now),
+    )
+    month_start_str = current_month_start(body.get("local_date")).isoformat()
+    db.execute(
+        """
+        INSERT INTO leaderboard_months (user_id, month_start, seconds, opted_in, updated_at)
+        VALUES (%s, %s, 0, %s, %s)
+        ON CONFLICT (user_id, month_start) DO UPDATE SET
+            opted_in = excluded.opted_in,
+            updated_at = excluded.updated_at
+        """,
+        (user_id, month_start_str, opted_in, now),
     )
     db.commit()
     return flask.jsonify({"ok": True})

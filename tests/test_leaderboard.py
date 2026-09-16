@@ -827,26 +827,34 @@ def test_pet_leaderboard_backfills_missing_lifetime_rows(client, app, outbox):
 
 def test_invalid_leaderboard_period_rejected(client, outbox):
     register_verify(client, outbox, "badperiod@example.com")
-    resp = client.get("/api/leaderboard?period=month", headers=JSON_HEADERS)
+    resp = client.get("/api/leaderboard?period=year", headers=JSON_HEADERS)
     assert resp.status_code == 400
 
 
-def test_lifetime_leaderboard_ranks_all_time(client, outbox):
-    register_verify(client, outbox, "lifetime-a@example.com")
-    set_name(client, "Lifetime Ace")
-    put_state(client, [session_today(5 * 3600)])
-    lb = client.get("/api/leaderboard?period=lifetime", headers=JSON_HEADERS).get_json()
-    assert lb["period"] == "lifetime"
+def test_monthly_leaderboard_ranks_current_month_only(client, outbox):
+    from server.db import utcnow
+    register_verify(client, outbox, "monthly-a@example.com")
+    set_name(client, "Monthly Ace")
+    today = utcnow().date()
+    last_month = (today.replace(day=1) - datetime.timedelta(days=1)).isoformat()
+    put_state(client, [
+        session_today(5 * 3600),
+        {"date": last_month, "course": "Math", "type": "Stopwatch", "durationSeconds": 10 * 3600, "timestamp": "10:00 AM", "hourOfDayExecuted": 10},
+    ])
+    lb = client.get("/api/leaderboard?period=month", headers=JSON_HEADERS).get_json()
+    assert lb["period"] == "month"
+    assert lb["month_start"] == today.replace(day=1).isoformat()
     assert lb["you"]["seconds"] == 5 * 3600
-    assert lb["entries"][0]["name"] == "Lifetime Ace"
+    assert lb["entries"][0]["name"] == "Monthly Ace"
     assert lb["entries"][0]["seconds"] == 5 * 3600
     assert lb["entries"][0]["form"]
 
 
-def test_lifetime_leaderboard_accepts_all_alias(client, outbox):
-    register_verify(client, outbox, "lifetime-b@example.com")
+def test_monthly_leaderboard_accepts_lifetime_and_all_aliases(client, outbox):
+    register_verify(client, outbox, "monthly-b@example.com")
     set_name(client, "Alias Ace")
     put_state(client, [session_today(2 * 3600)])
-    lb = client.get("/api/leaderboard?period=all", headers=JSON_HEADERS).get_json()
-    assert lb["period"] == "lifetime"
-    assert lb["you"]["seconds"] == 2 * 3600
+    for alias in ("all", "lifetime"):
+        lb = client.get("/api/leaderboard?period={}".format(alias), headers=JSON_HEADERS).get_json()
+        assert lb["period"] == "month"
+        assert lb["you"]["seconds"] == 2 * 3600

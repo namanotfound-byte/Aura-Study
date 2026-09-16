@@ -7,9 +7,9 @@
  *   1. Landing page (`#letters`, full-size reveal): splits "AuraStudy" into
  *      individual letters so landing.css can stagger them in, then -- once
  *      the reveal has played -- sends an already-authenticated visitor to
- *      /app. Plays once per browser tab session: sessionStorage marks the
- *      reveal as seen, and later visits to `/` in the same tab skip straight
- *      to the finished state instead of replaying it.
+ *      /app. The hero book-open replays on every visit unless the user prefers
+ *      reduced motion. Auth-page letter reveals still skip after the first
+ *      visit in a tab session.
  *
  *   2. Signed-out auth pages (`#auth-wordmark-letters`, base.html's brand
  *      header on login/register/forgot/reset): a smaller, quicker cousin of
@@ -35,7 +35,6 @@
 (function () {
   'use strict';
 
-  var LANDING_SESSION_KEY = 'aurastudy:landingSeen';
   var AUTH_SESSION_KEY = 'aurastudy:authWordmarkSeen';
 
   var prefersReducedMotion = !!(
@@ -81,27 +80,30 @@
 
   // ---------------- 1. Landing page (full reveal) ----------------
 
-  var LETTER_BASE_DELAY = 0.05; // seconds, first letter's animation-delay
-  var LETTER_STAGGER = 0.055;   // seconds added per subsequent letter
-  var TOTAL_ANIMATION_MS = 1700; // wordmark + tagline + buttons fully settled, plus a beat
+  var TOTAL_ANIMATION_MS = 2800; // book flip + settle + tagline/CTA fade-in
   var INSTANT_NAV_DELAY_MS = 250; // just enough for the finished title to register
+  var BOOK_SETTLE_MS = 1850; // wordmark page finishes ~1.75s; settle shortly after
 
   function initLanding() {
-    var host = document.getElementById('letters');
-    if (!host) return; // not the landing page
+    var brand = document.getElementById('landing-brand');
+    if (!brand) return; // not the landing page
 
+    var root = document.documentElement;
     var body = document.body;
     var authenticated = body.getAttribute('data-authenticated') === 'true';
+    var wordmarkPage = brand.querySelector('.landing-book-page--wordmark');
 
     function goToApp() {
       window.location.href = '/app';
     }
 
+    function finishBookHero() {
+      root.classList.add('landing-book-settled');
+    }
+
     if (prefersReducedMotion) {
-      // landing.css's prefers-reduced-motion block already forces the title,
-      // tagline and buttons to their finished state with no animation --
-      // nothing to split or stagger.
-      markSessionSeen(LANDING_SESSION_KEY);
+      root.classList.add('skip-anim');
+      root.classList.remove('landing-animate');
       if (authenticated) window.setTimeout(goToApp, INSTANT_NAV_DELAY_MS);
       if (window.AuraTour && typeof window.AuraTour.initLandingTour === 'function') {
         window.AuraTour.initLandingTour();
@@ -109,17 +111,14 @@
       return;
     }
 
-    if (sessionSeen(LANDING_SESSION_KEY)) {
-      // Already played earlier in this tab session (e.g. a reload, or a
-      // return visit to `/`) -- skip straight to the finished state.
-      // landing.css's html.skip-anim rule handles the visual side.
-      document.documentElement.classList.add('skip-anim');
-      if (authenticated) window.setTimeout(goToApp, INSTANT_NAV_DELAY_MS);
-      return;
+    if (wordmarkPage) {
+      wordmarkPage.addEventListener('animationend', function onBookDone(evt) {
+        if (evt.animationName !== 'landingBookPageRight') return;
+        wordmarkPage.removeEventListener('animationend', onBookDone);
+        finishBookHero();
+      });
+      window.setTimeout(finishBookHero, BOOK_SETTLE_MS);
     }
-
-    splitIntoLetters(host, LETTER_BASE_DELAY, LETTER_STAGGER);
-    markSessionSeen(LANDING_SESSION_KEY);
 
     if (authenticated) window.setTimeout(goToApp, TOTAL_ANIMATION_MS);
 

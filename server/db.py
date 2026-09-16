@@ -186,6 +186,16 @@ CREATE TABLE IF NOT EXISTS leaderboard_days (
 );
 CREATE INDEX IF NOT EXISTS idx_leaderboard_day ON leaderboard_days(day_date, seconds DESC);
 
+CREATE TABLE IF NOT EXISTS leaderboard_months (
+  user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  month_start       TEXT NOT NULL,
+  seconds           INTEGER NOT NULL DEFAULT 0,
+  opted_in          INTEGER NOT NULL DEFAULT 1,
+  updated_at        TEXT NOT NULL,
+  PRIMARY KEY (user_id, month_start)
+);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_month ON leaderboard_months(month_start, seconds DESC);
+
 CREATE TABLE IF NOT EXISTS leaderboard_lifetime (
   user_id           INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   seconds           INTEGER NOT NULL DEFAULT 0,
@@ -343,6 +353,16 @@ CREATE TABLE IF NOT EXISTS leaderboard_days (
   PRIMARY KEY (user_id, day_date)
 );
 CREATE INDEX IF NOT EXISTS idx_leaderboard_day ON leaderboard_days(day_date, seconds DESC);
+
+CREATE TABLE IF NOT EXISTS leaderboard_months (
+  user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  month_start       DATE NOT NULL,
+  seconds           INTEGER NOT NULL DEFAULT 0,
+  opted_in          BOOLEAN NOT NULL DEFAULT TRUE,
+  updated_at        TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (user_id, month_start)
+);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_month ON leaderboard_months(month_start, seconds DESC);
 
 CREATE TABLE IF NOT EXISTS leaderboard_lifetime (
   user_id           INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,

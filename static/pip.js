@@ -89,8 +89,8 @@
  *   2. Best-effort documentPictureInPicture attempt on visibilitychange-hidden,
  *      wrapped in try/catch — expected to throw (no activation) almost every
  *      time; failure is silent.
- *   3. Web Notification + a live "⏳ MM:SS · AuraStudy" document.title while
- *      hidden, restored on refocus/session end.
+ *   3. Web Notification (via service worker) while hidden; document.title
+ *      stays "AuraStudy" at all times.
  *   4. Where documentPictureInPicture doesn't exist but
  *      HTMLVideoElement.requestPictureInPicture does (Safari/Firefox): an
  *      offscreen <canvas>, redrawn from the same tick, piped through
@@ -122,12 +122,13 @@
       }
     })(),
     notifications: "Notification" in window,
+    serviceWorker: "serviceWorker" in navigator,
+    mediaSession: "mediaSession" in navigator,
     wakeLock: !!(navigator.wakeLock && typeof navigator.wakeLock.request === "function"),
   };
 
-  var DOC_TITLE_ORIGINAL = document.title;
-  var RING_RADIUS = 52;
-  var RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+  var PIP_WINDOW_WIDTH = 196;
+  var PIP_WINDOW_HEIGHT = 96;
 
   var DEFAULT_PREFS = { floatTimer: true, notify: true, keepAwake: true, completionSound: true };
 
@@ -141,9 +142,12 @@
     canvasEl: null,
     canvasCtx: null,
     completing: false,
-    titleFallbackActive: false,
     activeNotification: null,
     permissionRequestInFlight: false,
+    swRegistration: null,
+    swReady: false,
+    lastSwTimerPostMs: 0,
+    persistentNotificationActive: false,
     wakeLockSentinel: null,
     // True only while control is synchronously inside the wrapped
     // engineTickHandler's call to the ORIGINAL handler -- i.e. exactly the
@@ -260,17 +264,64 @@
       });
   }
 
-  function maybeNotifyBackgroundRunning() {
+  function registerServiceWorker() {
+    if (!CAP.serviceWorker) return Promise.resolve(null);
+    return navigator.serviceWorker
+      .register("/sw.js", { scope: "/" })
+      .then(function (reg) {
+        STATE.swRegistration = reg;
+        STATE.swReady = true;
+        return reg;
+      })
+      .catch(function () {
+        STATE.swRegistration = null;
+        STATE.swReady = false;
+        return null;
+      });
+  }
+
+  function buildTimerStatePayload() {
+    return {
+      isRunning: !!isEngineActivelyRunning,
+      anchorMs: engineAnchorMs,
+      bankedSeconds: wholeSeconds(bankedElapsedSeconds),
+      mode: appState.selectedMode === "countdown" ? "countdown" : "stopwatch",
+      course: appState.selectedCourse || "",
+      countdownTotalSeconds: wholeSeconds(countdownTotalSeconds),
+      phase: typeof enginePhase !== "undefined" && enginePhase === "break" ? "break" : "study",
+    };
+  }
+
+  function postTimerMessageToServiceWorker(type) {
+    if (!STATE.swReady || !STATE.swRegistration) return Promise.resolve(false);
+    if (!prefs().notify) return Promise.resolve(false);
+    if (Notification.permission !== "granted") return Promise.resolve(false);
+    var payload = buildTimerStatePayload();
+    payload.type = type;
+    var target = STATE.swRegistration.active;
+    if (!target && STATE.swRegistration.waiting) target = STATE.swRegistration.waiting;
+    if (!target) {
+      return navigator.serviceWorker.ready
+        .then(function (reg) {
+          if (reg.active) reg.active.postMessage(payload);
+        })
+        .catch(function () {});
+    }
+    try {
+      target.postMessage(payload);
+    } catch (e) {}
+    return Promise.resolve(true);
+  }
+
+  function maybeShowLegacyNotification() {
     if (!prefs().notify || !CAP.notifications) return;
-    if (Notification.permission === "default") {
-      // Ask right now, at the moment the fallback is actually needed, rather
-      // than nagging on page load. This notification round is skipped; the
-      // next hidden cycle notifies once the user has answered.
-      requestNotificationPermissionIfNeeded();
+    if (Notification.permission !== "granted") return;
+    if (STATE.activeNotification) {
+      try {
+        STATE.activeNotification.body = buildNotificationBody();
+      } catch (e) {}
       return;
     }
-    if (Notification.permission !== "granted") return;
-    if (STATE.activeNotification) return;
     try {
       var n = new Notification("AuraStudy", {
         body: buildNotificationBody(),
@@ -287,10 +338,52 @@
       };
       STATE.activeNotification = n;
     } catch (e) {
-      // Notification constructor can throw on some mobile browsers even when
-      // permission is granted (e.g. Android Chrome wants ServiceWorker
-      // notifications instead) -- fail silently, title fallback still works.
+      /* Android Chrome often requires SW notifications instead. */
     }
+  }
+
+  function syncPersistentSessionNotification(force) {
+    if (!prefs().notify) {
+      clearPersistentSessionNotification();
+      return;
+    }
+    if (!isEngineActivelyRunning) {
+      clearPersistentSessionNotification();
+      return;
+    }
+    if (Notification.permission === "default") {
+      requestNotificationPermissionIfNeeded();
+      return;
+    }
+    if (Notification.permission !== "granted") {
+      return;
+    }
+
+    var now = Date.now();
+    var type = STATE.persistentNotificationActive ? "TIMER_UPDATE" : "TIMER_SHOW";
+    if (!force && type === "TIMER_UPDATE" && now - STATE.lastSwTimerPostMs < 1000) {
+      updateMediaSession();
+      return;
+    }
+    STATE.lastSwTimerPostMs = now;
+
+    postTimerMessageToServiceWorker(type).then(function (posted) {
+      if (posted) {
+        STATE.persistentNotificationActive = true;
+        clearActiveNotification();
+      } else if (document.hidden) {
+        maybeShowLegacyNotification();
+      }
+      updateMediaSession();
+    });
+  }
+
+  function clearPersistentSessionNotification() {
+    STATE.persistentNotificationActive = false;
+    STATE.lastSwTimerPostMs = 0;
+    postTimerMessageToServiceWorker("TIMER_CLEAR");
+    clearActiveNotification();
+    clearMediaSession();
   }
 
   function clearActiveNotification() {
@@ -300,6 +393,36 @@
       } catch (e) {}
       STATE.activeNotification = null;
     }
+  }
+
+  function updateMediaSession() {
+    if (!CAP.mediaSession || !prefs().notify || !isEngineActivelyRunning) {
+      clearMediaSession();
+      return;
+    }
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentDisplayText(),
+        artist: pipSubtitleText(),
+        album: "AuraStudy",
+        artwork: [
+          {
+            src: "/static/brand/aurastudy-icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+        ],
+      });
+      navigator.mediaSession.playbackState = "playing";
+    } catch (e) {}
+  }
+
+  function clearMediaSession() {
+    if (!CAP.mediaSession) return;
+    try {
+      navigator.mediaSession.metadata = null;
+      navigator.mediaSession.playbackState = "none";
+    } catch (e) {}
   }
 
   // -- genuine completion notification + sound ----------------------------
@@ -416,25 +539,6 @@
     }
   }
 
-  // -- document.title live countdown (path 3) ----------------------------
-
-  function updateTitleFallback() {
-    var shouldShow = document.hidden && isEngineActivelyRunning && !STATE.pipMode && prefs().notify;
-    if (shouldShow) {
-      STATE.titleFallbackActive = true;
-      document.title = "⏳ " + currentDisplayText() + " · AuraStudy";
-    } else {
-      clearTitleFallback();
-    }
-  }
-
-  function clearTitleFallback() {
-    if (STATE.titleFallbackActive) {
-      document.title = DOC_TITLE_ORIGINAL;
-      STATE.titleFallbackActive = false;
-    }
-  }
-
   // -- Screen Wake Lock ---------------------------------------------------
 
   function requestWakeLock() {
@@ -508,30 +612,18 @@
     style.id = "af-pip-content-styles";
     style.textContent = [
       "html,body{height:100%;margin:0;}",
-      "body.af-pip-body{display:flex !important;align-items:center;justify-content:center;padding:14px;overflow:hidden;}",
-      ".af-wrap{width:100%;max-width:300px;background:rgba(255,255,255,0.78);backdrop-filter:blur(10px);" +
-        "border:1px solid rgba(255,255,255,0.9);border-radius:20px;padding:18px 16px;display:flex;" +
-        "flex-direction:column;align-items:center;gap:4px;box-shadow:0 10px 30px rgba(0,0,0,0.1);position:relative;}",
-      ".af-course{font-size:13px;font-weight:800;color:var(--text-main);text-align:center;}",
-      ".af-ring-wrap{position:relative;width:120px;height:120px;margin:8px 0 4px;}",
-      ".af-ring-svg{width:100%;height:100%;transform:rotate(-90deg);}",
-      ".af-ring-bg{fill:none;stroke:var(--border-color);stroke-width:8;}",
-      ".af-ring-fg{fill:none;stroke:var(--neon-pink);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .25s linear;}",
-      ".af-time{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;" +
-        "font-size:25px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--text-main);" +
-        "white-space:nowrap;padding:0 6px;}",
-      ".af-time--hours{font-size:19px;letter-spacing:-0.02em;}",
-      ".af-mode{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;}",
-      ".af-controls{display:flex;gap:10px;width:100%;}",
-      ".af-btn{flex:1;border:2px solid var(--border-color);background:#fff;color:var(--neon-pink);" +
-        "font-weight:700;font-size:13px;padding:9px 0;border-radius:12px;cursor:pointer;font-family:inherit;}",
+      "body.af-pip-body{display:flex !important;align-items:center;justify-content:center;padding:8px;overflow:hidden;}",
+      ".af-wrap{width:100%;max-width:180px;background:rgba(255,255,255,0.82);backdrop-filter:blur(10px);" +
+        "border:1px solid rgba(255,255,255,0.92);border-radius:14px;padding:10px 12px;display:flex;" +
+        "flex-direction:column;align-items:center;gap:8px;box-shadow:0 6px 18px rgba(0,0,0,0.1);}",
+      ".af-time{font-size:22px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--text-main);" +
+        "white-space:nowrap;line-height:1;letter-spacing:-0.02em;}",
+      ".af-time--hours{font-size:17px;}",
+      ".af-controls{display:flex;gap:6px;width:100%;}",
+      ".af-btn{flex:1;border:1.5px solid var(--border-color);background:#fff;color:var(--neon-pink);" +
+        "font-weight:700;font-size:11px;padding:6px 0;border-radius:10px;cursor:pointer;font-family:inherit;}",
       ".af-btn:hover{border-color:var(--neon-pink);}",
       ".af-btn-primary{background:var(--neon-pink);border-color:var(--neon-pink);color:#fff;}",
-      ".af-complete{display:none;position:absolute;inset:0;background:rgba(255,255,255,0.96);border-radius:20px;" +
-        "flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:16px;}",
-      ".af-wrap.af-complete-active .af-complete{display:flex;}",
-      ".af-complete-emoji{font-size:32px;}",
-      ".af-complete-text{font-size:13px;font-weight:800;color:var(--text-main);}",
     ].join("\n");
     doc.head.appendChild(style);
   }
@@ -543,7 +635,10 @@
     STATE.pipRequestPending = true;
     var pipPromise;
     try {
-      pipPromise = window.documentPictureInPicture.requestWindow({ width: 300, height: 280 });
+      pipPromise = window.documentPictureInPicture.requestWindow({
+        width: PIP_WINDOW_WIDTH,
+        height: PIP_WINDOW_HEIGHT,
+      });
     } catch (e) {
       STATE.pipRequestPending = false;
       if (trigger !== "tabswitch") console.warn("AuraFocus: could not open the floating timer window", e);
@@ -569,9 +664,8 @@
     cloneStylesInto(pipWin.document);
     buildPipDom(pipWin.document);
     wirePipEvents();
-    pipWin.document.title = "AuraStudy Timer";
+    pipWin.document.title = "AuraStudy";
     pipWin.addEventListener("pagehide", onPipWindowClosed, { once: true });
-    clearTitleFallback();
     clearActiveNotification();
     onTick();
   }
@@ -592,106 +686,29 @@
     var wrap = doc.createElement("div");
     wrap.className = "af-wrap";
     wrap.innerHTML =
-      '<div class="af-course" id="af-course"></div>' +
-      '<div class="af-ring-wrap">' +
-      '<svg viewBox="0 0 120 120" class="af-ring-svg">' +
-      '<circle class="af-ring-bg" cx="60" cy="60" r="' +
-      RING_RADIUS +
-      '"></circle>' +
-      '<circle class="af-ring-fg" id="af-ring-fg" cx="60" cy="60" r="' +
-      RING_RADIUS +
-      '"></circle>' +
-      "</svg>" +
       '<div class="af-time" id="af-time">00:00</div>' +
-      "</div>" +
-      '<div class="af-mode" id="af-mode"></div>' +
       '<div class="af-controls">' +
-      '<button class="af-btn" id="af-reset-btn" type="button">Reset</button>' +
       '<button class="af-btn af-btn-primary" id="af-toggle-btn" type="button">Pause</button>' +
-      "</div>" +
-      '<div class="af-complete" id="af-complete">' +
-      '<div class="af-complete-emoji">✨</div>' +
-      '<div class="af-complete-text" id="af-complete-text">Session logged!</div>' +
+      '<button class="af-btn" id="af-log-btn" type="button">Log</button>' +
       "</div>";
     body.appendChild(wrap);
 
     STATE.pipEls = {
       wrap: wrap,
-      course: doc.getElementById("af-course"),
-      mode: doc.getElementById("af-mode"),
       time: doc.getElementById("af-time"),
-      ringFg: doc.getElementById("af-ring-fg"),
-      resetBtn: doc.getElementById("af-reset-btn"),
       toggleBtn: doc.getElementById("af-toggle-btn"),
-      completeText: doc.getElementById("af-complete-text"),
+      logBtn: doc.getElementById("af-log-btn"),
     };
-  }
-
-  // resetEngineDisplayState() in index.html shows a branded confirm modal
-  // (#aura-confirm-modal via showAuraConfirmDialog) when there's a minute or
-  // more on the clock -- but that dialog is spawned on the MAIN window's
-  // document. The floating window is a separate top-level browsing context
-  // (Document Picture-in-Picture), typically sitting ON TOP of the main
-  // window precisely because the user has switched away from it, so the main
-  // window's modal either appears behind the floating window (invisible, easy
-  // to miss entirely) or steals focus in a confusing way. Either way,
-  // clicking Reset in the floating window can look like it did nothing.
-  //
-  // Fix: do the same "is there something to lose" check here, and if so,
-  // show the confirm INSIDE the floating window (STATE.pipWindow.confirm),
-  // where the user is actually looking. Only call resetEngineDisplayState()
-  // with skipConfirm once we already have an answer, so the main window
-  // never shows a second, redundant (and possibly hidden) prompt. If nothing
-  // is at stake, or the floating window can't produce its own dialog for some
-  // reason, fall through to the normal call -- never silently discard time
-  // that was never confirmed away.
-  function handlePipResetClick() {
-    var elapsedOnClock = Math.floor(runningAccumulatedSeconds || 0);
-    if (elapsedOnClock >= 60 && STATE.pipWindow) {
-      var mins = Math.floor(elapsedOnClock / 60);
-      var confirmFn = null;
-      try {
-        if (typeof STATE.pipWindow.confirm === "function") confirmFn = STATE.pipWindow.confirm;
-      } catch (e) {
-        confirmFn = null;
-      }
-      if (confirmFn) {
-        var ok;
-        try {
-          ok = confirmFn.call(
-            STATE.pipWindow,
-            "Reset the timer and discard " + mins + " minute" + (mins === 1 ? "" : "s") +
-              " already on the clock?\n\nTo keep the time instead, cancel and choose Log Focus in the main AuraStudy window."
-          );
-        } catch (e) {
-          // Some Document PiP implementations may not support confirm() in
-          // the floating window -- fall back to the main-window path below
-          // rather than assume an answer either way.
-          confirmFn = null;
-        }
-        if (confirmFn) {
-          if (!ok) return; // user cancelled inside the floating window -- nothing discarded
-          resetEngineDisplayState(true); // already confirmed here; skip the (possibly hidden) main-window prompt
-          return;
-        }
-      }
-    }
-    // Nothing at stake yet, or no floating-window dialog surface available --
-    // the normal path (main-window confirm when there's something to lose,
-    // silent when there isn't) is still safe, just not guaranteed visible.
-    resetEngineDisplayState();
   }
 
   function wirePipEvents() {
     var els = STATE.pipEls;
     if (!els) return;
-    // These call the bare global identifiers, which by the time any pip
-    // window can possibly be open have already been replaced by this file's
-    // own wraps below -- so a click in the floating window drives the exact
-    // same start/pause/reset path a click in the main page would.
-    els.resetBtn.addEventListener("click", handlePipResetClick);
     els.toggleBtn.addEventListener("click", function () {
       toggleEngineExecutionLoop();
+    });
+    els.logBtn.addEventListener("click", function () {
+      if (typeof saveEngineWorkspaceBlockData === "function") saveEngineWorkspaceBlockData();
     });
   }
 
@@ -707,8 +724,6 @@
     syncPipTheme(STATE.pipWindow.document);
     STATE.pipWindow.document.body.style.background = currentAmbientVar();
 
-    els.course.textContent = appState.selectedCourse || "";
-    els.mode.textContent = appState.selectedMode === "countdown" ? "Countdown Block" : "Continuous Stopwatch";
     els.time.textContent = currentDisplayText();
     if (isHourLongDisplay()) {
       els.time.classList.add("af-time--hours");
@@ -716,20 +731,7 @@
       els.time.classList.remove("af-time--hours");
     }
 
-    var frac = computeProgressFraction();
-    els.ringFg.style.strokeDasharray = String(RING_CIRCUMFERENCE);
-    els.ringFg.style.strokeDashoffset = String(RING_CIRCUMFERENCE * (1 - frac));
-
     els.toggleBtn.textContent = isEngineActivelyRunning ? "Pause" : runningAccumulatedSeconds > 0 ? "Resume" : "Start";
-    els.wrap.classList.remove("af-complete-active");
-  }
-
-  function paintDocumentPipCompletion(logged) {
-    var els = STATE.pipEls;
-    if (!els) return;
-    if (!logged) return;
-    els.completeText.textContent = "Nice work! Logged into " + (appState.selectedCourse || "your course") + " ✨";
-    els.wrap.classList.add("af-complete-active");
   }
 
   // -- video Picture-in-Picture path (Safari / Firefox fallback) -----------
@@ -740,8 +742,8 @@
   function ensureVideoPipElements() {
     if (STATE.videoEl) return;
     var canvas = document.createElement("canvas");
-    canvas.width = 300;
-    canvas.height = 220;
+    canvas.width = PIP_WINDOW_WIDTH;
+    canvas.height = PIP_WINDOW_HEIGHT;
     var video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
@@ -770,7 +772,6 @@
     pipPromise
       .then(function () {
         STATE.pipMode = "video";
-        clearTitleFallback();
         clearActiveNotification();
         STATE.videoEl.addEventListener("leavepictureinpicture", onVideoPipClosed, { once: true });
         onTick();
@@ -797,10 +798,7 @@
     var H = STATE.canvasEl.height;
     var bg = readThemeToken("--bg-main", "#FFF5F8");
     var card = readThemeToken("--bg-card", "#FFFFFF");
-    var pink = readThemeToken("--neon-pink", "#FF66B2");
-    var border = readThemeToken("--border-color", "#FFD3E3");
     var textColor = readThemeToken("--text-main", "#4A3E43");
-    var mutedColor = readThemeToken("--text-muted", "#8A7680");
 
     ctx.clearRect(0, 0, W, H);
     var grad = ctx.createLinearGradient(0, 0, W, H);
@@ -809,51 +807,12 @@
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    var cx = W / 2;
-    var cy = 86;
-    var r = 54;
-    ctx.lineWidth = 8;
-    ctx.strokeStyle = border;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.stroke();
-
-    var frac = computeProgressFraction();
-    ctx.strokeStyle = pink;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
-    ctx.stroke();
-
     ctx.fillStyle = textColor;
     ctx.textAlign = "center";
     ctx.font = isHourLongDisplay()
-      ? "700 24px 'Segoe UI', Roboto, sans-serif"
-      : "700 32px 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText(currentDisplayText(), cx, cy + 11);
-
-    ctx.font = "700 14px 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText(pipSubtitleText(), cx, H - 32);
-
-    ctx.fillStyle = mutedColor;
-    ctx.font = "600 11px 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText("AuraStudy", cx, H - 12);
-  }
-
-  function paintVideoCanvasCompletion() {
-    if (!STATE.canvasCtx) return;
-    paintVideoCanvasFrame();
-    var ctx = STATE.canvasCtx;
-    var W = STATE.canvasEl.width;
-    var H = STATE.canvasEl.height;
-    ctx.fillStyle = "rgba(255,255,255,0.92)";
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = readThemeToken("--text-main", "#4A3E43");
-    ctx.textAlign = "center";
-    ctx.font = "700 40px 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText("✨", W / 2, H / 2 - 6);
-    ctx.font = "700 15px 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText("Session logged!", W / 2, H / 2 + 28);
+      ? "700 17px 'Segoe UI', Roboto, sans-serif"
+      : "700 22px 'Segoe UI', Roboto, sans-serif";
+    ctx.fillText(currentDisplayText(), W / 2, H * 0.42);
   }
 
   // -- open/close dispatch --------------------------------------------
@@ -899,7 +858,7 @@
     } else if (STATE.pipMode === "video") {
       paintVideoCanvasFrame();
     }
-    updateTitleFallback();
+    syncPersistentSessionNotification(false);
   }
 
   // Opens the floating window the moment the user navigates AWAY from the
@@ -916,33 +875,30 @@
   function afterEngineStateChange() {
     if (isEngineActivelyRunning) {
       requestWakeLock();
+      requestNotificationPermissionIfNeeded();
+      syncPersistentSessionNotification(true);
       // Warm up (or resume) the AudioContext on this same Start/Resume
       // gesture so the completion chime -- fired with no fresh gesture of
       // its own, whenever the countdown naturally reaches zero later -- is
       // allowed to actually make sound under browser autoplay policies.
       primeAudioContext();
     } else {
+      clearPersistentSessionNotification();
       releaseWakeLock();
     }
   }
 
   function endSessionCleanup() {
     closeFloatingWindow();
-    clearTitleFallback();
-    clearActiveNotification();
+    clearPersistentSessionNotification();
     releaseWakeLock();
   }
 
   function finishSession(logged) {
-    clearTitleFallback();
-    clearActiveNotification();
+    clearPersistentSessionNotification();
     releaseWakeLock();
-    if (STATE.pipMode === "document") {
-      if (logged) paintDocumentPipCompletion(true);
-      setTimeout(closeFloatingWindow, logged ? 3000 : 400);
-    } else if (STATE.pipMode === "video") {
-      if (logged) paintVideoCanvasCompletion();
-      setTimeout(closeFloatingWindow, logged ? 3000 : 400);
+    if (STATE.pipMode === "document" || STATE.pipMode === "video") {
+      setTimeout(closeFloatingWindow, logged ? 1200 : 400);
     }
   }
 
@@ -992,7 +948,10 @@
     } else if (CAP.videoPiP) {
       lines.push("Your browser doesn't support floating windows directly, so AuraStudy uses video picture-in-picture instead.");
     } else {
-      lines.push("This browser can't float the timer window, so AuraStudy falls back to a browser notification and a live countdown in the tab title.");
+      lines.push("This browser can't float the timer window, so AuraStudy falls back to a persistent notification and a live countdown in the tab title.");
+    }
+    if (CAP.serviceWorker) {
+      lines.push("Install AuraStudy as a home-screen app (Add to Home Screen) for the strongest lock-screen timer notification on Android Chrome.");
     }
     if (CAP.notifications && Notification.permission === "denied") {
       lines.push("Notifications are blocked in your browser settings, so the tab-title countdown will be the only background indicator.");
@@ -1000,6 +959,7 @@
     if (!CAP.wakeLock) {
       lines.push("This browser doesn't support keeping the screen awake.");
     }
+    lines.push("iOS Safari has weaker background notification support than Android Chrome — timer time still accrues via wall-clock math when you return.");
     note.textContent = lines.join(" ");
   }
 
@@ -1051,13 +1011,15 @@
           }
         }
         if (!STATE.pipMode) {
-          maybeNotifyBackgroundRunning();
-          updateTitleFallback();
+          syncPersistentSessionNotification(true);
         }
       }
     } else {
-      clearTitleFallback();
-      clearActiveNotification();
+      if (isEngineActivelyRunning) {
+        syncPersistentSessionNotification(true);
+      } else {
+        clearPersistentSessionNotification();
+      }
       reacquireWakeLockIfNeeded();
       closePipIfTimerViewVisible();
     }
@@ -1189,9 +1151,13 @@
   function init() {
     if (STATE.inited) return;
     STATE.inited = true;
+    document.title = "AuraStudy";
     var backfilled = ensureProfileDefaults();
     injectSettingsCardStyles();
     renderFocusSettingsUI();
+    registerServiceWorker().then(function () {
+      if (isEngineActivelyRunning) syncPersistentSessionNotification(true);
+    });
     if (backfilled && typeof saveStateToLocalStorageRegister === "function") {
       saveStateToLocalStorageRegister();
     }

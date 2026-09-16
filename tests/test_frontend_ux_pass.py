@@ -10,14 +10,15 @@ def _read(*parts):
         return f.read()
 
 
-def test_leaderboard_has_daily_weekly_lifetime_toggle_and_no_auto_open_name_editor():
+def test_leaderboard_has_daily_weekly_monthly_toggle_and_no_auto_open_name_editor():
     html = _read("index.html")
     assert 'id="lb-period-day"' in html
     assert 'id="lb-period-week"' in html
-    assert 'id="lb-period-lifetime"' in html
+    assert 'id="lb-period-month"' in html
     assert "setLeaderboardPeriod('day')" in html
-    assert "setLeaderboardPeriod('lifetime')" in html
-    assert "No one is ranked yet." in html
+    assert "setLeaderboardPeriod('month')" in html
+    assert "This Month's Leaderboard" in html
+    assert "No one is ranked yet this month." in html
     assert "leaderboardNameEditorAutoOpened" not in html
     assert "You are shown as" in html
     assert "function onTimerKeyboardShortcut" in html
@@ -151,6 +152,8 @@ def test_dashboard_matches_mock_layout_single_start_session():
     assert 'id="header-notify-badge"' in html
     assert 'id="header-notify-list"' in html
     assert 'function refreshHeaderNotifications' in html
+    assert 'markHeaderNotificationsRead' in html
+    assert 'HEADER_NOTIFICATIONS_READ_KEY' in html
     assert 'id="header-avatar-btn"' not in html
     assert 'id="header-greeting-icon"' in html
     assert "dash-hero-scenery" in dash

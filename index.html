@@ -3,7 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>AuraStudy — Focus Timer & Study Tracker</title>
+    <title>AuraStudy</title>
+    <script>document.title = "AuraStudy";</script>
+    <script src="/static/title-lock.js"></script>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="application-name" content="AuraStudy">
+    <meta name="theme-color" content="#6B9080">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="AuraStudy">
+    <link rel="icon" href="/static/brand/favicon-32.png?v=20250916b" type="image/png" sizes="32x32">
+    <link rel="icon" href="/static/brand/favicon-48.png?v=20250916b" type="image/png" sizes="48x48">
+    <link rel="icon" href="/static/brand/favicon.ico?v=20250916b" sizes="any">
+    <link rel="shortcut icon" href="/favicon.ico?v=20250916b">
+    <link rel="apple-touch-icon" href="/static/brand/apple-touch-icon.png?v=20250916b">
+    <meta property="og:title" content="AuraStudy">
+    <meta property="og:description" content="Focus timer and study tracker.">
+    <meta property="og:image" content="/static/brand/aurastudy-icon-512.png">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="AuraStudy">
+    <meta name="twitter:description" content="Focus timer and study tracker.">
+    <meta name="twitter:image" content="/static/brand/aurastudy-icon-512.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -258,6 +278,10 @@
             height: 100%;
             pointer-events: none;
             z-index: 9999;
+            visibility: hidden;
+        }
+        #confetti-canvas.is-active {
+            visibility: visible;
         }
 
         /* Sidebar Component */
@@ -684,7 +708,15 @@
             font-size: 13px;
             font-weight: 600;
             line-height: 1.4;
+            cursor: pointer;
+            background: transparent;
+            border-left: none;
+            border-right: none;
+            border-top: none;
+            width: 100%;
+            text-align: left;
         }
+        .header-notify-item:hover { background: rgba(122, 143, 110, 0.08); }
         .header-notify-item:last-child { border-bottom: none; }
         .header-notify-item-icon {
             flex-shrink: 0;
@@ -1049,6 +1081,16 @@
             letter-spacing: -1px;
             font-family: var(--font-serif);
             color: var(--text-main);
+        }
+        .metric-large .duration-unit,
+        .progress-labels .duration-unit {
+            font-size: 0.48em;
+            font-weight: 600;
+            letter-spacing: 0;
+            vertical-align: super;
+            line-height: 0;
+            margin-left: 0.04em;
+            font-family: var(--font-sans);
         }
 
         .progress-bar-bg {
@@ -1525,6 +1567,63 @@
             gap: 12px;
             padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
             pointer-events: none;
+            overflow: visible;
+        }
+
+        /* Native fullscreen — fade/scale peripheral chrome instead of a hard cut */
+        .timer-corner,
+        .timer-stage-footer,
+        .timer-secondary-cluster,
+        .engine-mode-tabs {
+            transition: opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1), transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .timer-hero-plate {
+            transition: opacity 0.34s cubic-bezier(0.4, 0, 0.2, 1), transform 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes timerFsChromeIn {
+            from { opacity: 0.25; transform: scale(0.96) translateY(8px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes timerFsHeroIn {
+            from { opacity: 0.82; transform: scale(0.985); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        #timer-view-container.timer-fs-chrome-in .timer-corner,
+        #timer-view-container.timer-fs-chrome-in .timer-stage-footer,
+        #timer-view-container.timer-fs-chrome-in .timer-secondary-cluster,
+        #timer-view-container.timer-fs-chrome-in .engine-mode-tabs {
+            animation: timerFsChromeIn 0.32s ease forwards;
+        }
+        #timer-view-container.timer-fs-chrome-in .timer-hero-plate {
+            animation: timerFsHeroIn 0.36s ease forwards;
+        }
+        #timer-view-container.timer-fs-chrome-out .timer-corner,
+        #timer-view-container.timer-fs-chrome-out .timer-stage-footer,
+        #timer-view-container.timer-fs-chrome-out .timer-secondary-cluster,
+        #timer-view-container.timer-fs-chrome-out .engine-mode-tabs {
+            animation: timerFsChromeIn 0.28s ease reverse forwards;
+        }
+        #timer-view-container.timer-fs-chrome-out .timer-hero-plate {
+            animation: timerFsHeroIn 0.28s ease reverse forwards;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .timer-corner,
+            .timer-stage-footer,
+            .timer-secondary-cluster,
+            .engine-mode-tabs,
+            .timer-hero-plate { transition: none; }
+            #timer-view-container.timer-fs-chrome-in .timer-corner,
+            #timer-view-container.timer-fs-chrome-in .timer-stage-footer,
+            #timer-view-container.timer-fs-chrome-in .timer-secondary-cluster,
+            #timer-view-container.timer-fs-chrome-in .engine-mode-tabs,
+            #timer-view-container.timer-fs-chrome-in .timer-hero-plate,
+            #timer-view-container.timer-fs-chrome-out .timer-corner,
+            #timer-view-container.timer-fs-chrome-out .timer-stage-footer,
+            #timer-view-container.timer-fs-chrome-out .timer-secondary-cluster,
+            #timer-view-container.timer-fs-chrome-out .engine-mode-tabs,
+            #timer-view-container.timer-fs-chrome-out .timer-hero-plate {
+                animation: none;
+            }
         }
         .timer-stage-footer-left,
         .timer-stage-footer-right {
@@ -1671,6 +1770,7 @@
             position: relative;
             z-index: 130;
             pointer-events: auto;
+            overflow: visible;
         }
         #timer-colour-trigger-btn {
             position: relative;
@@ -3514,7 +3614,7 @@
                         <span>Today&rsquo;s Progress</span>
                         <i data-lucide="sparkles" style="color: var(--neon-purple);"></i>
                     </div>
-                    <div class="metric-large" id="dash-today-time">0h 0m</div>
+                    <div class="metric-large" id="dash-today-time">0<span class="duration-unit">m</span></div>
                     <div class="progress-wrapper">
                         <div class="progress-labels" style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; font-weight:700;">
                             <span id="dash-progress-text" style="color: var(--neon-pink);">0% completed</span>
@@ -3684,7 +3784,7 @@
                     </div>
                     <div class="timer-stage-footer-center">
                         <div class="timer-colour-control-wrap" id="timer-colour-control-wrap">
-                            <button class="timer-floating-interactive-trigger-btn" id="timer-colour-trigger-btn" type="button" title="Timer background colour" aria-label="Timer background colour" aria-haspopup="true" aria-expanded="false" aria-controls="timer-colour-popover" onclick="openTimerColourPopover()">
+                            <button class="timer-floating-interactive-trigger-btn" id="timer-colour-trigger-btn" type="button" title="Timer background colour" aria-label="Timer background colour" aria-haspopup="true" aria-expanded="false" aria-controls="timer-colour-popover">
                                 <i data-lucide="palette" style="width: 14px; height: 14px;"></i>
                                 <span class="timer-colour-chip-label tfi-label">Colour</span>
                             </button>
@@ -3805,7 +3905,7 @@
                         <div class="lb-period-tabs" role="tablist" aria-label="Leaderboard period">
                             <button type="button" class="lb-period-tab" id="lb-period-day" onclick="setLeaderboardPeriod('day')">Daily</button>
                             <button type="button" class="lb-period-tab active" id="lb-period-week" onclick="setLeaderboardPeriod('week')">Weekly</button>
-                            <button type="button" class="lb-period-tab" id="lb-period-lifetime" onclick="setLeaderboardPeriod('lifetime')">Lifetime</button>
+                            <button type="button" class="lb-period-tab" id="lb-period-month" onclick="setLeaderboardPeriod('month')">Monthly</button>
                         </div>
                     </div>
                     <label class="lb-opt-row" for="leaderboard-opt-toggle">
@@ -3977,7 +4077,7 @@
                 <div class="focus-mode-row">
                     <div>
                         <div class="focus-mode-row-label">Notify me if the timer is running in the background</div>
-                        <div class="focus-mode-row-desc">A browser notification plus a live countdown in the tab title when no floating window is open.</div>
+                        <div class="focus-mode-row-desc">Persistent lock-screen notification (via service worker) while a session is running in the background.</div>
                     </div>
                     <label class="focus-toggle-switch">
                         <input type="checkbox" id="focus-toggle-notify" data-pref="notify" onchange="AuraFocus.onPreferenceToggle(this)">
@@ -4153,10 +4253,9 @@
         const ACTIVE_VIEW_STORAGE_KEY = 'aurastudy_active_view';
         const GUEST_LOCKED_VIEWS = ['spotify', 'help'];
         const TIMER_PERSIST_THROTTLE_MS = 5000;        // how often the live heartbeat snapshot is rewritten while running
-        const MAX_UNOBSERVED_GAP_SECONDS = 90;          // a gap longer than this between two live ticks means the device was asleep/suspended, not just a slow tick -- see syncEngineRegistersFromClock
         const MAX_PLAUSIBLE_RECOVERY_SECONDS = 4 * 60 * 60; // beyond this a *recovered* (post-reload) session is capped and confirmed with the user rather than trusted silently -- see attemptRunningTimerRecovery
         let lastTimerPersistMs = 0;
-        let lastSyncClockMs = null; // wall-clock time of the previous syncEngineRegistersFromClock() call -- the gap guard's reference point
+        let lastSyncClockMs = null; // wall-clock time of the previous syncEngineRegistersFromClock() call (diagnostics / future hooks)
         let runningTimerRecoveryCompleted = false; // true once attemptRunningTimerRecovery() has handled a >=5s snapshot -- prevents a second boot pass from clearing or re-prompting
         let engineIgnoreTicksUntilMs = 0; // after log/reset: mute ticks, persist, and recovery until this wall time (or Start clears it)
 
@@ -4433,6 +4532,18 @@
             if (hours === 0) return minutes + 'm';
             if (minutes === 0) return hours + 'h';
             return hours + 'h ' + minutes + 'm';
+        }
+
+        function formatDurationHMProgress(totalSeconds) {
+            const s = (typeof totalSeconds === 'number' && isFinite(totalSeconds) && totalSeconds > 0)
+                ? Math.floor(totalSeconds) : 0;
+            const totalMinutes = Math.floor(s / 60);
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            const unit = (u) => '<span class="duration-unit">' + u + '</span>';
+            if (hours === 0) return String(minutes) + unit('m');
+            if (minutes === 0) return String(hours) + unit('h');
+            return String(hours) + unit('h') + ' ' + String(minutes) + unit('m');
         }
 
         let operationalBarChartInstance = null;
@@ -4815,6 +4926,39 @@
             bindPlaceholderFocusClear(document.getElementById('todo-new-task-input'));
         }
 
+        const HEADER_NOTIFICATIONS_READ_KEY = 'aurastudy_read_header_notifications';
+
+        function readHeaderNotificationsRead() {
+            try {
+                const raw = localStorage.getItem(HEADER_NOTIFICATIONS_READ_KEY);
+                if (!raw) return [];
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) { return []; }
+        }
+
+        function writeHeaderNotificationsRead(ids) {
+            try { localStorage.setItem(HEADER_NOTIFICATIONS_READ_KEY, JSON.stringify(ids)); } catch (e) { /* ignore */ }
+        }
+
+        function isHeaderNotificationRead(id) {
+            return readHeaderNotificationsRead().indexOf(id) !== -1;
+        }
+
+        function markHeaderNotificationsRead(ids) {
+            if (!Array.isArray(ids) || !ids.length) return;
+            const readSet = new Set(readHeaderNotificationsRead());
+            ids.forEach(id => { if (typeof id === 'string' && id) readSet.add(id); });
+            writeHeaderNotificationsRead(Array.from(readSet));
+            const achievementIds = ids.filter(id => id.indexOf('achievement:') === 0).map(id => id.slice('achievement:'.length));
+            if (achievementIds.length) {
+                const seen = readSeenUnlocks();
+                const seenSet = new Set(Array.isArray(seen) ? seen : []);
+                achievementIds.forEach(id => seenSet.add(id));
+                writeSeenUnlocks(Array.from(seenSet));
+            }
+        }
+
         function collectUnseenAchievementNotifications() {
             const items = [];
             const seen = readSeenUnlocks();
@@ -4823,12 +4967,12 @@
             const badgeStatus = computeBadgeUnlockStatus(appState);
             fullBadgesDatabase.forEach(b => {
                 if (badgeStatus[b.id] && !seenSet.has(b.id)) {
-                    items.push({ kind: 'achievement', text: 'Achievement unlocked: ' + b.title });
+                    items.push({ id: 'achievement:' + b.id, kind: 'achievement', text: 'Achievement unlocked: ' + b.title });
                 }
             });
             fullAchievementsDatabase.forEach(a => {
                 if (a.check(appState) && !seenSet.has(a.id)) {
-                    items.push({ kind: 'achievement', text: 'Achievement unlocked: ' + a.title });
+                    items.push({ id: 'achievement:' + a.id, kind: 'achievement', text: 'Achievement unlocked: ' + a.title });
                 }
             });
             return items;
@@ -4840,14 +4984,15 @@
             appState.sessions.forEach(s => { if (s.date === today) todaySecs += s.durationSeconds; });
             const goalSecs = (appState.profile.dailyGoalHours || 0) * 3600;
             if (goalSecs > 0 && todaySecs >= goalSecs) {
-                return { kind: 'goal', text: 'Daily goal reached — ' + formatDurationHM(todaySecs, { long: true }) + ' studied today' };
+                return { id: 'daily-goal:' + today, kind: 'goal', text: 'Daily goal reached — ' + formatDurationHM(todaySecs, { long: true }) + ' studied today' };
             }
             return null;
         }
 
         function collectStreakNotification() {
+            const today = getLocalDateStr();
             if ((appState.streak || 0) >= 2) {
-                return { kind: 'streak', text: 'Study streak: ' + appState.streak + ' days in a row' };
+                return { id: 'streak:' + today, kind: 'streak', text: 'Study streak: ' + appState.streak + ' days in a row' };
             }
             return null;
         }
@@ -4856,27 +5001,50 @@
             const items = [];
             if (helpUnreadReplyCount > 0) {
                 items.push({
+                    id: 'help-replies',
                     kind: 'help',
                     text: helpUnreadReplyCount === 1
                         ? '1 unread reply in Help'
                         : helpUnreadReplyCount + ' unread replies in Help'
                 });
             }
-            collectUnseenAchievementNotifications().forEach(item => items.push(item));
+            collectUnseenAchievementNotifications().forEach(item => {
+                if (!isHeaderNotificationRead(item.id)) items.push(item);
+            });
             const goalNote = collectDailyGoalNotification();
-            if (goalNote) items.push(goalNote);
+            if (goalNote && !isHeaderNotificationRead(goalNote.id)) items.push(goalNote);
             const streakNote = collectStreakNotification();
-            if (streakNote) items.push(streakNote);
+            if (streakNote && !isHeaderNotificationRead(streakNote.id)) items.push(streakNote);
             return items;
         }
 
-        function refreshHeaderNotifications() {
+        function handleHeaderNotificationOpen(item) {
+            if (!item || !item.id) return;
+            markHeaderNotificationsRead([item.id]);
+            if (item.kind === 'help') {
+                markHelpMessagesRead();
+                switchView('help', document.getElementById('nav-item-help-toggle'));
+            } else if (item.kind === 'achievement') {
+                switchView('trophies', document.querySelector('.nav-item[title="Achievements"]'));
+            }
+            refreshHeaderNotifications();
+        }
+
+        function markAllVisibleHeaderNotificationsRead(items) {
+            const unreadItems = Array.isArray(items) ? items : buildHeaderNotificationItems();
+            if (!unreadItems.length) return;
+            markHeaderNotificationsRead(unreadItems.map(item => item.id));
+            if (unreadItems.some(item => item.kind === 'help')) markHelpMessagesRead();
+            refreshHeaderNotifications(unreadItems, 0);
+        }
+
+        function refreshHeaderNotifications(displayItems, badgeCountOverride) {
             const badge = document.getElementById('header-notify-badge');
             const emptyEl = document.getElementById('header-notify-empty');
             const listEl = document.getElementById('header-notify-list');
             const btn = document.getElementById('header-notify-btn');
-            const items = buildHeaderNotificationItems();
-            const count = items.length;
+            const items = Array.isArray(displayItems) ? displayItems : buildHeaderNotificationItems();
+            const count = typeof badgeCountOverride === 'number' ? badgeCountOverride : items.length;
             if (badge) {
                 if (count > 0) {
                     badge.textContent = count > 9 ? '9+' : String(count);
@@ -4886,14 +5054,16 @@
                 }
             }
             if (btn) btn.setAttribute('aria-label', count > 0 ? count + ' notifications' : 'Notifications');
-            if (emptyEl) emptyEl.hidden = count > 0;
+            if (emptyEl) emptyEl.hidden = items.length > 0;
             if (listEl) {
                 listEl.innerHTML = '';
-                if (count > 0) {
+                if (items.length > 0) {
                     listEl.hidden = false;
                     items.forEach(item => {
-                        const li = document.createElement('li');
+                        const li = document.createElement('button');
+                        li.type = 'button';
                         li.className = 'header-notify-item';
+                        li.setAttribute('aria-label', item.text);
                         const icon = document.createElement('i');
                         icon.className = 'header-notify-item-icon';
                         icon.setAttribute('data-lucide', item.kind === 'help' ? 'message-circle' : (item.kind === 'goal' ? 'target' : (item.kind === 'streak' ? 'flame' : 'star')));
@@ -4901,6 +5071,14 @@
                         text.textContent = item.text;
                         li.appendChild(icon);
                         li.appendChild(text);
+                        li.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            handleHeaderNotificationOpen(item);
+                            const pop = document.getElementById('header-notify-popover');
+                            const btn = document.getElementById('header-notify-btn');
+                            if (pop) pop.hidden = true;
+                            if (btn) btn.setAttribute('aria-expanded', 'false');
+                        });
                         listEl.appendChild(li);
                     });
                     if (window.lucide) lucide.createIcons();
@@ -4916,7 +5094,11 @@
             const btn = document.getElementById('header-notify-btn');
             if (!pop || !btn) return;
             const willOpen = pop.hidden;
-            if (willOpen) refreshHeaderNotifications();
+            if (willOpen) {
+                const unreadItems = buildHeaderNotificationItems();
+                refreshHeaderNotifications(unreadItems);
+                markAllVisibleHeaderNotificationsRead(unreadItems);
+            }
             pop.hidden = !willOpen;
             btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
             if (willOpen) {
@@ -5193,7 +5375,7 @@
             petAvatarNode.innerText = currentForm.emoji;
             petTagNode.innerText = `Level ${level}: ${currentForm.name}`;
             headlineNode.innerText = currentForm.headline;
-            xpTextNode.innerText = `${formatDurationHM(progressSeconds)} / ${formatDurationHM(nextCostSeconds)} toward ${nextForm.name}`;
+            xpTextNode.innerHTML = `${formatDurationHMProgress(progressSeconds)} / ${formatDurationHMProgress(nextCostSeconds)} toward ${nextForm.name}`;
             fillNode.style.width = `${Math.min(100, Math.floor((progressHours / nextCostHours) * 100))}%`;
         }
 
@@ -5205,6 +5387,22 @@
         }
 
         const fullscreenOverlayAnchors = new Map();
+        let timerNativeFullscreenWasActive = false;
+        let timerFsChromeAnimTimer = null;
+
+        function animateTimerFullscreenChrome(isEnteringFs) {
+            const containerNode = document.getElementById('timer-view-container');
+            if (!containerNode) return;
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            containerNode.classList.remove('timer-fs-chrome-in', 'timer-fs-chrome-out');
+            void containerNode.offsetWidth;
+            containerNode.classList.add(isEnteringFs ? 'timer-fs-chrome-in' : 'timer-fs-chrome-out');
+            if (timerFsChromeAnimTimer) clearTimeout(timerFsChromeAnimTimer);
+            timerFsChromeAnimTimer = setTimeout(function () {
+                containerNode.classList.remove('timer-fs-chrome-in', 'timer-fs-chrome-out');
+                timerFsChromeAnimTimer = null;
+            }, isEnteringFs ? 360 : 300);
+        }
 
         function reparentTimerOverlaysForFullscreen() {
             const containerNode = document.getElementById('timer-view-container');
@@ -5238,8 +5436,13 @@
 
         function syncFullscreenIcon() {
             const iconNode = document.getElementById('fullscreen-icon-indicator');
+            const nowFs = isTimerElementFullscreen();
+            if (nowFs !== timerNativeFullscreenWasActive) {
+                animateTimerFullscreenChrome(nowFs);
+                timerNativeFullscreenWasActive = nowFs;
+            }
             if (!iconNode) return;
-            iconNode.setAttribute('data-lucide', isTimerElementFullscreen() ? 'minimize-2' : 'maximize-2');
+            iconNode.setAttribute('data-lucide', nowFs ? 'minimize-2' : 'maximize-2');
             if (window.lucide) lucide.createIcons();
             syncFullscreenOverlays();
         }
@@ -5688,43 +5891,11 @@
         function syncEngineRegistersFromClock() {
             if (engineAnchorMs === null) return;
             const nowMs = Date.now();
-            // Gap guard: if real wall-clock time jumped by more than
-            // MAX_UNOBSERVED_GAP_SECONDS since the last time this ran, the
-            // device was very likely asleep/suspended (or the tab was
-            // frozen) for that whole interval rather than actively ticking
-            // -- e.g. a laptop lid closed overnight with the timer left
-            // running. Rolling the anchor forward through a gap that large
-            // would silently credit the user with hours they never studied.
-            // Instead, bank only up to the last confirmed-alive moment and
-            // resume counting fresh from now, excluding the gap entirely --
-            // never inventing time, but never discarding real progress
-            // either. `lastSyncClockMs === null` (freshly started/resumed by
-            // the user, see toggleEngineExecutionLoop) skips this check so a
-            // deliberate pause-then-resume is never mistaken for a sleep gap.
-            if (lastSyncClockMs !== null && (nowMs - lastSyncClockMs) / 1000 > MAX_UNOBSERVED_GAP_SECONDS) {
-                // THIS is the line that actually produced the production bug:
-                // (lastSyncClockMs - engineAnchorMs) / 1000 is millisecond
-                // division and is fractional almost every time, because
-                // engineAnchorMs is a Date.now() timestamp that essentially
-                // never lands on an exact second boundary. Banking that
-                // straight into bankedElapsedSeconds poisons every register
-                // that reads it afterwards -- this function's own `elapsed`
-                // a few lines down, the pause path in
-                // toggleEngineExecutionLoop, and ultimately durationSeconds
-                // on a logged session -- with a fraction, silently, long
-                // before the display (which now defends itself) ever sees
-                // it. wholeSeconds() floors it here, at the source, instead.
-                const priorElapsed = bankedElapsedSeconds + Math.max(0, (lastSyncClockMs - engineAnchorMs) / 1000);
-                bankedElapsedSeconds = wholeSeconds((appState.selectedMode === "countdown" || isEngineInBreakPhase())
-                    ? Math.min(priorElapsed, countdownTotalSeconds)
-                    : priorElapsed);
-                const gapMs = nowMs - lastSyncClockMs;
-                engineAnchorMs = nowMs;
-                const gapMins = Math.round(gapMs / 60000);
-                if (gapMins >= 1) {
-                    triggerAlertToast("Timer Resumed", `This device seems to have been asleep for about ${formatDurationHM(gapMins * 60)} -- that gap wasn't counted.`, false);
-                }
-            }
+            // Wall-clock elapsed time: sleep, background tab throttling, and
+            // screen-off must all keep accruing study time until the user
+            // pauses, logs, or stops. The anchor + Date.now() math below is
+            // intentionally gap-blind — visibilitychange/pagehide only persist
+            // the snapshot; they never pause the session clock.
             lastSyncClockMs = nowMs;
             // bankedElapsedSeconds is whole by construction (see above and
             // every other assignment site), and Math.floor(msDelta / 1000) is
@@ -6240,14 +6411,25 @@
             if (Number.isFinite(snapshot.elapsedSeconds)) {
                 confirmedElapsed = wholeSeconds(snapshot.elapsedSeconds);
             }
-            if (confirmedElapsed < 5) {
+            if (snapshot.isRunning === true) {
+                // Running sessions keep accruing across sleep, background, and
+                // killed tabs — reconstruct from the last heartbeat forward.
+                const wallNow = Date.now();
+                if (Number.isFinite(snapshot.savedAtMs) && confirmedElapsed >= 5) {
+                    confirmedElapsed = wholeSeconds(
+                        confirmedElapsed + Math.floor(Math.max(0, (wallNow - snapshot.savedAtMs) / 1000))
+                    );
+                } else if (Number.isFinite(anchor)) {
+                    confirmedElapsed = wholeSeconds(
+                        banked + Math.floor(Math.max(0, (wallNow - anchor) / 1000))
+                    );
+                } else {
+                    confirmedElapsed = wholeSeconds(Math.max(confirmedElapsed, banked));
+                }
+            } else if (confirmedElapsed < 5) {
                 confirmedElapsed = banked;
-                if (snapshot.isRunning && Number.isFinite(anchor)) {
-                    // Floored, matching syncEngineRegistersFromClock's own
-                    // Math.floor -- otherwise a fractional-second gap produces a
-                    // non-integer `secs` value downstream, and
-                    // updateEngineDisplayString renders it verbatim (e.g.
-                    // "00:10.775" instead of "00:10").
+                if (Number.isFinite(anchor)) {
+                    // Paused sessions: freeze at the last confirmed-alive heartbeat.
                     confirmedElapsed = banked + Math.floor(Math.max(0, (snapshot.savedAtMs - anchor) / 1000));
                 }
             }
@@ -6529,7 +6711,7 @@
             const today = getLocalDateStr();
             let todaySecs = 0; appState.sessions.forEach(s => { if(s.date === today) todaySecs += s.durationSeconds; });
             const todayEl = document.getElementById('dash-today-time');
-            if (todayEl) todayEl.innerText = formatDurationHM(todaySecs);
+            if (todayEl) todayEl.innerHTML = formatDurationHMProgress(todaySecs);
 
             const totalGoalSecs = appState.profile.dailyGoalHours * 3600;
             const completedPercentage = Math.min(Math.floor((todaySecs / totalGoalSecs) * 100), 100);
@@ -6537,7 +6719,7 @@
             const goalText = document.getElementById('dash-goal-text');
             const progressFill = document.getElementById('dash-progress-fill');
             if (progressText) progressText.innerText = `${completedPercentage}% achieved`;
-            if (goalText) goalText.innerText = `Daily Target: ${formatDurationHM(totalGoalSecs)}`;
+            if (goalText) goalText.innerHTML = `Daily Target: ${formatDurationHMProgress(totalGoalSecs)}`;
             if (progressFill) progressFill.style.width = `${completedPercentage}%`;
 
             calculateStreaksLogicModule();
@@ -6884,10 +7066,10 @@
             if (participants === 0 && entries.length === 0) {
                 content.style.display = 'none';
                 let emptyMessage;
-                if (leaderboardPeriod === 'lifetime') {
+                if (leaderboardPeriod === 'month') {
                     emptyMessage = isGuestViewer
-                        ? "No one is ranked yet."
-                        : "No one is ranked yet.";
+                        ? "No one is ranked yet this month."
+                        : "No one is ranked yet this month.";
                 } else if (isGuestViewer) {
                     emptyMessage = "No one has logged study time yet. Sign up free to appear on the board once you start studying.";
                 } else if (!you.public_name) {
@@ -6955,13 +7137,13 @@
         }
 
         function setLeaderboardPeriod(period) {
-            leaderboardPeriod = period === 'day' ? 'day' : (period === 'lifetime' ? 'lifetime' : 'week');
+            leaderboardPeriod = period === 'day' ? 'day' : (period === 'month' ? 'month' : 'week');
             const dayBtn = document.getElementById('lb-period-day');
             const weekBtn = document.getElementById('lb-period-week');
-            const lifetimeBtn = document.getElementById('lb-period-lifetime');
+            const monthBtn = document.getElementById('lb-period-month');
             if (dayBtn) dayBtn.classList.toggle('active', leaderboardPeriod === 'day');
             if (weekBtn) weekBtn.classList.toggle('active', leaderboardPeriod === 'week');
-            if (lifetimeBtn) lifetimeBtn.classList.toggle('active', leaderboardPeriod === 'lifetime');
+            if (monthBtn) monthBtn.classList.toggle('active', leaderboardPeriod === 'month');
             const heading = document.getElementById('lb-heading');
             const copy = document.getElementById('lb-copy');
             const chartTitle = document.getElementById('lb-chart-title');
@@ -6969,10 +7151,10 @@
                 if (heading) heading.textContent = "Today's Leaderboard";
                 if (copy) copy.textContent = "Total study time today, across everyone who's opted in and set a public name. Resets at midnight in your timezone.";
                 if (chartTitle) chartTitle.textContent = 'Top 20 Today';
-            } else if (leaderboardPeriod === 'lifetime') {
-                if (heading) heading.textContent = 'Lifetime Leaderboard';
-                if (copy) copy.textContent = "All-time study totals across everyone who's opted in and set a public name.";
-                if (chartTitle) chartTitle.textContent = 'Top 20 All Time';
+            } else if (leaderboardPeriod === 'month') {
+                if (heading) heading.textContent = "This Month's Leaderboard";
+                if (copy) copy.textContent = "Total study time this calendar month, across everyone who's opted in and set a public name. Resets on the 1st in your timezone.";
+                if (chartTitle) chartTitle.textContent = 'Top 20 This Month';
             } else {
                 if (heading) heading.textContent = "This Week's Leaderboard";
                 if (copy) copy.textContent = "Total study time this week, across everyone who's opted in and set a public name. Resets every Monday.";
@@ -7996,10 +8178,56 @@
         }
 
         function executeHighImpactConfettiFXParticleBurst() {
-            const canvas = document.getElementById("confetti-canvas"); const ctx = canvas.getContext("2d"); canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            let particles = []; const colors = [readThemeToken('--accent-solid', '#FF66B2'), readThemeToken('--accent-secondary', '#B57CFF'), readThemeToken('--neon-blue', '#33C6FF'), readThemeToken('--neon-green', '#52E5A3'), "#FFFFFF"];
-            for (let i = 0; i < 120; i++) { particles.push({ x: canvas.width / 2, y: canvas.height / 2, radius: Math.random() * 4 + 2, color: colors[Math.floor(Math.random() * colors.length)], vx: (Math.random() - 0.5) * 14, vy: (Math.random() - 0.5) * 14 - 3, alpha: 1 }); }
-            function draw() { if(particles.length === 0) return; ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach((p, idx) => { p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.alpha -= 0.015; ctx.save(); ctx.globalAlpha = p.alpha; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fillStyle = p.color; ctx.fill(); ctx.restore(); if(p.alpha <= 0) particles.splice(idx, 1); }); requestAnimationFrame(draw); }
+            const canvas = document.getElementById("confetti-canvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            canvas.classList.add("is-active");
+            let particles = [];
+            const colors = [
+                readThemeToken('--accent-solid', '#6B9080'),
+                readThemeToken('--accent-secondary', '#9B8BB4'),
+                readThemeToken('--neon-blue', '#8BA4C4'),
+                readThemeToken('--neon-green', '#6B9080'),
+                readThemeToken('--neon-amber', '#C4A882')
+            ];
+            for (let i = 0; i < 120; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    radius: Math.random() * 4 + 2,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    vx: (Math.random() - 0.5) * 14,
+                    vy: (Math.random() - 0.5) * 14 - 3,
+                    alpha: 1
+                });
+            }
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (particles.length === 0) {
+                    canvas.classList.remove("is-active");
+                    return;
+                }
+                for (let idx = particles.length - 1; idx >= 0; idx--) {
+                    const p = particles[idx];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.2;
+                    p.alpha -= 0.015;
+                    if (p.alpha <= 0) {
+                        particles.splice(idx, 1);
+                        continue;
+                    }
+                    ctx.save();
+                    ctx.globalAlpha = p.alpha;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+                    ctx.restore();
+                }
+                requestAnimationFrame(draw);
+            }
             draw();
         }
     </script>

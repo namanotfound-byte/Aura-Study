@@ -3,10 +3,43 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>AuraStudy — Focus Timer &amp; Study Tracker</title>
+<title>AuraStudy</title>
+<script>document.title = "AuraStudy";</script>
+<script src="/static/title-lock.js"></script>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="application-name" content="AuraStudy">
+<meta name="theme-color" content="#6B9080">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AuraStudy">
+<link rel="icon" href="/static/brand/favicon-32.png?v=20250916b" type="image/png" sizes="32x32">
+<link rel="icon" href="/static/brand/favicon-48.png?v=20250916b" type="image/png" sizes="48x48">
+<link rel="icon" href="/static/brand/favicon.ico?v=20250916b" sizes="any">
+<link rel="shortcut icon" href="/favicon.ico?v=20250916b">
+<link rel="apple-touch-icon" href="/static/brand/apple-touch-icon.png?v=20250916b">
+<meta property="og:title" content="AuraStudy">
+<meta property="og:description" content="Focus timer and study tracker.">
+<meta property="og:image" content="/static/brand/aurastudy-icon-512.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="AuraStudy">
+<meta name="twitter:description" content="Focus timer and study tracker.">
+<meta name="twitter:image" content="/static/brand/aurastudy-icon-512.png">
 <link rel="stylesheet" href="/static/landing.css">
 <link rel="stylesheet" href="/static/tour.css">
-<script>document.documentElement.classList.add('js-enabled');</script>
+<script>
+document.documentElement.classList.add('js-enabled');
+(function () {
+  try {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.documentElement.classList.add('skip-anim');
+      return;
+    }
+    document.documentElement.classList.add('landing-animate');
+  } catch (e) {
+    document.documentElement.classList.add('landing-animate');
+  }
+})();
+</script>
 {% if authenticated %}
 <noscript><meta http-equiv="refresh" content="2;url=/app"></noscript>
 {% endif %}
@@ -17,9 +50,18 @@
     <div class="landing-glow" aria-hidden="true"></div>
 
     <div class="landing-inner">
-      <div class="landing-brand">
-        <img src="/static/brand/aurastudy-mascot.png" alt="" class="landing-logo landing-mascot" width="132" height="132">
-        <img src="/static/brand/aurastudy-wordmark.png" alt="AuraStudy" class="landing-wordmark">
+      <div class="landing-brand landing-book-flip" id="landing-brand">
+        <div class="landing-book-stage">
+          <div class="landing-book-spine" aria-hidden="true"></div>
+          <div class="landing-book-spread" id="landing-book-spread">
+            <div class="landing-book-page landing-book-page--logo">
+              <img src="/static/brand/aurastudy-mascot.png" alt="" class="landing-logo landing-mascot" width="132" height="132">
+            </div>
+            <div class="landing-book-page landing-book-page--wordmark">
+              <img src="/static/brand/aurastudy-wordmark.png" alt="AuraStudy" class="landing-wordmark">
+            </div>
+          </div>
+        </div>
       </div>
 
       <p class="tagline" id="tagline">Focus timer &amp; study tracker.</p>
