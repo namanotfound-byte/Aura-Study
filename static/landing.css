@@ -193,6 +193,7 @@ body {
   height: auto;
   max-height: 76%;
   object-fit: contain;
+  opacity: 1;
   filter: drop-shadow(0 4px 14px rgba(42, 36, 32, 0.24));
 }
 

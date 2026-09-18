@@ -27,7 +27,8 @@
 <meta name="twitter:title" content="AuraStudy">
 <meta name="twitter:description" content="{{ site_description }}">
 <meta name="twitter:image" content="{{ og_image_url }}">
-<link rel="stylesheet" href="/static/landing.css?v=20260918">
+<link rel="preload" as="image" href="/static/brand/aurastudy-mascot.png">
+<link rel="stylesheet" href="/static/landing.css?v=20260919">
 <link rel="stylesheet" href="/static/tour.css?v=20250920">
 <script>
 document.documentElement.classList.add('js-enabled');
@@ -35,12 +36,8 @@ document.documentElement.classList.add('js-enabled');
   try {
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       document.documentElement.classList.add('skip-anim');
-      return;
     }
-    document.documentElement.classList.add('landing-animate');
-  } catch (e) {
-    document.documentElement.classList.add('landing-animate');
-  }
+  } catch (e) { /* landing.js starts animation after cover logo is ready */ }
 })();
 </script>
 {% if authenticated %}
@@ -61,7 +58,7 @@ document.documentElement.classList.add('js-enabled');
               <div class="landing-book-page landing-book-page--right"></div>
               <div class="landing-book-cover">
                 <div class="landing-book-cover-face landing-book-cover-front">
-                  <img src="/static/brand/aurastudy-mascot.png" alt="" class="landing-book-cover-logo" width="380" height="380" aria-hidden="true">
+                  <img src="/static/brand/aurastudy-mascot.png" alt="" class="landing-book-cover-logo" width="380" height="380" fetchpriority="high" aria-hidden="true">
                 </div>
                 <div class="landing-book-cover-face landing-book-cover-inside"></div>
               </div>
@@ -93,6 +90,6 @@ document.documentElement.classList.add('js-enabled');
   </main>
 
   <script src="/static/tour.js?v=20250920"></script>
-  <script src="/static/landing.js?v=20260918"></script>
+  <script src="/static/landing.js?v=20260919"></script>
 </body>
 </html>

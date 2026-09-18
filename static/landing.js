@@ -82,6 +82,7 @@
 
   var TOTAL_ANIMATION_MS = 9650; // cover hold + book open + slow settle + hero reveal + tagline/CTA fade-in
   var INSTANT_NAV_DELAY_MS = 250; // just enough for the finished title to register
+  var COVER_LOGO_FALLBACK_MS = 2000; // start animation anyway if cover image fails to load
 
   function initLanding() {
     var brand = document.getElementById('landing-brand');
@@ -102,7 +103,41 @@
       return;
     }
 
-    if (authenticated) window.setTimeout(goToApp, TOTAL_ANIMATION_MS);
+    var animationStarted = false;
+
+    function startAnimation() {
+      if (animationStarted) return;
+      animationStarted = true;
+      root.classList.add('landing-animate');
+      if (authenticated) window.setTimeout(goToApp, TOTAL_ANIMATION_MS);
+    }
+
+    var coverLogo = document.querySelector('.landing-book-cover-logo');
+    if (!coverLogo) {
+      startAnimation();
+      return;
+    }
+
+    var fallbackTimer = window.setTimeout(startAnimation, COVER_LOGO_FALLBACK_MS);
+
+    function onCoverLogoReady() {
+      window.clearTimeout(fallbackTimer);
+      if (coverLogo.decode && typeof coverLogo.decode === 'function') {
+        coverLogo.decode().then(startAnimation).catch(startAnimation);
+      } else {
+        startAnimation();
+      }
+    }
+
+    if (coverLogo.complete && coverLogo.naturalWidth > 0) {
+      onCoverLogoReady();
+    } else {
+      coverLogo.addEventListener('load', onCoverLogoReady, { once: true });
+      coverLogo.addEventListener('error', function onCoverLogoError() {
+        window.clearTimeout(fallbackTimer);
+        startAnimation();
+      }, { once: true });
+    }
   }
 
   // ---------------- 2. Auth pages (mini reveal) ----------------
