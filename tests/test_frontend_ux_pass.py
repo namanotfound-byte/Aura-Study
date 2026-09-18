@@ -127,7 +127,7 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     landing_css = _read("static", "landing.css")
     landing_html = _read("server", "templates", "landing.html")
     landing_js = _read("static", "landing.js")
-    assert '/static/landing.css?v=20260919' in landing_html
+    assert '/static/landing.css?v=20260920' in landing_html
     assert '/static/landing.js?v=20260919' in landing_html
     assert '<link rel="preload" as="image" href="/static/brand/aurastudy-mascot.png">' in landing_html
     assert 'fetchpriority="high"' in landing_html
@@ -149,9 +149,20 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     assert "landing-book-hero-mascot" not in landing_html
     assert "landing-book-cover-logo" in landing_css
     cover_logo_css = landing_css[landing_css.index(".landing-book-cover-logo"):landing_css.index(".landing-book-hero")]
-    assert "opacity: 1" in cover_logo_css
+    assert "opacity: 0" in cover_logo_css
     cover_front = landing_css[landing_css.index(".landing-book-cover-front"):landing_css.index(".landing-book-cover-inside")]
-    assert "#FFFFFF" in cover_front
+    assert "#FFFFFF" in cover_front or "#fff" in cover_front.lower()
+    assert "/static/brand/aurastudy-mascot.png" in cover_front
+    assert "background-image:" in cover_front
+    assert "translateZ(12px)" in landing_css[landing_css.index(".landing-book-cover {"):landing_css.index(".landing-book-cover-front")]
+    page_default = landing_css[landing_css.index(".landing-book-page--right {"):landing_css.index(".landing-book-cover {")]
+    assert "translateZ(0)" in page_default
+    assert "rotateY(0deg)" in page_default
+    page_keyframes = landing_css[landing_css.index("@keyframes landingBookPageSettle"):landing_css.index("@keyframes landingBookHeroWordmark")]
+    assert "0% {" in page_keyframes
+    assert "translateZ(0)" in page_keyframes.split("100%")[0]
+    cover_keyframes = landing_css[landing_css.index("@keyframes landingBookCoverOpen"):landing_css.index("@keyframes landingBookPageSettle")]
+    assert "translateZ(12px)" in cover_keyframes
     assert "#F8F5F0" not in cover_front
     assert "#6B9080" not in cover_front
     assert "--cover-hold: 2.85s" in landing_css
