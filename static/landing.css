@@ -27,7 +27,7 @@
   --book-settled-w: min(500px, 92vw);
   --book-settled-h: calc(var(--book-settled-w) / var(--book-aspect));
   --book-settle-scale: 0.45;
-  --cover-hold: 1.5s;
+  --cover-hold: 1.85s;
   --cover-open-dur: 2.8s;
   --stage-settle-dur: 2.5s;
   --cover-open-end: calc(var(--cover-hold) + var(--cover-open-dur));

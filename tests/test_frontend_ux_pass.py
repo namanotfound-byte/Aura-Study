@@ -127,8 +127,8 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     landing_css = _read("static", "landing.css")
     landing_html = _read("server", "templates", "landing.html")
     landing_js = _read("static", "landing.js")
-    assert '/static/landing.css?v=20250922' in landing_html
-    assert '/static/landing.js?v=20250922' in landing_html
+    assert '/static/landing.css?v=20250923' in landing_html
+    assert '/static/landing.js?v=20250923' in landing_html
     assert '/static/tour.css?v=20250920' in landing_html
     assert "landingBookCoverOpen" in landing_css
     assert "landing-book-cover" in landing_css
@@ -138,7 +138,7 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     assert "landing-book-cover-logo" in landing_html
     assert "landing-book-cover-mark" not in landing_html
     assert ">A</span>" not in landing_html
-    assert "TOTAL_ANIMATION_MS = 8300" in landing_js
+    assert "TOTAL_ANIMATION_MS = 8650" in landing_js
     assert landing_html.count("/static/brand/aurastudy-mascot.png") == 1
     assert landing_html.count("/static/brand/aurastudy-wordmark.png") >= 1
     assert "landing-book-hero-mascot" not in landing_html
@@ -147,7 +147,7 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     assert "#FFFFFF" in cover_front
     assert "#F8F5F0" not in cover_front
     assert "#6B9080" not in cover_front
-    assert "--cover-hold: 1.5s" in landing_css
+    assert "--cover-hold: 1.85s" in landing_css
     assert "landingActionsInFlow" not in landing_css
     assert "landingActionsReveal" in landing_css
     assert "--bg-main: #FFFFFF" in landing_css
