@@ -147,6 +147,8 @@ def test_guest_app_tour_blocks_timer_space_shortcut():
     assert "stopImmediatePropagation" in start_tour
     assert "ev.key === 'Enter'" in start_tour
     assert "Block timer shortcuts" in start_tour or "Block all other keyboard" in start_tour
+    assert "addEventListener('keyup', keyUpHandler, true)" in tour_js
+    assert "blurFocusedControl()" in tour_js
     timer_shortcut = html[html.index("function onTimerKeyboardShortcut"):html.index("function applyAccountIdentity")]
     assert "AuraTour.isTourRunning()" in timer_shortcut
 

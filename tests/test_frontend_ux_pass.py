@@ -193,7 +193,7 @@ def test_tour_overlay_and_storage_key_exist():
     html = _read("index.html")
     tour_js = _read("static", "tour.js")
     tour_css = _read("static", "tour.css")
-    assert '/static/tour.js?v=20250919' in html
+    assert '/static/tour.js?v=20250920' in html
     assert '/static/tour.css?v=20250919' in html
     assert "aurastudy_tour_done" in tour_js
     assert "aura-tour-overlay" in tour_js
@@ -205,6 +205,8 @@ def test_tour_overlay_and_storage_key_exist():
     assert "stopImmediatePropagation" in tour_js
     assert "isTourRunning" in tour_js
     assert "AuraTour.isTourRunning()" in html
+    assert "addEventListener('keyup', keyUpHandler, true)" in tour_js
+    assert "blurFocusedControl()" in tour_js
     assert "clickTarget" not in tour_js[tour_js.index("var APP_STEPS"):tour_js.index("function initLandingTour")]
     assert "hasExistingStudyData" in tour_js
     assert "markTourDoneIfReturningUser" in tour_js

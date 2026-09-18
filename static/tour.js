@@ -16,7 +16,26 @@
     var steps = [];
     var tourRunning = false;
     var keyHandler = null;
+    var keyUpHandler = null;
+    var keyPressHandler = null;
     var overlayClickHandler = null;
+
+    function blurFocusedControl() {
+        try {
+            var el = document.activeElement;
+            if (!el || el === document.body || el === document.documentElement) return;
+            var tag = el.tagName ? el.tagName.toLowerCase() : '';
+            if (tag === 'button' || tag === 'input' || tag === 'select' || tag === 'textarea' || el.isContentEditable) {
+                el.blur();
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    function swallowTourKeyEvent(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.stopImmediatePropagation();
+    }
 
     function tourDone() {
         if (isGuestUser()) {
@@ -149,6 +168,14 @@
         if (keyHandler) {
             document.removeEventListener('keydown', keyHandler, true);
             keyHandler = null;
+        }
+        if (keyUpHandler) {
+            document.removeEventListener('keyup', keyUpHandler, true);
+            keyUpHandler = null;
+        }
+        if (keyPressHandler) {
+            document.removeEventListener('keypress', keyPressHandler, true);
+            keyPressHandler = null;
         }
         if (overlayClickHandler && overlay) {
             overlay.removeEventListener('click', overlayClickHandler, true);
@@ -309,6 +336,7 @@
 
         tourRunning = true;
         ensureDom();
+        blurFocusedControl();
         if (overlay) {
             overlay.hidden = false;
             overlay.setAttribute('aria-hidden', 'false');
@@ -318,6 +346,12 @@
 
         if (keyHandler) {
             document.removeEventListener('keydown', keyHandler, true);
+        }
+        if (keyUpHandler) {
+            document.removeEventListener('keyup', keyUpHandler, true);
+        }
+        if (keyPressHandler) {
+            document.removeEventListener('keypress', keyPressHandler, true);
         }
         keyHandler = function (ev) {
             if (ev.key === 'Escape') {
@@ -354,6 +388,16 @@
             ev.stopImmediatePropagation();
         };
         document.addEventListener('keydown', keyHandler, true);
+
+        keyUpHandler = function (ev) {
+            /* Swallow keyup/keypress so Space/Enter cannot click a focused button. */
+            swallowTourKeyEvent(ev);
+        };
+        keyPressHandler = function (ev) {
+            swallowTourKeyEvent(ev);
+        };
+        document.addEventListener('keyup', keyUpHandler, true);
+        document.addEventListener('keypress', keyPressHandler, true);
 
         if (overlayClickHandler && overlay) {
             overlay.removeEventListener('click', overlayClickHandler, true);
