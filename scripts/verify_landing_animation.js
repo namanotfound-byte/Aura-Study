@@ -6,7 +6,42 @@ const { chromium } = require("playwright");
 
 const BASE = process.argv[2] || "http://127.0.0.1:5055";
 
+async function verifyCoverClockMidFade(page) {
+  await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() =>
+    document.documentElement.classList.contains("landing-animate")
+  );
+  await page.waitForTimeout(400);
+
+  const clock = await page.evaluate(() => {
+    const cover = document.querySelector(".landing-book-cover-front");
+    const veil = document.querySelector(".landing-book-cover-veil");
+    if (!cover || !veil) return { ok: false, reason: "missing cover or veil" };
+    const coverStyle = getComputedStyle(cover);
+    const veilStyle = getComputedStyle(veil);
+    const bgImage = coverStyle.backgroundImage || "";
+    const veilOpacity = parseFloat(veilStyle.opacity);
+    return {
+      ok:
+        bgImage.includes("aurastudy-mascot") &&
+        veilOpacity < 1 &&
+        veilOpacity >= 0,
+      bgImage,
+      veilOpacity,
+    };
+  });
+
+  if (!clock.ok) {
+    throw new Error(
+      `Cover clock not visible mid-fade at ~400ms: ${JSON.stringify(clock)}`
+    );
+  }
+
+  return clock;
+}
+
 async function measureMidFlight(page) {
+  await verifyCoverClockMidFade(page);
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(900);
 

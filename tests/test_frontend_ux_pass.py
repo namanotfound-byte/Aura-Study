@@ -127,8 +127,8 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     landing_css = _read("static", "landing.css")
     landing_html = _read("server", "templates", "landing.html")
     landing_js = _read("static", "landing.js")
-    assert '/static/landing.css?v=20260921' in landing_html
-    assert '/static/landing.js?v=20260921' in landing_html
+    assert '/static/landing.css?v=20260922' in landing_html
+    assert '/static/landing.js?v=20260922' in landing_html
     assert '<link rel="preload" as="image" href="/static/brand/aurastudy-mascot.png">' in landing_html
     assert 'fetchpriority="high"' in landing_html
     assert "classList.add('landing-animate')" not in landing_html
@@ -140,6 +140,7 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     assert ".landing-logo" in landing_css
     assert "landing-book-hero" in landing_html
     assert "landing-book-cover-logo" in landing_html
+    assert "landing-book-cover-veil" in landing_html
     assert "landing-book-cover-mark" not in landing_html
     assert ">A</span>" not in landing_html
     assert "TOTAL_ANIMATION_MS = 9000" in landing_js
@@ -152,22 +153,26 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     assert "opacity: 0" in cover_logo_css
     cover_front = landing_css[
         landing_css.index(".landing-book-cover-front {")
-        : landing_css.index(".landing-book-cover-front::after")
+        : landing_css.index(".landing-book-cover-veil")
     ]
     assert "#FFFFFF" in cover_front or "#fff" in cover_front.lower()
     assert "position: relative" in cover_front
-    assert "background-image:" not in cover_front
-    cover_after = landing_css[landing_css.index(".landing-book-cover-front::after"):landing_css.index(".landing-book-cover-inside")]
-    assert "/static/brand/aurastudy-mascot.png" in cover_after
-    assert "background-image:" in cover_after
-    assert "opacity: 0" in cover_after
-    assert "landingBookCoverLogoFade" in landing_css
-    logo_fade_anim = landing_css[
-        landing_css.index("html.landing-animate .landing-book-cover-front::after")
+    assert "/static/brand/aurastudy-mascot.png" in cover_front
+    assert "background-image:" in cover_front
+    assert ".landing-book-cover-front::after" not in landing_css
+    assert "landingBookCoverLogoFade" not in landing_css
+    veil_css = landing_css[
+        landing_css.index(".landing-book-cover-veil {")
+        : landing_css.index(".landing-book-cover-inside")
+    ]
+    assert "opacity: 1" in veil_css
+    assert "landingBookCoverVeilLift" in landing_css
+    veil_fade_anim = landing_css[
+        landing_css.index("html.landing-animate .landing-book-cover-veil")
         : landing_css.index("html.landing-animate .landing-book-cover {")
     ]
-    assert "landingBookCoverLogoFade" in logo_fade_anim
-    assert "var(--logo-fade-dur)" in logo_fade_anim
+    assert "landingBookCoverVeilLift" in veil_fade_anim
+    assert "var(--logo-fade-dur)" in veil_fade_anim
     assert "translateZ(12px)" in landing_css[landing_css.index(".landing-book-cover {"):landing_css.index(".landing-book-cover-front")]
     page_default = landing_css[landing_css.index(".landing-book-page--right {"):landing_css.index(".landing-book-cover {")]
     assert "translateZ(0)" in page_default
