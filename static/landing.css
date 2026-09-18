@@ -3,7 +3,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg-main: #F8F5F0;
+  --bg-main: #FFFFFF;
   --bg-card: #FFFFFF;
   --border-color: #E3DDD3;
 
@@ -26,6 +26,12 @@
   --book-open-h: min(calc(var(--book-open-w) / var(--book-aspect)), 86dvh, 860px);
   --book-settled-w: min(500px, 92vw);
   --book-settled-h: calc(var(--book-settled-w) / var(--book-aspect));
+  --book-settle-scale: 0.45;
+  --cover-hold: 0.5s;
+  --cover-open-dur: 2.8s;
+  --stage-settle-dur: 2.5s;
+  --cover-open-end: calc(var(--cover-hold) + var(--cover-open-dur));
+  --cta-fade-start: calc(var(--cover-open-end) + var(--stage-settle-dur) + 0.05s);
 }
 
 * {
@@ -66,23 +72,11 @@ body {
   text-align: center;
   overflow-x: hidden;
   overflow-y: auto;
-  background:
-    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(155, 139, 180, 0.12), transparent 70%),
-    radial-gradient(ellipse 60% 40% at 20% 90%, rgba(107, 144, 128, 0.1), transparent 65%),
-    var(--bg-main);
+  background: var(--bg-main);
 }
 
 .landing-glow {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 45%;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    linear-gradient(to top, rgba(155, 139, 180, 0.08) 0%, transparent 55%),
-    linear-gradient(135deg, rgba(107, 144, 128, 0.06) 0%, transparent 50%);
+  display: none;
 }
 
 .landing-inner {
@@ -95,6 +89,7 @@ body {
   gap: 18px;
   width: 100%;
   min-height: calc(100dvh - 48px);
+  background: var(--bg-main);
 }
 
 .landing-brand {
@@ -107,12 +102,18 @@ body {
 }
 
 .landing-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(20px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 18px;
-  width: 100%;
+  width: min(36rem, 94vw);
   max-width: min(36rem, 94vw);
+  margin-inline: auto;
+  z-index: 3;
 }
 
 /* Hero — closed book fills viewport, opens, then stage settles smaller */
@@ -151,16 +152,16 @@ body {
 }
 
 .landing-book-back {
-  background: linear-gradient(145deg, #FAF7F0 0%, #E8E2D8 100%);
-  border: 1px solid var(--border-color);
-  box-shadow: 0 10px 28px rgba(61, 68, 81, 0.12);
+  background: var(--bg-main);
+  border: 1px solid rgba(227, 221, 211, 0.55);
+  box-shadow: none;
   transform: translateZ(-3px);
 }
 
 .landing-book-page--right {
-  background: linear-gradient(180deg, #FFFFFF 0%, #F3EEE6 100%);
-  border: 1px solid rgba(227, 221, 211, 0.95);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
+  background: var(--bg-main);
+  border: 1px solid rgba(227, 221, 211, 0.45);
+  box-shadow: none;
   transform: rotateY(-8deg) translateZ(1px);
   transform-origin: left center;
 }
@@ -173,20 +174,17 @@ body {
 }
 
 .landing-book-cover-front {
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.92) 0%, #F8F5F0 55%, #F0EBE3 100%);
-  border: 1px solid rgba(227, 221, 211, 0.95);
-  box-shadow:
-    0 14px 34px rgba(61, 68, 81, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  background: #FFFFFF;
+  border: 1px solid rgba(227, 221, 211, 0.55);
+  box-shadow: none;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .landing-book-cover-inside {
-  background: linear-gradient(180deg, #F8F5F0 0%, #ECE6DC 100%);
-  border: 1px solid rgba(227, 221, 211, 0.95);
+  background: #FFFFFF;
+  border: 1px solid rgba(227, 221, 211, 0.55);
   transform: rotateY(180deg);
 }
 
@@ -211,22 +209,22 @@ body {
 }
 
 html.landing-animate .landing-book-cover {
-  animation: landingBookCoverOpen 2.8s cubic-bezier(0.22, 0.86, 0.28, 1) forwards;
+  animation: landingBookCoverOpen var(--cover-open-dur) cubic-bezier(0.22, 0.86, 0.28, 1) var(--cover-hold) forwards;
 }
 
 html.landing-animate .landing-book-page--right {
-  animation: landingBookPageSettle 2.8s cubic-bezier(0.22, 0.86, 0.28, 1) forwards;
+  animation: landingBookPageSettle var(--cover-open-dur) cubic-bezier(0.22, 0.86, 0.28, 1) var(--cover-hold) forwards;
 }
 
 html.landing-animate .landing-book-hero-wordmark {
   opacity: 0;
   transform: translateY(14px);
-  animation: landingBookHeroWordmark 1.15s cubic-bezier(0.22, 0.86, 0.28, 1) 1.85s forwards;
+  animation: landingBookHeroWordmark 1.15s cubic-bezier(0.22, 0.86, 0.28, 1) calc(var(--cover-hold) + 1.85s) forwards;
 }
 
 html.landing-animate .landing-book-stage {
   transform-origin: center center;
-  animation: landingBookStageSettle 2.5s cubic-bezier(0.25, 0.1, 0.25, 1) 2.8s forwards;
+  animation: landingBookStageSettle var(--stage-settle-dur) cubic-bezier(0.22, 0.86, 0.28, 1) var(--cover-open-end) forwards;
 }
 
 @keyframes landingBookCoverOpen {
@@ -260,19 +258,15 @@ html.landing-animate .landing-book-stage {
 
 @keyframes landingBookStageSettle {
   from {
-    width: var(--book-open-w);
-    height: var(--book-open-h);
     transform: scale(1) translateY(0);
   }
   to {
-    width: var(--book-settled-w);
-    height: var(--book-settled-h);
-    transform: scale(1) translateY(-7vh);
+    transform: scale(var(--book-settle-scale)) translateY(-8vh);
   }
 }
 
 html.landing-animate .landing-book {
-  animation: landingBookLift 2.8s cubic-bezier(0.22, 0.86, 0.28, 1) forwards;
+  animation: landingBookLift var(--cover-open-dur) cubic-bezier(0.22, 0.86, 0.28, 1) var(--cover-hold) forwards;
 }
 
 @keyframes landingBookLift {
@@ -418,28 +412,19 @@ html.js-enabled .wordmark .letters.is-split .letter {
   animation-delay: var(--delay, 0s);
 }
 
-/* Below-the-fold copy stays out of flow until the book settles */
+/* CTAs stay absolutely positioned — only opacity fades in, never reflow */
 html.landing-animate:not(.skip-anim) .landing-actions {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: max(20px, env(safe-area-inset-bottom));
-  width: min(36rem, 94vw);
-  margin-inline: auto;
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
-  z-index: 3;
 }
 
 html.js-enabled.landing-animate:not(.skip-anim) .landing-actions {
-  animation: landingActionsInFlow 0.01s linear 5.35s forwards;
+  animation: landingActionsReveal 0.01s linear var(--cta-fade-start) forwards;
 }
 
-@keyframes landingActionsInFlow {
+@keyframes landingActionsReveal {
   to {
-    position: relative;
-    bottom: auto;
     visibility: visible;
     opacity: 1;
     pointer-events: auto;
@@ -448,22 +433,22 @@ html.js-enabled.landing-animate:not(.skip-anim) .landing-actions {
 
 html.js-enabled:not(.skip-anim) .tagline {
   opacity: 0;
-  animation: fade-up 0.55s ease-out 5.35s forwards;
+  animation: fade-up 0.55s ease-out var(--cta-fade-start) forwards;
 }
 
 html.js-enabled:not(.skip-anim) .guest-trial-copy {
   opacity: 0;
-  animation: fade-up 0.55s ease-out 5.65s forwards;
+  animation: fade-up 0.55s ease-out calc(var(--cta-fade-start) + 0.3s) forwards;
 }
 
 html.js-enabled:not(.skip-anim) .cta-row {
   opacity: 0;
-  animation: fade-up 0.55s ease-out 5.95s forwards;
+  animation: fade-up 0.55s ease-out calc(var(--cta-fade-start) + 0.6s) forwards;
 }
 
 html.js-enabled:not(.skip-anim) .landing-legal {
   opacity: 0;
-  animation: fade-up 0.55s ease-out 6.25s forwards;
+  animation: fade-up 0.55s ease-out calc(var(--cta-fade-start) + 0.9s) forwards;
 }
 
 @keyframes letter-in {
@@ -496,12 +481,10 @@ html.js-enabled:not(.skip-anim) .landing-legal {
   }
 
   html.js-enabled .landing-book-stage {
-    width: var(--book-settled-w);
-    height: var(--book-settled-h);
+    transform: scale(var(--book-settle-scale)) translateY(-8vh);
   }
 
   html.js-enabled .landing-actions {
-    position: relative;
     visibility: visible;
     pointer-events: auto;
   }
@@ -533,12 +516,10 @@ html.skip-anim .landing-legal {
 }
 
 html.skip-anim .landing-book-stage {
-  width: var(--book-settled-w);
-  height: var(--book-settled-h);
+  transform: scale(var(--book-settle-scale)) translateY(-8vh);
 }
 
 html.skip-anim .landing-actions {
-  position: relative;
   visibility: visible;
   pointer-events: auto;
 }

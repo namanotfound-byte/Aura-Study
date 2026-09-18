@@ -8,7 +8,7 @@ const BASE = process.argv[2] || "http://127.0.0.1:5055";
 
 async function measureMidFlight(page) {
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(450);
+  await page.waitForTimeout(900);
 
   const snapshot = await page.evaluate(() => {
     const pages = Array.from(document.querySelectorAll(".landing-book-page"));
@@ -41,7 +41,7 @@ async function measureMidFlight(page) {
         a.name === "landingBookLift") &&
       a.currentTime != null &&
       a.currentTime > 80 &&
-      a.currentTime < 2600
+      a.currentTime < 3100
   );
 
   if (snapshot.skipAnim) {
@@ -57,7 +57,7 @@ async function measureMidFlight(page) {
   }
 
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(450);
+  await page.waitForTimeout(900);
 
   const second = await page.evaluate(() => {
     const pages = Array.from(document.querySelectorAll(".landing-book-page"));
@@ -83,7 +83,7 @@ async function measureMidFlight(page) {
         a.name === "landingBookLift") &&
       a.currentTime != null &&
       a.currentTime > 80 &&
-      a.currentTime < 2600
+      a.currentTime < 3100
   );
 
   if (second.skipAnim) {
