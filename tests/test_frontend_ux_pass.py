@@ -135,9 +135,16 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     assert "min-height: 100dvh" in landing_css
     assert ".landing-logo" in landing_css
     assert "landing-book-hero" in landing_html
+    assert "landing-book-cover-logo" in landing_html
+    assert "landing-book-cover-mark" not in landing_html
+    assert ">A</span>" not in landing_html
     assert "TOTAL_ANIMATION_MS = 5400" in landing_js
-    assert landing_html.count("/static/brand/aurastudy-mascot.png") >= 1
+    assert landing_html.count("/static/brand/aurastudy-mascot.png") >= 2
     assert landing_html.count("/static/brand/aurastudy-wordmark.png") >= 1
+    assert "landing-book-cover-logo" in landing_css
+    assert "--book-open-w: min(88vw" in landing_css
+    assert "landingBookStageSettle" in landing_css
+    assert "landing-actions" in landing_html
     base_html = _read("server", "templates", "base.html")
     assert "/static/brand/aurastudy-mascot.png" in base_html
     assert "/static/brand/aurastudy-wordmark.png" in base_html

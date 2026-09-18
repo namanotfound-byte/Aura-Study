@@ -31,6 +31,10 @@ def test_root_serves_landing_page_unauthenticated(client):
     assert "Continue as guest" in body
     assert "/app?guest=1" in body
     assert "landing-book-cover" in body
+    assert "landing-book-cover-logo" in body
+    assert "aurastudy-mascot.png" in body
+    assert "aurastudy-wordmark.png" in body
+    assert "landing-book-cover-mark" not in body
     # The landing page, not the study app.
     assert 'id="view-timer"' not in body
 

@@ -36,10 +36,12 @@ async function measureMidFlight(page) {
 
   const midFlight = snapshot.animations.some(
     (a) =>
-      (a.name === "landingBookPageLeft" || a.name === "landingBookPageRight") &&
+      (a.name === "landingBookCoverOpen" ||
+        a.name === "landingBookPageSettle" ||
+        a.name === "landingBookLift") &&
       a.currentTime != null &&
       a.currentTime > 80 &&
-      a.currentTime < 1200
+      a.currentTime < 2600
   );
 
   if (snapshot.skipAnim) {
@@ -76,10 +78,12 @@ async function measureMidFlight(page) {
 
   const secondMidFlight = second.animations.some(
     (a) =>
-      (a.name === "landingBookPageLeft" || a.name === "landingBookPageRight") &&
+      (a.name === "landingBookCoverOpen" ||
+        a.name === "landingBookPageSettle" ||
+        a.name === "landingBookLift") &&
       a.currentTime != null &&
       a.currentTime > 80 &&
-      a.currentTime < 1200
+      a.currentTime < 2600
   );
 
   if (second.skipAnim) {
