@@ -3284,12 +3284,41 @@
             text-align: center;
             padding: 28px 20px;
         }
+        .guest-locked-message {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 0 auto;
+            max-width: 520px;
+        }
+        .guest-locked-panel .guest-locked-message i,
+        .guest-locked-panel .guest-locked-message svg {
+            display: block;
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+            margin: 0;
+            color: var(--text-muted);
+        }
+        .guest-locked-panel .guest-locked-message span {
+            text-align: left;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
         .guest-locked-actions {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
             justify-content: center;
             margin-top: 16px;
+        }
+        .guest-locked-actions a.btn,
+        .guest-locked-actions a.btn:hover,
+        .guest-locked-actions a.btn:focus {
+            text-decoration: none;
         }
 
         .help-thread-card { margin-bottom: 20px; }

@@ -105,10 +105,12 @@
       guestAccountMessage(featureLabel);
     panel.innerHTML =
       '<div class="card lb-state-panel guest-locked-panel">' +
-      '<i data-lucide="lock"></i>' +
+      '<div class="guest-locked-message">' +
+      '<i data-lucide="lock" aria-hidden="true"></i>' +
       "<span>" +
       copy +
       "</span>" +
+      "</div>" +
       '<div class="guest-locked-actions">' +
       '<a href="/register" class="btn btn-neon-pink">Sign up free</a>' +
       '<a href="/login" class="btn">Log in</a>' +
