@@ -191,6 +191,21 @@ def test_tour_overlay_and_storage_key_exist():
     assert "aurastudy_active_view" not in dashboard_step
 
 
+def test_landing_page_does_not_start_spotlight_tour():
+    """Landing / login marketing page must not run initLandingTour or LANDING_STEPS."""
+    landing_js = _read("static", "landing.js")
+    tour_js = _read("static", "tour.js")
+
+    assert "initLandingTour" not in landing_js
+
+    init_landing = tour_js[tour_js.index("function initLandingTour"):tour_js.index("function initAppTour")]
+    assert "startTour(LANDING_STEPS)" not in init_landing
+    assert "setTimeout" not in init_landing
+
+    assert "function initAppTour" in tour_js
+    assert "startTour(APP_STEPS)" in tour_js
+
+
 def test_guest_app_tour_always_plays_despite_persisted_state():
     """Guests always get the in-app tour on /app boot, even with prior localStorage."""
     tour_js = _read("static", "tour.js")

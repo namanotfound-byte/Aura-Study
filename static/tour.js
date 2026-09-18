@@ -506,14 +506,7 @@
     ];
 
     function initLandingTour() {
-        if (isTourDone() || isLandingPhaseDone() || hasExistingStudyData()) {
-            if (hasExistingStudyData()) markTourDoneIfReturningUser();
-            return;
-        }
-        if (!document.getElementById('letters') && !document.querySelector('.landing-logo')) return;
-        window.setTimeout(function () {
-            startTour(LANDING_STEPS);
-        }, prefersReducedMotion() ? 400 : 2100);
+        /* Landing-page spotlight tour disabled; in-app tour runs on /app only. */
     }
 
     function initAppTour(appState) {
