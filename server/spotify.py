@@ -5,7 +5,10 @@ See SPEC.md sections 6 and 8 for the exact contract this file implements.
 """
 import base64
 import hashlib
+import logging
+import re
 import secrets
+import time
 from datetime import timedelta
 from urllib.parse import urlencode
 
@@ -27,6 +30,10 @@ SCOPES = (
     "playlist-read-private playlist-read-collaborative streaming"
 )
 REQUEST_TIMEOUT = 10  # seconds; never let a Spotify outage hang the app
+PROFILE_FETCH_MAX_ATTEMPTS = 3
+PROFILE_RETRY_AFTER_CAP = 3  # seconds; cap Retry-After so OAuth callback doesn't hang
+
+_log = logging.getLogger("aurastudy.spotify")
 
 
 class SpotifyNotConnected(Exception):
@@ -79,6 +86,92 @@ def _spotify_api(method, path, access_token, **kwargs):
     return requests.request(
         method, API_BASE + path, headers=headers, timeout=REQUEST_TIMEOUT, **kwargs
     )
+
+
+def _sanitize_for_log(text, max_len=300):
+    """Truncate and redact token-like values from Spotify response bodies."""
+    if not text:
+        return ""
+    snippet = str(text)[:max_len]
+    snippet = re.sub(
+        r'"(access_token|refresh_token|token)"\s*:\s*"[^"]*"',
+        r'"\1":"[redacted]"',
+        snippet,
+        flags=re.I,
+    )
+    snippet = re.sub(r"Bearer\s+\S+", "Bearer [redacted]", snippet, flags=re.I)
+    return snippet
+
+
+def _profile_fail_reason(status_code):
+    if status_code == 401:
+        return "profile_unauthorized"
+    if status_code == 403:
+        return "profile_forbidden"
+    if status_code == 429:
+        return "spotify_rate_limited"
+    if status_code >= 500:
+        return "spotify_unavailable"
+    return "profile_fetch_failed"
+
+
+def _parse_retry_after(resp, default=0.5):
+    raw = resp.headers.get("Retry-After")
+    if not raw:
+        return default
+    try:
+        secs = float(raw)
+        if secs < 0:
+            return default
+        return min(secs, PROFILE_RETRY_AFTER_CAP)
+    except (TypeError, ValueError):
+        return default
+
+
+def _fetch_spotify_profile(access_token):
+    """GET /v1/me with retries on 429/5xx. Returns (profile_dict, None) or (None, reason)."""
+    last_resp = None
+    for attempt in range(PROFILE_FETCH_MAX_ATTEMPTS):
+        try:
+            resp = requests.get(
+                API_BASE + "/me",
+                headers={"Authorization": "Bearer " + access_token},
+                timeout=REQUEST_TIMEOUT,
+            )
+        except requests.RequestException as exc:
+            _log.warning(
+                "Spotify /me network error (attempt %s/%s): %s",
+                attempt + 1,
+                PROFILE_FETCH_MAX_ATTEMPTS,
+                exc,
+            )
+            return None, "network_error"
+
+        if resp.status_code == 200:
+            try:
+                return resp.json(), None
+            except ValueError:
+                _log.warning("Spotify /me returned 200 but response was not valid JSON")
+                return None, "profile_fetch_failed"
+
+        last_resp = resp
+        if (resp.status_code == 429 or resp.status_code >= 500) and attempt < PROFILE_FETCH_MAX_ATTEMPTS - 1:
+            delay = _parse_retry_after(resp)
+            _log.info(
+                "Spotify /me %s, retrying in %.1fs (attempt %s/%s)",
+                resp.status_code,
+                delay,
+                attempt + 1,
+                PROFILE_FETCH_MAX_ATTEMPTS,
+            )
+            time.sleep(delay)
+            continue
+        break
+
+    status = last_resp.status_code if last_resp is not None else 0
+    body_snippet = _sanitize_for_log(getattr(last_resp, "text", "") if last_resp is not None else "")
+    _log.warning("Spotify /me failed: status=%s body=%s", status, body_snippet)
+    return None, _profile_fail_reason(status)
 
 
 def _map_spotify_error(resp):
@@ -261,25 +354,24 @@ def spotify_callback():
     if token_resp.status_code != 200:
         return fail("token_exchange_failed")
 
-    token_data = token_resp.json()
+    try:
+        token_data = token_resp.json()
+    except ValueError:
+        _log.warning("Spotify token exchange returned 200 but response was not valid JSON")
+        return fail("token_exchange_failed")
+
     access_token = token_data.get("access_token")
+    if not access_token:
+        _log.warning("Spotify token exchange succeeded but access_token was missing or empty")
+        return fail("missing_access_token")
+
     refresh_token = token_data.get("refresh_token")
     expires_in = token_data.get("expires_in", 3600)
     scopes = token_data.get("scope", SCOPES)
 
-    try:
-        me_resp = requests.get(
-            API_BASE + "/me",
-            headers={"Authorization": "Bearer " + access_token},
-            timeout=REQUEST_TIMEOUT,
-        )
-    except requests.RequestException:
-        return fail("network_error")
-
-    if me_resp.status_code != 200:
-        return fail("profile_fetch_failed")
-
-    me = me_resp.json()
+    me, profile_reason = _fetch_spotify_profile(access_token)
+    if profile_reason:
+        return fail(profile_reason)
     db = get_db()
     db.execute(
         """

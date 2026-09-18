@@ -240,6 +240,10 @@
 
   // -- redirect param handling --------------------------------------------
 
+  function isAllowListRelatedFailure(reason) {
+    return reason === 'token_exchange_failed';
+  }
+
   function spotifyErrorMessage(reason) {
     var messages = {
       access_denied: 'You declined Spotify’s permission screen. Tap Connect Spotify to try again.',
@@ -249,11 +253,22 @@
       network_error: 'Could not reach Spotify — check your connection and try again.',
       token_exchange_failed:
         'Spotify rejected the connection. You may not be on the app’s allow-list yet — see “Can’t connect?” on the Music tab.',
-      user_profile_failed: 'Connected to Spotify but could not read your profile — try again.',
+      missing_access_token:
+        'Spotify authorized the connection but did not return an access token. Try Connect Spotify again.',
+      profile_fetch_failed:
+        'Connected to Spotify but could not read your profile. Try Connect Spotify again in a moment.',
+      profile_unauthorized:
+        'Spotify rejected the access token when reading your profile. Try Connect Spotify again.',
+      profile_forbidden:
+        'Spotify blocked access to your profile. Check your account status, then try Connect Spotify again.',
+      spotify_rate_limited:
+        'Spotify is rate-limiting requests. Wait a minute, then try Connect Spotify again.',
+      spotify_unavailable:
+        'Spotify’s servers had a temporary problem. Try Connect Spotify again in a few minutes.',
     };
     return (
       messages[reason] ||
-      'Something went wrong connecting Spotify. Try Connect Spotify again, or use “Can’t connect?” below if you need allow-list access.'
+      'Something went wrong connecting Spotify. Try Connect Spotify again.'
     );
   }
 
@@ -302,11 +317,19 @@
   }
 
   function renderNotConnectedCard() {
-    var failedNote = STATE.connectFailed
-      ? '<p class="as-connect-failed">Connection didn’t work' +
-        (STATE.connectFailedReason ? ' (' + esc(STATE.connectFailedReason) + ')' : '') +
-        '. Try <strong>Connect Spotify</strong> again. If you’re not on the app’s allow-list yet, use the form below.</p>'
-      : '';
+    var failedNote = '';
+    if (STATE.connectFailed) {
+      var reason = STATE.connectFailedReason || '';
+      var allowListHint = isAllowListRelatedFailure(reason)
+        ? ' If you’re not on the app’s allow-list yet, use the form below.'
+        : '';
+      failedNote =
+        '<p class="as-connect-failed">Connection didn’t work' +
+        (reason ? ' (' + esc(reason) + ')' : '') +
+        '. Try <strong>Connect Spotify</strong> again.' +
+        allowListHint +
+        '</p>';
+    }
     return (
       '<div class="card as-card">' +
       '<h3 style="margin-top:0;color:var(--text-main);">Connect Spotify 🎧</h3>' +

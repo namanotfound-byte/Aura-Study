@@ -368,3 +368,130 @@ def test_volume_validation_error(client, app, monkeypatch):
     )
     assert resp.status_code == 400
     assert resp.get_json()["error"] == "validation_error"
+
+
+# ---------------------------------------------------------------------------
+# OAuth callback: token exchange + GET /me
+# ---------------------------------------------------------------------------
+
+def _prime_oauth_session(client, user_id, state="oauth-state-abc"):
+    with client.session_transaction() as sess:
+        sess["spotify_state"] = state
+        sess["spotify_code_verifier"] = "test-pkce-verifier"
+        sess["spotify_oauth_user_id"] = user_id
+    return state
+
+
+def _token_exchange_response(access_token="fresh-access-token", refresh_token="fresh-refresh-token"):
+    return fake_response(
+        200,
+        {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "expires_in": 3600,
+            "scope": spotify.SCOPES,
+        },
+    )
+
+
+def _me_profile_response():
+    return fake_response(
+        200,
+        {"id": "spotify-user-99", "display_name": "Callback Listener", "product": "premium"},
+    )
+
+
+def test_callback_happy_path_persists_account(client, app, monkeypatch):
+    monkeypatch.setattr(spotify, "_configured", lambda cfg: True)
+    user_id = register_and_login(client)
+    state = _prime_oauth_session(client, user_id)
+
+    token_resp = _token_exchange_response()
+    me_resp = _me_profile_response()
+    post_mock = MagicMock(return_value=token_resp)
+    get_mock = MagicMock(return_value=me_resp)
+    monkeypatch.setattr(spotify.requests, "post", post_mock)
+    monkeypatch.setattr(spotify.requests, "get", get_mock)
+
+    resp = client.get("/api/spotify/callback?code=auth-code&state=" + state)
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/app?spotify=connected"
+    get_mock.assert_called_once()
+    assert get_mock.call_args[0][0] == spotify.API_BASE + "/me"
+    assert get_mock.call_args[1]["headers"]["Authorization"] == "Bearer fresh-access-token"
+
+    with app.app_context():
+        from server.security import decrypt_token
+
+        db = get_db()
+        row = db.execute("SELECT * FROM spotify_accounts WHERE user_id=%s", (user_id,)).fetchone()
+        assert row is not None
+        assert row["spotify_user_id"] == "spotify-user-99"
+        assert row["display_name"] == "Callback Listener"
+        assert decrypt_token(row["access_token"]) == "fresh-access-token"
+
+
+def test_callback_me_429_then_200_retries(client, app, monkeypatch):
+    monkeypatch.setattr(spotify, "_configured", lambda cfg: True)
+    monkeypatch.setattr(spotify.time, "sleep", lambda _secs: None)
+    user_id = register_and_login(client)
+    state = _prime_oauth_session(client, user_id)
+
+    rate_limited = fake_response(429, {"error": {"status": 429, "message": "Too Many Requests"}})
+    rate_limited.headers = {"Retry-After": "1"}
+    ok = _me_profile_response()
+    get_mock = MagicMock(side_effect=[rate_limited, ok])
+    monkeypatch.setattr(spotify.requests, "post", MagicMock(return_value=_token_exchange_response()))
+    monkeypatch.setattr(spotify.requests, "get", get_mock)
+
+    resp = client.get("/api/spotify/callback?code=auth-code&state=" + state)
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/app?spotify=connected"
+    assert get_mock.call_count == 2
+
+
+def test_callback_me_persistent_5xx_is_spotify_unavailable(client, app, monkeypatch):
+    monkeypatch.setattr(spotify, "_configured", lambda cfg: True)
+    monkeypatch.setattr(spotify.time, "sleep", lambda _secs: None)
+    user_id = register_and_login(client)
+    state = _prime_oauth_session(client, user_id)
+
+    unavailable = fake_response(503, {"error": {"status": 503, "message": "Service Unavailable"}})
+    get_mock = MagicMock(return_value=unavailable)
+    monkeypatch.setattr(spotify.requests, "post", MagicMock(return_value=_token_exchange_response()))
+    monkeypatch.setattr(spotify.requests, "get", get_mock)
+
+    resp = client.get("/api/spotify/callback?code=auth-code&state=" + state)
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/app?spotify=error&reason=spotify_unavailable"
+    assert get_mock.call_count == spotify.PROFILE_FETCH_MAX_ATTEMPTS
+
+
+def test_callback_me_401_is_profile_unauthorized(client, app, monkeypatch):
+    monkeypatch.setattr(spotify, "_configured", lambda cfg: True)
+    user_id = register_and_login(client)
+    state = _prime_oauth_session(client, user_id)
+
+    unauthorized = fake_response(401, {"error": {"status": 401, "message": "Unauthorized"}})
+    monkeypatch.setattr(spotify.requests, "post", MagicMock(return_value=_token_exchange_response()))
+    monkeypatch.setattr(spotify.requests, "get", MagicMock(return_value=unauthorized))
+
+    resp = client.get("/api/spotify/callback?code=auth-code&state=" + state)
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/app?spotify=error&reason=profile_unauthorized"
+
+
+def test_callback_missing_access_token_skips_me(client, app, monkeypatch):
+    monkeypatch.setattr(spotify, "_configured", lambda cfg: True)
+    user_id = register_and_login(client)
+    state = _prime_oauth_session(client, user_id)
+
+    token_resp = fake_response(200, {"refresh_token": "only-refresh", "expires_in": 3600})
+    get_mock = MagicMock()
+    monkeypatch.setattr(spotify.requests, "post", MagicMock(return_value=token_resp))
+    monkeypatch.setattr(spotify.requests, "get", get_mock)
+
+    resp = client.get("/api/spotify/callback?code=auth-code&state=" + state)
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/app?spotify=error&reason=missing_access_token"
+    get_mock.assert_not_called()
