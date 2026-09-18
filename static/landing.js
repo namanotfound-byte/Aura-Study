@@ -80,7 +80,7 @@
 
   // ---------------- 1. Landing page (full reveal) ----------------
 
-  var TOTAL_ANIMATION_MS = 7800; // cover hold + book open + slow settle + hero reveal + tagline/CTA fade-in
+  var TOTAL_ANIMATION_MS = 8300; // cover hold + book open + slow settle + hero reveal + tagline/CTA fade-in
   var INSTANT_NAV_DELAY_MS = 250; // just enough for the finished title to register
 
   function initLanding() {
