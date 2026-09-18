@@ -157,14 +157,14 @@ def backend(request, pg_cluster):
 
 @pytest.fixture
 def owner_email():
-    """Empty by default -- OWNER_EMAIL unset, so /admin/spotify-requests must
+    """Empty by default -- OWNER_EMAIL unset, so owner-only admin routes must
     be unreachable for everyone (see server/app.py). Overridden locally (as
-    a same-named fixture) by tests/test_spotify_requests.py's owner-gated
-    admin-page tests, which need a real value here before the `app` fixture
-    below builds the app -- that's why `app` takes this as a dependency
-    instead of a test setting the env var itself: by the time a test's own
-    body runs, `app` (and the Config it read once inside create_app()) has
-    already been built."""
+    a same-named fixture) by tests/test_admin.py's owner-gated admin tests,
+    which need a real value here before the `app` fixture below builds the
+    app -- that's why `app` takes this as a dependency instead of a test
+    setting the env var itself: by the time a test's own body runs, `app`
+    (and the Config it read once inside create_app()) has already been
+    built."""
     return ""
 
 

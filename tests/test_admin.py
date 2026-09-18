@@ -2,9 +2,8 @@
 /admin/users/<id>/add-time and /admin/actions routes in server/app.py.
 
 Uses the `client`/`app`/`outbox` fixtures from tests/conftest.py, and the
-same `owner_email` fixture override pattern tests/test_spotify_requests.py
-uses for its TestAdminGate class. Runs against both database backends (see
-conftest's `backend` fixture).
+same `owner_email` fixture override pattern for owner-gated admin tests.
+Runs against both database backends (see conftest's `backend` fixture).
 """
 import json
 

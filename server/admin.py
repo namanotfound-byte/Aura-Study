@@ -2,7 +2,7 @@
 
 Route registration and the owner check itself live in server/app.py (the
 `/admin/users`, `/admin/users/<id>/add-time` and `/admin/actions` routes),
-matching the existing pattern from server/spotify_requests.py: this module
+matching the existing admin route pattern in server/app.py: this module
 is plain data access and business logic, called only after the caller has
 already verified the current user is the configured owner. Nothing here
 checks that on its own.

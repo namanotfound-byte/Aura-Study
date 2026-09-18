@@ -87,7 +87,6 @@
     deviceId: null,
     selectedPlaylistId: null,
     isPlaying: false,
-    accessRequest: null,
     connectFailed: false,
     connectFailedReason: '',
     // Timer-view "Music" popover -- see initTimerMusicPopover.
@@ -208,41 +207,19 @@
       '.as-icon-btn.as-play{width:52px;height:52px}' +
       '.as-volume input{min-height:24px}' +
       '}' +
-      /* -- connect flow + demoted access-request disclosure -- */
+      /* -- connect flow -- */
       '.as-connect-steps{margin:14px 0 16px;padding-left:20px;font-size:13px;line-height:1.6;color:var(--text-main)}' +
       '.as-connect-steps li{margin-bottom:8px}' +
       '.as-connect-steps li:last-child{margin-bottom:0}' +
       '.as-connect-failed{margin:14px 0 0;padding:10px 12px;border-radius:12px;background:rgba(245,185,66,.12);border:1px solid rgba(245,185,66,.35);font-size:12px;line-height:1.5;color:var(--text-main)}' +
       '.as-play-hint{margin-top:10px;font-weight:600;color:var(--text-main)}' +
-      '.as-cant-connect{margin-top:18px;border-top:1px solid var(--border-color);padding-top:14px}' +
-      '.as-cant-connect summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--text-muted);list-style:none;display:inline-flex;align-items:center;gap:6px}' +
-      '.as-cant-connect summary::-webkit-details-marker{display:none}' +
-      '.as-cant-connect summary::before{content:"";display:inline-block;width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:5px solid var(--text-muted);transition:transform .15s ease}' +
-      '.as-cant-connect[open] summary::before{transform:rotate(90deg)}' +
-      '.as-cant-connect summary:hover{color:var(--text-main)}' +
-      '.as-cant-connect-body{margin-top:12px}' +
       '.tmp-connect-steps{margin:0 0 10px;padding-left:18px;font-size:11px;line-height:1.5;color:var(--text-muted);text-align:left}' +
       '.tmp-connect-steps li{margin-bottom:6px}' +
-      '.tmp-connect-btn{display:block;width:100%;margin-top:8px}' +
-      /* -- access-request form (fallback, inside disclosure) -- */
-      '.as-access-note{font-size:12px;color:var(--text-muted);line-height:1.6;margin:0 0 14px}' +
-      '.as-access-form{display:flex;gap:10px;flex-wrap:wrap}' +
-      '.as-access-form input[type=email]{flex:1;min-width:180px}' +
-      '.as-access-state{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border-radius:14px;background:var(--bg-card-hover);border:1px solid var(--border-color)}' +
-      '.as-access-state .as-access-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}' +
-      '.as-access-state.pending .as-access-dot{background:#F5B942}' +
-      '.as-access-state.added .as-access-dot{background:var(--neon-green,#52E5A3)}' +
-      '.as-access-state-text{flex:1;min-width:160px;font-size:13px;color:var(--text-main);font-weight:600}' +
-      '.as-access-state-text small{display:block;font-weight:500;color:var(--text-muted);margin-top:2px}' +
-      '@media (pointer:coarse){.as-access-form input[type=email],.as-access-form button{min-height:44px}}';
+      '.tmp-connect-btn{display:block;width:100%;margin-top:8px}';
     document.head.appendChild(style);
   }
 
   // -- redirect param handling --------------------------------------------
-
-  function isAllowListRelatedFailure(reason) {
-    return reason === 'token_exchange_failed';
-  }
 
   function spotifyErrorMessage(reason) {
     var messages = {
@@ -252,7 +229,7 @@
       missing_code: 'Spotify did not finish authorization — try Connect Spotify again.',
       network_error: 'Could not reach Spotify — check your connection and try again.',
       token_exchange_failed:
-        'Spotify rejected the connection. You may not be on the app’s allow-list yet — see “Can’t connect?” on the Music tab.',
+        'Spotify rejected the connection — the app may still be in Development Mode. Try Connect Spotify again; if it keeps failing, Spotify blocked API access until the app owner enables Extended Quota or adds your account in the Spotify Developer Dashboard.',
       missing_access_token:
         'Spotify authorized the connection but did not return an access token. Try Connect Spotify again.',
       profile_fetch_failed:
@@ -260,7 +237,7 @@
       profile_unauthorized:
         'Spotify rejected the access token when reading your profile. Try Connect Spotify again.',
       profile_forbidden:
-        'Spotify blocked access to your profile. Check your account status, then try Connect Spotify again.',
+        'Spotify blocked API access to your profile. Try Connect Spotify again — if it keeps failing, the app owner must enable Extended Quota or add your account in the Spotify Developer Dashboard (User Management).',
       spotify_rate_limited:
         'Spotify is rate-limiting requests. Wait a minute, then try Connect Spotify again.',
       spotify_unavailable:
@@ -304,30 +281,14 @@
     );
   }
 
-  function renderCantConnectDisclosure(openByDefault) {
-    return (
-      '<details class="as-cant-connect"' + (openByDefault ? ' open' : '') + ' id="as-cant-connect">' +
-      '<summary>Can’t connect?</summary>' +
-      '<div class="as-cant-connect-body">' +
-      '<p class="as-access-note">Until the AuraStudy Spotify app is in <strong>Extended Quota</strong> (live mode), Spotify only allows users the owner added in the Spotify Developer Dashboard (<strong>User Management</strong> — about 25 emails). ' +
-      'If Connect Spotify fails even after you approve permissions, submit the <strong>Request Access</strong> form below with the email on your <strong>Spotify account</strong> — the AuraStudy owner can add it there. You can withdraw a request at any time.</p>' +
-      '<div id="as-access-body"><p class="as-note">Loading…</p></div>' +
-      '</div></details>'
-    );
-  }
-
   function renderNotConnectedCard() {
     var failedNote = '';
     if (STATE.connectFailed) {
       var reason = STATE.connectFailedReason || '';
-      var allowListHint = isAllowListRelatedFailure(reason)
-        ? ' If you’re not on the app’s allow-list yet, use the form below.'
-        : '';
       failedNote =
-        '<p class="as-connect-failed">Connection didn’t work' +
-        (reason ? ' (' + esc(reason) + ')' : '') +
-        '. Try <strong>Connect Spotify</strong> again.' +
-        allowListHint +
+        '<p class="as-connect-failed">' +
+        esc(spotifyErrorMessage(reason)) +
+        (reason ? ' <span style="color:var(--text-muted);">(' + esc(reason) + ')</span>' : '') +
         '</p>';
     }
     return (
@@ -337,7 +298,6 @@
       renderConnectStepsList('as-connect-steps') +
       '<button class="btn btn-neon-pink" data-action="connect">Connect Spotify</button>' +
       failedNote +
-      renderCantConnectDisclosure(!!STATE.connectFailed) +
       '</div>'
     );
   }
@@ -388,7 +348,6 @@
     }
     if (!s.connected) {
       STATE.viewEl.innerHTML = renderNotConnectedCard();
-      loadAccessRequest();
       return;
     }
 
@@ -438,131 +397,6 @@
     loadPlaylists();
     if (premium) initPremiumPlayer();
     pollNowPlaying();
-  }
-
-  // -- Spotify access-request form (fallback inside “Can’t connect?”) ----
-
-  function accessBody() {
-    return document.getElementById('as-access-body');
-  }
-
-  function loadAccessRequest() {
-    var body = accessBody();
-    if (!body) return;
-    api('/api/spotify/access-request').then(function (r) {
-      body = accessBody(); // panel may have re-rendered while this was in flight
-      if (!body) return;
-      if (!r.ok) {
-        if (r.status === 401) {
-          if (window.AuraGuest && typeof window.AuraGuest.isGuest === 'function' && window.AuraGuest.isGuest()) {
-            STATE.viewEl.innerHTML = '<div class="card as-card"><p class="as-note">Log in or sign up to connect Spotify.</p></div>';
-            return;
-          }
-          window.location.replace('/login');
-          return;
-        }
-        renderAccessError(body);
-        return;
-      }
-      STATE.accessRequest = r.data;
-      renderAccessState(body, r.data);
-    }, function () {
-      body = accessBody();
-      if (body) renderAccessError(body);
-    });
-  }
-
-  function renderAccessError(body) {
-    body.innerHTML =
-      '<p class="as-note">Couldn’t load your access request right now.</p>' +
-      '<button class="btn" data-access-action="retry" style="font-size:12px;padding:6px 14px;">Try Again</button>';
-    body.querySelector('[data-access-action="retry"]').addEventListener('click', function () {
-      body.innerHTML = '<p class="as-note">Loading…</p>';
-      loadAccessRequest();
-    });
-  }
-
-  function renderAccessState(body, data) {
-    if (!data.submitted) {
-      body.innerHTML =
-        '<form class="as-access-form" id="as-access-form">' +
-        '<input type="email" class="form-control" id="as-access-email" placeholder="you@example.com" required>' +
-        '<button type="submit" class="btn btn-neon-pink">Request Access</button>' +
-        '</form>';
-      var form = document.getElementById('as-access-form');
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        submitAccessRequest();
-      });
-      return;
-    }
-
-    var statusClass = data.status === 'added' ? 'added' : 'pending';
-    var statusLine =
-      data.status === 'added'
-        ? 'Access granted for <strong>' + esc(data.spotify_email) + '</strong>. You should be able to connect Spotify now.'
-        : 'Waiting on the owner to add <strong>' + esc(data.spotify_email) + '</strong> to Spotify’s allow-list.';
-    body.innerHTML =
-      '<div class="as-access-state ' + statusClass + '">' +
-      '<span class="as-access-dot"></span>' +
-      '<span class="as-access-state-text">' + statusLine +
-      '<small>Submitted ' + (data.submitted_at ? new Date(data.submitted_at).toLocaleDateString() : '') + '</small></span>' +
-      '<button class="btn" data-access-action="withdraw" style="font-size:12px;padding:6px 14px;flex-shrink:0;">Withdraw</button>' +
-      '</div>';
-    body.querySelector('[data-access-action="withdraw"]').addEventListener('click', withdrawAccessRequest);
-  }
-
-  function submitAccessRequest() {
-    var input = document.getElementById('as-access-email');
-    var btn = document.querySelector('#as-access-form button[type="submit"]');
-    var email = input ? input.value.trim() : '';
-    if (!email) return;
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = 'Sending…';
-    }
-    api('/api/spotify/access-request', { method: 'POST', body: JSON.stringify({ spotify_email: email }) }).then(function (r) {
-      if (!r.ok) {
-        if (r.status === 401) {
-          if (window.AuraGuest && typeof window.AuraGuest.isGuest === 'function' && window.AuraGuest.isGuest()) {
-            STATE.viewEl.innerHTML = '<div class="card as-card"><p class="as-note">Log in or sign up to connect Spotify.</p></div>';
-            return;
-          }
-          window.location.replace('/login');
-          return;
-        }
-        var msg = (r.data && r.data.message) || 'Please enter a valid Spotify account email.';
-        if (r.status === 429) msg = "You've submitted this a few times already -- please wait a bit before trying again.";
-        toast('Couldn’t Submit', msg, false);
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = 'Request Access';
-        }
-        return;
-      }
-      toast('Request Sent', 'The AuraStudy owner can now add you to Spotify’s allow-list.', true);
-      var body = accessBody();
-      if (body) loadAccessRequest();
-    });
-  }
-
-  function withdrawAccessRequest() {
-    api('/api/spotify/access-request', { method: 'DELETE' }).then(function (r) {
-      if (!r.ok) {
-        if (r.status === 401) {
-          if (window.AuraGuest && typeof window.AuraGuest.isGuest === 'function' && window.AuraGuest.isGuest()) {
-            STATE.viewEl.innerHTML = '<div class="card as-card"><p class="as-note">Log in or sign up to connect Spotify.</p></div>';
-            return;
-          }
-          window.location.replace('/login');
-          return;
-        }
-        toast('Couldn’t Withdraw', 'Please try again.', false);
-        return;
-      }
-      toast('Request Withdrawn', 'Your Spotify email was removed.', true);
-      loadAccessRequest();
-    });
   }
 
   function onPanelClick(e) {

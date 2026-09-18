@@ -49,7 +49,10 @@ def test_spotify_connect_flow_copy_and_oauth_toast():
     assert "spotifyErrorMessage" in js
     assert "Couldn’t Connect Spotify" in js
     assert "signed into AuraStudy" in js
-    assert "Request Access" in js
+    assert "Connect Spotify" in js
+    assert "Request Access" not in js
+    assert "access-request" not in js
+    assert "as-access-form" not in js
 
 
 def test_active_view_is_persisted_and_restored_after_bootstrap():

@@ -14,8 +14,8 @@ a single flat table per user ordered by `created_at`.
 
 The owner-side admin page (GET /admin/support, POST
 /admin/support/<user_id>/reply) lives in server/app.py, which imports the
-query/write helpers below rather than duplicating them -- same split as
-server/spotify_requests.py. Those helpers are OWNER-ONLY data access: the
+query/write helpers below rather than duplicating them. Those helpers are
+OWNER-ONLY data access: the
 access-control decision (is the caller actually the configured owner) is
 made in app.py before any of them are called, not here.
 
@@ -37,7 +37,7 @@ MAX_BODY_LENGTH = 2000
 # Rate-limits POST /api/support/messages per logged-in user, via the same
 # auth_attempts mechanism the rest of the app already rate-limits with (see
 # server/security.py record_attempt/count_attempts, and the identical
-# pattern in server/spotify_requests.py). Keyed by user id, not IP, since
+# pattern in server/security.py). Keyed by user id, not IP, since
 # the endpoint is already @login_required -- the account is the meaningful
 # identity to bound here.
 SEND_RATE_LIMIT = 20
@@ -204,8 +204,7 @@ def list_messages_for_user(db, user_id):
 
 def post_admin_reply(db, user_id, body: str) -> None:
     """Writes one admin reply into user_id's conversation. Commits on its
-    own, matching server/spotify_requests.py:mark_request_added's pattern
-    for a single owner-triggered write."""
+    own for a single owner-triggered write."""
     db.execute(
         "INSERT INTO support_messages (user_id, body, from_admin, created_at) "
         "VALUES (%s, %s, %s, %s)",
