@@ -281,7 +281,7 @@ def list_users_overview(db):
     """One row per user: id, email, a display name if they have one, this
     week's study seconds, and a total session count -- "the minimum needed
     to do the job" (spec). Deliberately excludes password_hash, session
-    tokens, Spotify tokens, and the raw state payload itself: `state_payload`
+    tokens and the raw state payload itself: `state_payload`
     is read here only to derive `total_sessions` and is never included in
     the returned dict, so it never reaches a template or the browser.
     """

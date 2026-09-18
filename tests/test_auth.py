@@ -618,7 +618,7 @@ def test_login_logout_me_flow(client, outbox):
     assert me_resp.status_code == 200
     me_data = me_resp.get_json()
     assert me_data["user"]["email"] == "user@example.com"
-    assert me_data["spotify_connected"] is False
+    assert "spotify_connected" not in me_data
 
     logout_resp = client.post("/api/auth/logout", headers=JSON_HEADERS)
     assert logout_resp.status_code == 200

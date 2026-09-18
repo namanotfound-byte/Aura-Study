@@ -35,24 +35,14 @@ def test_leaderboard_has_daily_weekly_monthly_toggle_and_no_auto_open_name_edito
     assert "<th>Duration</th>" in sessions_block
 
 
-def test_spotify_timer_bar_is_horizontal():
-    js = _read("static", "spotify.js")
-    assert ".tmp-now-playing{display:flex;align-items:center" in js
-    assert "tmp-popover-stack" in js
-    assert "overflow-wrap:anywhere" in js
-    assert "as-now-bar" in js
-
-
-def test_spotify_connect_flow_copy_and_oauth_toast():
-    js = _read("static", "spotify.js")
-    assert "Extended Quota" in js
-    assert "spotifyErrorMessage" in js
-    assert "Couldn’t Connect Spotify" in js
-    assert "signed into AuraStudy" in js
-    assert "Connect Spotify" in js
-    assert "Request Access" not in js
-    assert "access-request" not in js
-    assert "as-access-form" not in js
+def test_spotify_feature_removed_from_app():
+    html = _read("index.html")
+    assert 'id="view-spotify"' not in html
+    assert "nav-item-music-toggle" not in html
+    assert "Connect Spotify" not in html
+    assert "spotify.js" not in html
+    guest_js = _read("static", "guest.js")
+    assert "Spotify" not in guest_js
 
 
 def test_active_view_is_persisted_and_restored_after_bootstrap():
@@ -340,7 +330,7 @@ def test_sidebar_collapse_toggle_persisted():
     assert "function applySidebarCollapsedState" in html
     assert "localStorage.getItem('aurastudy_sidebar_collapsed')" in html
     sidebar_block = html[html.index('id="app-sidebar"'):html.index("<!-- Main Workspace Container -->")]
-    assert 'id="nav-item-music-toggle"' in sidebar_block
+    assert "nav-item-music-toggle" not in sidebar_block
     assert "overflow-y: auto" in html[html.index(".sidebar > div:first-child"):html.index(".sidebar > div:first-child") + 180]
     brand_snippet = html[
         html.index('id="sidebar-brand-home"') : html.index('id="sidebar-brand-home"') + 320
@@ -511,17 +501,6 @@ def test_analytics_chart_fills_zero_days_with_smooth_line():
     assert "sortedDates.slice(sliceStart)" not in html
     assert "tension: 0.42," in chart_block
     assert "stepped:" not in chart_block
-
-
-def test_switchview_initializes_spotify_for_signed_in_users():
-    html = _read("index.html")
-    switch_block = html[html.index("function switchView(targetPanelKey"):html.index("function changeEngineMode")]
-    assert "AuraSpotify.init();" in switch_block
-    assert "AuraSpotify.onViewShown();" in switch_block
-    assert "initGuestExperience" in switch_block
-    spotify_js = _read("static", "spotify.js")
-    assert "function ensureSpotifyPanelRendered" in spotify_js
-    assert "isInited:" in spotify_js
 
 
 def test_close_pip_if_timer_view_respects_suppress_flag():

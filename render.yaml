@@ -1,6 +1,6 @@
 # Render Blueprint for AuraStudy. See README.md "Deployment" for the full,
 # numbered walkthrough of turning this into a live app (Neon, Brevo, Render,
-# Spotify, DNS) -- this file only describes the *service*, not how to get
+# DNS) -- this file only describes the *service*, not how to get
 # the account credentials it references.
 #
 # Every secret below is declared with `sync: false`, which tells Render
@@ -46,18 +46,16 @@ services:
       - key: DATABASE_URL
         sync: false
 
-      # --- Secrets: Flask session signing + Spotify token encryption -----
-      # Generate both with the commands in README.md "Deployment" step 4.
+      # --- Secrets: Flask session signing ----------------------------------
+      # Generate with the command in README.md "Deployment" step 4.
       # Required in production -- server/config.py refuses to boot without
-      # a real (non-empty, non-placeholder) value for either.
+      # a real (non-empty, non-placeholder) value.
       - key: SECRET_KEY
-        sync: false
-      - key: TOKEN_ENC_KEY
         sync: false
 
       # --- App identity ----------------------------------------------------
       # The public HTTPS URL this service is reachable at. Used to build
-      # email verification/reset links and the Spotify OAuth redirect, and
+      # email verification/reset links and
       # gates the `Secure` cookie flag + HSTS header. Set this to your
       # Render *.onrender.com URL first, then update it to the custom
       # domain (https://aurastudy.is-a.dev) once that's live -- see README.
@@ -105,16 +103,6 @@ services:
         sync: false
       - key: SMTP_USE_TLS
         value: "true"
-
-      # --- Spotify OAuth ---------------------------------------------------
-      # From your Spotify developer dashboard app. Leaving these unset is
-      # fine -- the app just shows "Spotify not configured" -- but the
-      # redirect URI registered on the Spotify app must match APP_BASE_URL
-      # exactly (see README step 6) once you do set them.
-      - key: SPOTIFY_CLIENT_ID
-        sync: false
-      - key: SPOTIFY_CLIENT_SECRET
-        sync: false
 
       # --- Owner-only admin page -------------------------------------------
       # Gates every /admin/* page: GET /admin (index), GET /admin/users

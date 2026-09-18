@@ -291,13 +291,8 @@ def me():
     user = current_user()
     if user is None:
         return json_error("unauthenticated", "Not logged in.", 401)
-    db = get_db()
-    spotify_row = db.execute(
-        "SELECT 1 FROM spotify_accounts WHERE user_id = %s", (user["id"],)
-    ).fetchone()
     return flask.jsonify({
         "user": _public_user(user),
-        "spotify_connected": spotify_row is not None,
     })
 
 

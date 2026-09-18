@@ -18,10 +18,9 @@
  *
  *   1. Load this AFTER the existing inline app <script> (so appState /
  *      saveStateToLocalStorageRegister / loadStateFromLocalStorageRegister /
- *      switchView already exist as globals) and BEFORE spotify.js:
+ *      switchView already exist as globals):
  *
  *          <script src="/static/sync.js"></script>
- *          <script src="/static/spotify.js"></script>
  *
  *   2. The app's DOMContentLoaded handler must be LOCAL-FIRST for the running
  *      timer: loadStateFromLocalStorageRegister() and

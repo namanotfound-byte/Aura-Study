@@ -99,7 +99,6 @@ def test_guest_leaderboard_get_allowed_state_still_401(client):
 
     blocked = [
         ("/api/state", "GET"),
-        ("/api/spotify/status", "GET"),
         ("/api/support/messages", "GET"),
     ]
     for path, method in blocked:
@@ -140,11 +139,12 @@ def test_login_and_register_include_guest_cta(client):
         assert "/app?guest=1" in body
 
 
-def test_guest_app_shows_spotify_locked_panel_markup(client):
+def test_guest_app_has_no_spotify_ui(client):
     resp = start_guest_trial(client)
     body = resp.get_data(as_text=True)
     assert "initGuestExperience" in body
-    assert "showGuestLockedPanel" in _read("static", "guest.js")
-    assert 'id="view-spotify"' in body
-    assert "guest-locked-panel" in _read("static", "guest.js")
-    assert "Log in or sign up to connect Spotify" in _read("static", "guest.js")
+    assert 'id="view-spotify"' not in body
+    assert "nav-item-music-toggle" not in body
+    assert "Connect Spotify" not in body
+    guest_js = _read("static", "guest.js")
+    assert "Spotify" not in guest_js

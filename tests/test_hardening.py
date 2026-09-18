@@ -10,13 +10,10 @@ import json
 import re
 
 import pytest
-from cryptography.fernet import Fernet
 
 from server import config as config_module
 
 JSON_HEADERS = {"X-Requested-With": "XMLHttpRequest"}
-
-_VALID_FERNET_KEY = Fernet.generate_key().decode()
 
 
 def _register_verify_login(client, outbox, email="hardening-user@example.com", password="pw123456"):
@@ -47,9 +44,9 @@ def isolated_env(monkeypatch, tmp_path):
     monkeypatch.setattr(config_module, "ENV_PATH", str(tmp_path / "does-not-exist.env"))
     for var in (
         "SECRET_KEY", "APP_BASE_URL", "PORT", "DATABASE_PATH", "DATABASE_URL",
-        "ENVIRONMENT", "TOKEN_ENC_KEY", "BREVO_API_KEY", "SMTP_HOST", "SMTP_PORT",
-        "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM", "SMTP_USE_TLS", "SPOTIFY_CLIENT_ID",
-        "SPOTIFY_CLIENT_SECRET", "REQUIRE_EMAIL_VERIFICATION", "MAX_CONTENT_LENGTH",
+        "ENVIRONMENT", "BREVO_API_KEY", "SMTP_HOST", "SMTP_PORT",
+        "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM", "SMTP_USE_TLS",
+        "REQUIRE_EMAIL_VERIFICATION", "MAX_CONTENT_LENGTH",
     ):
         monkeypatch.delenv(var, raising=False)
     config_module.get_config.cache_clear()
@@ -61,7 +58,6 @@ def isolated_env(monkeypatch, tmp_path):
 
 def test_production_refuses_to_boot_without_secret_key(isolated_env, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost/db")
-    monkeypatch.setenv("TOKEN_ENC_KEY", _VALID_FERNET_KEY)
     monkeypatch.setenv("SMTP_HOST", "smtp.example.com")
     with pytest.raises(config_module.ProductionConfigError, match="SECRET_KEY"):
         config_module.Config()
@@ -70,17 +66,8 @@ def test_production_refuses_to_boot_without_secret_key(isolated_env, monkeypatch
 def test_production_refuses_placeholder_secret_key(isolated_env, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost/db")
     monkeypatch.setenv("SECRET_KEY", "changeme")
-    monkeypatch.setenv("TOKEN_ENC_KEY", _VALID_FERNET_KEY)
     monkeypatch.setenv("SMTP_HOST", "smtp.example.com")
     with pytest.raises(config_module.ProductionConfigError, match="SECRET_KEY"):
-        config_module.Config()
-
-
-def test_production_refuses_to_boot_without_token_enc_key(isolated_env, monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost/db")
-    monkeypatch.setenv("SECRET_KEY", "a-real-64-char-hex-secret-0123456789abcdef0123456789abcdef01")
-    monkeypatch.setenv("SMTP_HOST", "smtp.example.com")
-    with pytest.raises(config_module.ProductionConfigError, match="TOKEN_ENC_KEY"):
         config_module.Config()
 
 
@@ -89,7 +76,6 @@ def test_production_refuses_to_boot_without_smtp_host(isolated_env, monkeypatch)
     # the boot check must name both options in its error message.
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost/db")
     monkeypatch.setenv("SECRET_KEY", "a-real-64-char-hex-secret-0123456789abcdef0123456789abcdef01")
-    monkeypatch.setenv("TOKEN_ENC_KEY", _VALID_FERNET_KEY)
     with pytest.raises(config_module.ProductionConfigError, match="BREVO_API_KEY"):
         config_module.Config()
     with pytest.raises(config_module.ProductionConfigError, match="SMTP_HOST"):
@@ -102,7 +88,6 @@ def test_production_boots_with_only_brevo_api_key_set(isolated_env, monkeypatch)
     outbound), so requiring it too would make the app unbootable there."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost/db")
     monkeypatch.setenv("SECRET_KEY", "a-real-64-char-hex-secret-0123456789abcdef0123456789abcdef01")
-    monkeypatch.setenv("TOKEN_ENC_KEY", _VALID_FERNET_KEY)
     monkeypatch.setenv("BREVO_API_KEY", "xkeysib-test-key")
     cfg = config_module.Config()
     assert cfg.brevo_api_key == "xkeysib-test-key"
@@ -112,7 +97,6 @@ def test_production_boots_with_only_brevo_api_key_set(isolated_env, monkeypatch)
 def test_production_forces_email_verification_on(isolated_env, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost/db")
     monkeypatch.setenv("SECRET_KEY", "a-real-64-char-hex-secret-0123456789abcdef0123456789abcdef01")
-    monkeypatch.setenv("TOKEN_ENC_KEY", _VALID_FERNET_KEY)
     monkeypatch.setenv("SMTP_HOST", "smtp.example.com")
     monkeypatch.setenv("REQUIRE_EMAIL_VERIFICATION", "false")
     cfg = config_module.Config()
@@ -127,15 +111,6 @@ def test_explicit_environment_production_also_triggers_the_gate(isolated_env, mo
         config_module.Config()
 
 
-def test_invalid_fernet_key_rejected_even_outside_production(isolated_env, monkeypatch):
-    """Garbage TOKEN_ENC_KEY must fail fast at boot, not fail mysteriously
-    the first time Spotify token encryption is attempted -- checked
-    regardless of production/dev, since it's never safe."""
-    monkeypatch.setenv("TOKEN_ENC_KEY", "not-a-real-fernet-key")
-    with pytest.raises(config_module.ProductionConfigError, match="Fernet"):
-        config_module.Config()
-
-
 def test_dev_mode_still_auto_generates_ephemeral_secret_key(isolated_env):
     """Local dev (no DATABASE_URL, no ENVIRONMENT=production) keeps the
     original zero-config behaviour: an ephemeral SECRET_KEY with a warning,
@@ -145,8 +120,7 @@ def test_dev_mode_still_auto_generates_ephemeral_secret_key(isolated_env):
     assert len(cfg.secret_key) >= 32
 
 
-def test_max_content_length_defaults_to_about_2mb(isolated_env, monkeypatch):
-    monkeypatch.setenv("TOKEN_ENC_KEY", _VALID_FERNET_KEY)
+def test_max_content_length_defaults_to_about_2mb(isolated_env):
     cfg = config_module.Config()
     assert cfg.max_content_length == 2 * 1024 * 1024
 
@@ -186,14 +160,12 @@ def test_security_headers_present_on_every_response(client):
     assert "frame-ancestors 'none'" in csp
     assert "https://cdn.jsdelivr.net" in csp  # Chart.js
     assert "https://unpkg.com" in csp  # Lucide
-    assert "https://sdk.scdn.co" in csp  # Spotify Web Playback SDK
-    assert "https://i.scdn.co" in csp  # Spotify art
-    assert "https://open.spotify.com" in csp  # Spotify embed
-    assert "https://api.spotify.com" in csp  # Spotify API
+    assert "spotify.com" not in csp
+    assert "scdn.co" not in csp
 
     permissions_policy = resp.headers["Permissions-Policy"]
     # These three must NOT be restricted -- Focus Mode (picture-in-picture,
-    # screen-wake-lock) and the Spotify embed (autoplay) need them.
+    # screen-wake-lock) needs them.
     assert "picture-in-picture=()" not in permissions_policy
     assert "screen-wake-lock=()" not in permissions_policy
     assert "autoplay=()" not in permissions_policy
@@ -205,7 +177,6 @@ def test_security_headers_present_on_every_response(client):
 def test_hsts_present_when_base_url_is_https(monkeypatch, tmp_path):
     monkeypatch.setattr(config_module, "ENV_PATH", str(tmp_path / "does-not-exist.env"))
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-not-for-prod")
-    monkeypatch.setenv("TOKEN_ENC_KEY", _VALID_FERNET_KEY)
     monkeypatch.setenv("APP_BASE_URL", "https://aurastudy.example.com")
     monkeypatch.setenv("REQUIRE_EMAIL_VERIFICATION", "false")
     monkeypatch.setenv("SMTP_HOST", "")
@@ -238,7 +209,6 @@ def test_session_cookie_is_secure_when_base_url_is_https(monkeypatch, tmp_path):
     migration and the ProxyFix change."""
     monkeypatch.setattr(config_module, "ENV_PATH", str(tmp_path / "does-not-exist.env"))
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-not-for-prod")
-    monkeypatch.setenv("TOKEN_ENC_KEY", _VALID_FERNET_KEY)
     monkeypatch.setenv("APP_BASE_URL", "https://aurastudy.example.com")
     monkeypatch.setenv("REQUIRE_EMAIL_VERIFICATION", "false")
     monkeypatch.setenv("SMTP_HOST", "")

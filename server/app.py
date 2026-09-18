@@ -12,7 +12,6 @@ from urllib.parse import quote
 
 from .auth import bp as auth_bp
 from .state import bp as state_bp
-from .spotify import bp as spotify_bp
 from .leaderboard import bp as leaderboard_bp, backfill_months_from_user_state
 from .support import bp as support_bp
 from . import admin as admin_module
@@ -62,7 +61,6 @@ def create_app() -> flask.Flask:
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(state_bp, url_prefix="/api")
-    app.register_blueprint(spotify_bp, url_prefix="/api/spotify")
     app.register_blueprint(leaderboard_bp, url_prefix="/api")
     app.register_blueprint(support_bp, url_prefix="/api/support")
 

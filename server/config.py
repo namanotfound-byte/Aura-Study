@@ -24,8 +24,8 @@ class ProductionConfigError(RuntimeError):
     unsafe configuration. Never caught anywhere -- letting this propagate is
     exactly what "refuse to boot" means: the process exits with a clear
     message on stderr instead of the app silently accepting a config that
-    would log every user out on restart, leave Spotify tokens permanently
-    undecryptable, or drop verification emails into a file nobody reads."""
+    would log every user out on restart or drop verification emails into a
+    file nobody reads."""
 
 
 # Values that are obviously a placeholder rather than a real generated
@@ -53,56 +53,7 @@ def _require_production_secret(name: str, value: str, generate_hint: str) -> Non
             "(never commit it):\n"
             "    {hint}\n"
             "A production process must never fall back to an ephemeral, auto-generated "
-            "key -- that logs out every user on each restart and makes any Spotify "
-            "refresh tokens already stored (encrypted with the old key) permanently "
-            "undecryptable.".format(name=name, hint=generate_hint)
-        )
-
-
-def _ensure_token_enc_key() -> str:
-    """Generate a Fernet key and persist it into .env so it's stable across restarts.
-
-    Only called when TOKEN_ENC_KEY is not already set in the environment (e.g. by
-    a test harness), so we never clobber a real project .env during tests.
-    """
-    from cryptography.fernet import Fernet
-
-    key = Fernet.generate_key().decode()
-    try:
-        lines = []
-        if os.path.exists(ENV_PATH):
-            with open(ENV_PATH, "r") as f:
-                lines = f.readlines()
-        found = False
-        for i, line in enumerate(lines):
-            if line.startswith("TOKEN_ENC_KEY="):
-                lines[i] = "TOKEN_ENC_KEY={}\n".format(key)
-                found = True
-                break
-        if not found:
-            if lines and not lines[-1].endswith("\n"):
-                lines.append("\n")
-            lines.append("TOKEN_ENC_KEY={}\n".format(key))
-        with open(ENV_PATH, "w") as f:
-            f.writelines(lines)
-    except OSError:
-        pass  # best-effort; fall back to an in-memory key for this process
-    os.environ["TOKEN_ENC_KEY"] = key
-    return key
-
-
-def _validate_fernet_key(key: str) -> None:
-    """Fail fast at boot if TOKEN_ENC_KEY isn't actually a usable Fernet key
-    (e.g. someone pasted a random string), rather than letting every Spotify
-    token encrypt/decrypt call fail mysteriously at request time."""
-    from cryptography.fernet import Fernet
-
-    try:
-        Fernet(key.encode("utf-8"))
-    except (ValueError, TypeError) as exc:
-        raise ProductionConfigError(
-            "TOKEN_ENC_KEY is set but is not a valid Fernet key ({}). Generate one with:\n"
-            '    python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'.format(exc)
+            "key -- that logs out every user on each restart.".format(name=name, hint=generate_hint)
         )
 
 
@@ -131,8 +82,8 @@ class Config(object):
         # what gates every "refuse to boot unsafe" check below. The test
         # suite's Postgres-backend runs DO set DATABASE_URL and therefore DO
         # go through this same gate -- see tests/conftest.py, which sets a
-        # real (non-placeholder) SECRET_KEY/TOKEN_ENC_KEY/SMTP_HOST for
-        # exactly that reason, rather than being special-cased around it.
+        # real (non-placeholder) SECRET_KEY/SMTP_HOST for exactly that reason,
+        # rather than being special-cased around it.
         self.environment = (os.environ.get("ENVIRONMENT") or "").strip().lower()
         self.is_production = bool(self.database_url) or self.environment == "production"
 
@@ -150,17 +101,6 @@ class Config(object):
                       "key. Sessions will not survive a restart. Set SECRET_KEY in .env "
                       "for anything beyond local dev.")
                 self.secret_key = secrets.token_hex(32)
-
-        raw_token_key = os.environ.get("TOKEN_ENC_KEY") or ""
-        if self.is_production:
-            _require_production_secret(
-                "TOKEN_ENC_KEY", raw_token_key,
-                'python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"',
-            )
-            self.token_enc_key = raw_token_key
-        else:
-            self.token_enc_key = raw_token_key or _ensure_token_enc_key()
-        _validate_fernet_key(self.token_enc_key)
 
         self.smtp_host = os.environ.get("SMTP_HOST") or ""
         self.smtp_port = int(os.environ.get("SMTP_PORT") or "587")
@@ -185,9 +125,6 @@ class Config(object):
                 "outbound SMTP ports) or SMTP_HOST/SMTP_USER/SMTP_PASSWORD for a real "
                 "provider (e.g. Brevo)."
             )
-
-        self.spotify_client_id = os.environ.get("SPOTIFY_CLIENT_ID") or ""
-        self.spotify_client_secret = os.environ.get("SPOTIFY_CLIENT_SECRET") or ""
 
         # Gates owner-only admin routes (server/app.py). Compared
         # case-insensitively against the logged-in user's email, so lowercase

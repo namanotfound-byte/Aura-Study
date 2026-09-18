@@ -128,6 +128,8 @@ CREATE TABLE IF NOT EXISTS user_state (
   updated_at        TEXT NOT NULL
 );
 
+-- Legacy table from the removed Spotify integration. Kept for existing
+-- deployments; no application code reads or writes it.
 CREATE TABLE IF NOT EXISTS spotify_accounts (
   user_id           INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   spotify_user_id   TEXT,
@@ -295,6 +297,8 @@ CREATE TABLE IF NOT EXISTS user_state (
   updated_at        TIMESTAMPTZ NOT NULL
 );
 
+-- Legacy table from the removed Spotify integration. Kept for existing
+-- deployments; no application code reads or writes it.
 CREATE TABLE IF NOT EXISTS spotify_accounts (
   user_id           INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   spotify_user_id   TEXT,
@@ -393,7 +397,7 @@ CREATE INDEX IF NOT EXISTS idx_support_messages_user ON support_messages(user_id
 
 # ---------------------------------------------------------------------------
 # Time helpers (frozen contract -- server/security.py, server/auth.py,
-# server/spotify.py, server/app.py, and the test suite all import these)
+# server/app.py and the test suite all import these)
 # ---------------------------------------------------------------------------
 
 def utcnow() -> datetime.datetime:

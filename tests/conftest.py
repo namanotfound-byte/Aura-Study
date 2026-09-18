@@ -17,7 +17,6 @@ on this machine, the postgres-parametrized runs are skipped with a loud,
 session-scoped warning printed once -- they are never silently downgraded to
 SQLite-only in a way that could be mistaken for "Postgres was verified".
 
-`app` and `client` are also consumed by tests/test_spotify.py.
 """
 import os
 import uuid
@@ -25,7 +24,6 @@ import warnings
 from urllib.parse import urlparse, urlunparse
 
 import pytest
-from cryptography.fernet import Fernet
 
 from server import config as config_module
 
@@ -171,7 +169,6 @@ def owner_email():
 @pytest.fixture
 def app(request, tmp_path, monkeypatch, outbox, backend, owner_email):
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-not-for-prod")
-    monkeypatch.setenv("TOKEN_ENC_KEY", Fernet.generate_key().decode())
     monkeypatch.setenv("APP_BASE_URL", "http://127.0.0.1:5055")
     monkeypatch.setenv("REQUIRE_EMAIL_VERIFICATION", "true")
     # A real (non-empty) value here, even though `mailer.send_email` is
@@ -181,8 +178,6 @@ def app(request, tmp_path, monkeypatch, outbox, backend, owner_email):
     # boot with SMTP_HOST unset. "smtp.test.invalid" is an RFC 2606 reserved
     # test domain -- it is never resolved or connected to in this suite.
     monkeypatch.setenv("SMTP_HOST", "smtp.test.invalid")
-    monkeypatch.setenv("SPOTIFY_CLIENT_ID", "")
-    monkeypatch.setenv("SPOTIFY_CLIENT_SECRET", "")
     if owner_email:
         monkeypatch.setenv("OWNER_EMAIL", owner_email)
     else:

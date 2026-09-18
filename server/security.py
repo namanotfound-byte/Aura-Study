@@ -15,7 +15,6 @@ from urllib.parse import quote
 
 import flask
 import requests
-from cryptography.fernet import Fernet
 
 from .config import get_config
 from .db import get_db, utcnow, utcnow_iso, parse_iso
@@ -277,20 +276,6 @@ def count_attempts(key: str, since_minutes: int) -> int:
         (key, cutoff),
     ).fetchone()
     return row["c"]
-
-
-# ------------------------------------------------------------- token crypto
-
-def _fernet() -> Fernet:
-    return Fernet(get_config().token_enc_key.encode("utf-8"))
-
-
-def encrypt_token(plaintext: str) -> str:
-    return _fernet().encrypt(plaintext.encode("utf-8")).decode("utf-8")
-
-
-def decrypt_token(ciphertext: str) -> str:
-    return _fernet().decrypt(ciphertext.encode("utf-8")).decode("utf-8")
 
 
 # --------------------------------------------------------- breached passwords

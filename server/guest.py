@@ -2,7 +2,7 @@
 
 The guest cookie marks a browser as a guest so /app loads without login.
 Guests use the timer indefinitely with localStorage; account-only features
-(Spotify, Help, cloud sync, appearing on leaderboards) stay locked while
+(Help, cloud sync, appearing on leaderboards) stay locked while
 leaderboard GET endpoints remain view-only.
 """
 import datetime

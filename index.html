@@ -1641,7 +1641,6 @@
             .timer-stage-footer-center {
                 max-width: calc(100% - 100px);
             }
-            .timer-music-chip-label { display: none; }
         }
 
         .timer-floating-interactive-trigger-btn {
@@ -1680,10 +1679,6 @@
             padding: 10px;
             justify-content: center;
         }
-        .timer-music-chip-label {
-            letter-spacing: 0.02em;
-        }
-
         /* Post-It brain dump — tucked away, opens on demand */
         .timer-braindump-postit-modal {
             position: absolute;
@@ -1722,41 +1717,6 @@
             font-weight: 600;
             color: #4A4A29;
             line-height: 1.5;
-        }
-
-        /* Music popover (content built by static/spotify.js) — opens upward from bottom-left chip */
-        .timer-music-control-wrap {
-            position: relative;
-        }
-        .timer-music-popover {
-            position: absolute;
-            bottom: calc(100% + 8px);
-            left: 0;
-            top: auto;
-            right: auto;
-            z-index: 700;
-            min-width: min(420px, calc(100vw - 24px));
-            max-width: min(480px, calc(100vw - 24px));
-            background: rgba(18, 14, 24, 0.88);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 20px;
-            padding: 12px 14px;
-            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
-            transform-origin: bottom left;
-            transition: opacity 0.15s ease, transform 0.15s ease;
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            overflow: hidden;
-        }
-        .timer-fullscreen-view:not(.dark-mode-active) .timer-music-popover {
-            background: rgba(255, 255, 255, 0.94);
-            border-color: var(--border-color);
-            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
-        }
-        .timer-music-popover[hidden] { display: none; }
-        .timer-music-popover.is-opening {
-            opacity: 0;
-            transform: translateY(4px) scale(0.96);
         }
 
         input:focus::placeholder {
@@ -3479,10 +3439,6 @@
                     <i data-lucide="star"></i>
                     <span>Achievements</span>
                 </div>
-                <div class="nav-item" id="nav-item-music-toggle" title="Music" onclick="switchView('spotify', this); closeMobileNav();">
-                    <i data-lucide="music"></i>
-                    <span>Music</span>
-                </div>
                 <div class="nav-item" title="Leaderboard" onclick="switchView('leaderboard', this); closeMobileNav();">
                     <i data-lucide="bar-chart-3"></i>
                     <span>Leaderboard</span>
@@ -3799,17 +3755,8 @@
                     </div>
                 </main>
 
-                <!-- Footer chrome: music (left), ambient (center), fullscreen (right) -->
+                <!-- Footer chrome: ambient (center), fullscreen (right) -->
                 <footer class="timer-stage-footer">
-                    <div class="timer-stage-footer-left">
-                        <div class="timer-music-control-wrap" id="timer-music-control-wrap">
-                            <button class="timer-floating-interactive-trigger-btn" id="timer-music-trigger-btn" type="button" title="Music controls" aria-label="Music controls" aria-haspopup="true" aria-expanded="false" aria-controls="timer-music-popover">
-                                <i data-lucide="music" style="width: 14px; height: 14px;"></i>
-                                <span class="timer-music-chip-label tfi-label">Music</span>
-                            </button>
-                            <div class="timer-music-popover" id="timer-music-popover" role="menu" aria-label="Music controls" hidden></div>
-                        </div>
-                    </div>
                     <div class="timer-stage-footer-center">
                         <div class="timer-colour-control-wrap" id="timer-colour-control-wrap">
                             <button class="timer-floating-interactive-trigger-btn" id="timer-colour-trigger-btn" type="button" title="Timer background colour" aria-label="Timer background colour" aria-haspopup="true" aria-expanded="false" aria-controls="timer-colour-popover">
@@ -3919,9 +3866,6 @@
             <div id="subview-badges" class="trophy-showcase-matrix"></div>
             <div id="subview-achievements" class="trophy-showcase-matrix" style="display: none;"></div>
         </div>
-
-        <!-- VIEW: SPOTIFY (all inner markup injected by static/spotify.js via AuraSpotify.renderInto) -->
-        <div id="view-spotify" class="view-panel"></div>
 
         <!-- VIEW: LEADERBOARD -->
         <div id="view-leaderboard" class="view-panel">
@@ -4138,11 +4082,6 @@
                 <p class="text-muted" id="focus-mode-capability-note" style="font-size: 11px; margin-top: 12px; line-height: 1.5;">Checking what this browser supports…</p>
             </div>
 
-            <div class="card" style="max-width: 600px; margin-top: 24px;">
-                <div class="card-title">Spotify Connection</div>
-                <div id="settings-spotify-status" class="text-muted" style="font-size: 13px;">Checking Spotify status…</div>
-                <button class="btn" style="margin-top: 12px; font-size: 12px; padding: 6px 14px;" onclick="switchView('spotify', document.getElementById('nav-item-music-toggle'))">Open Music Tab</button>
-            </div>
         </div>
 
     </div>
@@ -4279,7 +4218,7 @@
         const RUNNING_TIMER_STORAGE_KEY = 'aurastudy_running_timer_v1';
         const LAST_TARGET_STORAGE_KEY = 'aurastudy_last_target';
         const ACTIVE_VIEW_STORAGE_KEY = 'aurastudy_active_view';
-        const GUEST_LOCKED_VIEWS = ['spotify', 'help'];
+        const GUEST_LOCKED_VIEWS = ['help'];
         const TIMER_PERSIST_THROTTLE_MS = 5000;        // how often the live heartbeat snapshot is rewritten while running
         const MAX_PLAUSIBLE_RECOVERY_SECONDS = 4 * 60 * 60; // beyond this a *recovered* (post-reload) session is capped and confirmed with the user rather than trusted silently -- see attemptRunningTimerRecovery
         let lastTimerPersistMs = 0;
@@ -4785,8 +4724,6 @@
                 if (!(window.AuraGuest && AuraGuest.isGuest())) loadHelpMessages();
                 if (window.AuraGuest && typeof AuraGuest.initGuestExperience === 'function' && AuraGuest.isGuest()) {
                     AuraGuest.initGuestExperience();
-                } else if (typeof AuraSpotify !== 'undefined') {
-                    AuraSpotify.init();
                 }
                 initTimerColourPopover();
                 if (typeof AuraFocus !== 'undefined') AuraFocus.init();
@@ -5675,25 +5612,13 @@
         })();
 
         function switchView(targetPanelKey, clickedAnchorRef) {
-            // Spotify's now-playing poll must only run while its view is actually
-            // visible, so stop it here before we swap the active panel away from it.
             const previouslyActivePanel = document.querySelector('.view-panel.active');
-            const wasSpotifyActive = previouslyActivePanel && previouslyActivePanel.id === 'view-spotify';
-            if (wasSpotifyActive && targetPanelKey !== 'spotify' && typeof AuraSpotify !== 'undefined') {
-                AuraSpotify.onViewHidden();
-            }
-            // Leaderboard polls only while its own view is visible -- same rule as Spotify's now-playing poll.
             const wasLeaderboardActive = previouslyActivePanel && previouslyActivePanel.id === 'view-leaderboard';
             if (wasLeaderboardActive && targetPanelKey !== 'leaderboard') {
                 stopLeaderboardPolling();
             }
-            // The Timer view's Music popover is anchored inside #view-timer, so it
-            // has nowhere sensible to sit once that panel is hidden -- close it
-            // rather than leave it open-but-invisible with its outside-click/
-            // Escape listeners still attached.
             const wasTimerActive = previouslyActivePanel && previouslyActivePanel.id === 'view-timer';
             if (wasTimerActive && targetPanelKey !== 'timer') {
-                if (typeof AuraSpotify !== 'undefined') AuraSpotify.closeMusicPopover();
                 closeTimerColourPopover();
             }
 
@@ -5715,19 +5640,7 @@
             else if (targetPanelKey === 'courses') renderCoursesView();
             else if (targetPanelKey === 'sessions') renderSessionsTable();
             else if (targetPanelKey === 'trophies') evaluateCabinetTrophyMetrics();
-            else if (targetPanelKey === 'spotify') {
-                if (window.AuraGuest && AuraGuest.isGuest()) {
-                    if (typeof AuraGuest.initGuestExperience === 'function') {
-                        const spotifyPanel = document.getElementById('view-spotify');
-                        if (spotifyPanel && !spotifyPanel.querySelector('.guest-locked-panel')) AuraGuest.initGuestExperience();
-                    }
-                } else if (typeof AuraSpotify !== 'undefined') {
-                    AuraSpotify.init();
-                    AuraSpotify.onViewShown();
-                }
-            }
             else if (targetPanelKey === 'settings') {
-                refreshSettingsSpotifyStatus();
                 if (typeof AuraFocus !== 'undefined') {
                     AuraFocus.init();
                     if (typeof AuraFocus.renderFocusSettingsUI === 'function') AuraFocus.renderFocusSettingsUI();
@@ -8081,29 +7994,6 @@
                 });
         }
 
-        // Small read-only Spotify status blurb inside Settings, per spec section 9
-        // ("surface Spotify connect/disconnect status here if it fits naturally").
-        // The actual connect/disconnect controls live in the Music tab (AuraSpotify).
-        function refreshSettingsSpotifyStatus() {
-            const el = document.getElementById('settings-spotify-status');
-            if (!el) return;
-            fetch('/api/spotify/status', {
-                credentials: 'same-origin',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-                .then(res => res.json().catch(() => ({})).then(data => ({ res: res, data: data })))
-                .then(({ res, data }) => {
-                    if (!res.ok) { el.textContent = 'Could not load Spotify status.'; return; }
-                    if (!data.configured) {
-                        el.textContent = "Spotify isn't configured by the app owner yet -- see the README's Spotify setup section.";
-                    } else if (!data.connected) {
-                        el.textContent = 'Not connected. Open the Music tab to connect your Spotify account.';
-                    } else {
-                        el.textContent = 'Connected as ' + (data.display_name || 'your Spotify account') + ' (' + (data.premium ? 'Premium' : 'Free') + ').';
-                    }
-                })
-                .catch(() => { el.textContent = 'Could not load Spotify status.'; });
-        }
         function timerGradCssVar(presetKey) {
             return 'var(--timer-grad-' + (presetKey || 'pink-cottoncandy') + ')';
         }
@@ -8150,7 +8040,6 @@
             const popover = document.getElementById('timer-colour-popover');
             const trigger = document.getElementById('timer-colour-trigger-btn');
             if (!popover || !trigger) return;
-            if (typeof AuraSpotify !== 'undefined') AuraSpotify.closeMusicPopover();
             if (timerColourPopoverOpen) {
                 closeTimerColourPopover();
                 return;
@@ -8276,13 +8165,12 @@
         }
     </script>
 
-    <!-- Server sync + Spotify integration, loaded AFTER the inline app script so
-         appState / saveStateToLocalStorageRegister / switchView already exist. -->
+    <!-- Server sync, loaded AFTER the inline app script so appState /
+         saveStateToLocalStorageRegister / switchView already exist. -->
     <!-- Guest trial locks load before sync so bootstrap skips server calls. -->
     <script src="/static/tour.js?v=guest-tour-2"></script>
     <script src="/static/guest.js"></script>
     <script src="/static/sync.js"></script>
-    <script src="/static/spotify.js"></script>
     <script src="/static/pip.js"></script>
 </body>
 </html>

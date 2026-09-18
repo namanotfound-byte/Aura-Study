@@ -28,15 +28,15 @@ bind = "0.0.0.0:{}".format(os.environ.get("PORT", "10000"))
 # tracks concurrent in-flight requests (workers x threads = 2 x 4 = 8 max)
 # rather than a fixed pool size -- comfortably under Neon free tier's
 # connection limit. Threads (not more processes) absorb concurrent requests
-# within that memory budget -- this workload is I/O-bound (Postgres, SMTP,
-# Spotify's API) so threads spend most of their time blocked on network
+# within that memory budget -- this workload is I/O-bound (Postgres, SMTP)
+# so threads spend most of their time blocked on network
 # I/O, which the GIL releases for.
 workers = 2
 threads = 4
 worker_class = "gthread"
 
-# Generous enough to survive a slow Neon cold start or a sluggish upstream
-# Spotify/SMTP call without gunicorn killing the worker mid-request, but
+# Generous enough to survive a slow Neon cold start or a sluggish SMTP
+# call without gunicorn killing the worker mid-request, but
 # still bounded so a genuinely hung worker gets recycled rather than
 # wedging a slot forever.
 timeout = 60

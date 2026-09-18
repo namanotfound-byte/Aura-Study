@@ -67,18 +67,6 @@ def test_session_table_course_is_escaped():
     assert "${escapeHtml(s.course)}</span>" in html
 
 
-def test_spotify_js_still_escapes_untrusted_fields():
-    """static/spotify.js already had its own esc() helper for
-    Spotify-account-controlled strings (display name, playlist name/id/uri,
-    image URL) before this review -- confirm that control wasn't
-    incidentally weakened while everything else in this file was audited."""
-    js = _read("static", "spotify.js")
-    assert "function esc(" in js
-    assert "esc(p.name)" in js
-    assert "esc(p.id)" in js
-    assert "esc(s.display_name" in js or "esc(s.display_name || '')" in js
-
-
 # ------------------------------------------------------------ open redirect
 
 

@@ -16,7 +16,6 @@ import sqlite3
 
 import flask
 import pytest
-from cryptography.fernet import Fernet
 
 from server import config as config_module
 from server.db import init_db
@@ -57,7 +56,6 @@ def test_sqlite_migration_adds_column_and_preserves_existing_row(tmp_path, monke
     legacy_conn.close()
 
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-not-for-prod")
-    monkeypatch.setenv("TOKEN_ENC_KEY", Fernet.generate_key().decode())
     monkeypatch.setenv("APP_BASE_URL", "http://127.0.0.1:5055")
     monkeypatch.setenv("SMTP_HOST", "smtp.test.invalid")
     monkeypatch.setenv("DATABASE_PATH", str(db_path))
@@ -137,7 +135,6 @@ def test_postgres_migration_adds_column_and_preserves_existing_row(pg_cluster, r
         )
 
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-not-for-prod")
-    monkeypatch.setenv("TOKEN_ENC_KEY", Fernet.generate_key().decode())
     monkeypatch.setenv("APP_BASE_URL", "http://127.0.0.1:5055")
     monkeypatch.setenv("SMTP_HOST", "smtp.test.invalid")
     monkeypatch.setenv("DATABASE_URL", db_url)

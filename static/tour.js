@@ -404,7 +404,7 @@
         {
             target: '#login-btn',
             title: 'Or sign in',
-            body: 'Log in or sign up free to unlock sync, Spotify, and your spot on the study board.',
+            body: 'Log in or sign up free to unlock sync and your spot on the study board.',
             clickTarget: true
         }
     ];
@@ -483,12 +483,6 @@
             target: '#app-sidebar .nav-item[title="Achievements"]',
             title: 'Achievements',
             body: 'Unlock badges and trophies as you hit study milestones.',
-            clickTarget: true
-        },
-        {
-            target: '#nav-item-music-toggle',
-            title: 'Music',
-            body: 'Connect Spotify for focus playlists while you study.',
             clickTarget: true
         },
         {

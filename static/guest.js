@@ -3,8 +3,8 @@
  * ======================================
  * Reads window.__AURA_GUEST_CTX__ injected by the /app route (server/guest.py).
  * Guests use the timer free forever with localStorage; account-only features
- * (Spotify, Help, cloud sync, appearing on leaderboards) stay locked while
- * leaderboard views remain read-only.
+ * (Help, cloud sync, appearing on leaderboards) stay locked while leaderboard
+ * views remain read-only.
  */
 (function () {
   "use strict";
@@ -67,7 +67,7 @@
     if (body) {
       body.textContent =
         message ||
-        "Create a free account to unlock Spotify, Help, cloud sync, and appearing on the leaderboard.";
+        "Create a free account to unlock Help, cloud sync, and appearing on the leaderboard.";
     }
     modal.classList.add("visible");
   }
@@ -118,27 +118,8 @@
     if (window.lucide) lucide.createIcons();
   }
 
-  function wireGuestTimerMusic() {
-    if (!isGuest()) return;
-    var btn = document.getElementById("timer-music-trigger-btn");
-    if (!btn || btn.getAttribute("data-guest-wired") === "1") return;
-    btn.setAttribute("data-guest-wired", "1");
-    btn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      requireAccount(
-        "Log in or sign up free to connect Spotify and control music from the timer."
-      );
-    });
-  }
-
   function initGuestExperience() {
-    if (!isGuest()) return;
-    showGuestLockedPanel(
-      "view-spotify",
-      "Spotify",
-      "Log in or sign up to connect Spotify. Completely free — no credit card, nothing required."
-    );
-    wireGuestTimerMusic();
+    /* Help uses showHelpState() when the panel opens; nothing to pre-render. */
   }
 
   function readLastNudgeHours() {
@@ -177,7 +158,7 @@
     showAuraConfirmDialog({
       title: "Would you like to log in?",
       message:
-        "You have been studying as a guest. Log in or sign up free to sync your progress, appear on the leaderboard, and unlock Spotify and Help.",
+        "You have been studying as a guest. Log in or sign up free to sync your progress, appear on the leaderboard, and unlock Help.",
       confirmLabel: "Log in",
       cancelLabel: "Keep studying",
     }).then(function (confirmed) {
@@ -197,7 +178,6 @@
     guestAccountMessage: guestAccountMessage,
     showGuestLockedPanel: showGuestLockedPanel,
     initGuestExperience: initGuestExperience,
-    wireGuestTimerMusic: wireGuestTimerMusic,
     maybePromptGuestLogin: maybePromptGuestLogin,
   };
 })();

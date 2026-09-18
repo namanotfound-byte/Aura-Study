@@ -4,7 +4,7 @@
  * Exposes a single global: window.AuraFocus
  * Plain ES2018 browser JS, no build step, no module system. Mirrors the
  * self-installing-wrap house style of static/sync.js and the
- * render-your-own-panel style of static/spotify.js.
+ * render-your-own-panel style used elsewhere in the app.
  *
  * THE CORE IDEA: there is exactly ONE timer of record — the `let` variables
  * declared at the top of the inline app <script> (`isEngineActivelyRunning`,
@@ -61,8 +61,8 @@
  *   - Injects the small CSS needed for the Settings "Focus mode" toggles.
  *
  * WHAT index.html MUST WIRE UP (all done by Agent F already):
- *   1. <script src="/static/pip.js"></script> after sync.js and spotify.js.
- *   2. Once, in the same DOMContentLoaded chain as AuraSpotify.init() (i.e.
+ *   1. <script src="/static/pip.js"></script> after sync.js.
+ *   2. Once, in the same DOMContentLoaded chain as the main app boot (i.e.
  *      AFTER loadStateFromLocalStorageRegister() has populated `appState`):
  *          if (typeof AuraFocus !== 'undefined') AuraFocus.init();
  *      This is where preference defaults get backfilled onto
@@ -78,7 +78,7 @@
  *
  *   There is no manual "Pop out timer" trigger anymore -- #view-timer's
  *   top-actions row now has a "Music" playback popover in that slot instead
- *   (static/spotify.js). The floating window still opens automatically per
+ *   The floating window still opens automatically per
  *   the DEGRADE CHAIN below; only the on-demand button is gone.
  *
 
@@ -1019,7 +1019,7 @@
   // NOTE: the manual "Pop out timer" button (and the popOutTimer() function
   // that used to back it, triggered as attemptOpenFloatingWindow("manual"))
   // was removed from #view-timer's top-actions row -- that slot is now a
-  // "Music" playback popover (see static/spotify.js). The automatic floating
+  // The automatic floating
   // behaviour above (opening on switchView() away from the Timer view, and
   // the best-effort tab-switch/notification/wake-lock paths) is untouched;
   // only the on-demand manual trigger is gone.
