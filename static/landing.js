@@ -80,7 +80,7 @@
 
   // ---------------- 1. Landing page (full reveal) ----------------
 
-  var TOTAL_ANIMATION_MS = 9650; // cover hold + book open + slow settle + hero reveal + tagline/CTA fade-in
+  var TOTAL_ANIMATION_MS = 9000; // cover hold + book open + slow settle + hero reveal + tagline/CTA fade-in
   var INSTANT_NAV_DELAY_MS = 250; // just enough for the finished title to register
   var COVER_LOGO_FALLBACK_MS = 2000; // start animation anyway if cover image fails to load
 

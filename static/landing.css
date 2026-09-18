@@ -27,7 +27,9 @@
   --book-settled-w: min(500px, 92vw);
   --book-settled-h: calc(var(--book-settled-w) / var(--book-aspect));
   --book-settle-scale: 0.45;
-  --cover-hold: 2.85s;
+  --logo-fade-dur: 0.7s;
+  --logo-stay: 1.5s;
+  --cover-hold: 2.2s;
   --cover-open-dur: 2.8s;
   --stage-settle-dur: 2.5s;
   --cover-open-end: calc(var(--cover-hold) + var(--cover-open-dur));
@@ -175,16 +177,26 @@ body {
 }
 
 .landing-book-cover-front {
+  position: relative;
   background-color: #FFFFFF;
-  background-image: url("/static/brand/aurastudy-mascot.png");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 58% auto;
   border: 1px solid rgba(227, 221, 211, 0.55);
   box-shadow: none;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.landing-book-cover-front::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("/static/brand/aurastudy-mascot.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 58% auto;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .landing-book-cover-inside {
@@ -215,11 +227,16 @@ body {
   z-index: 2;
 }
 
+html.landing-animate .landing-book-cover-front::after {
+  animation: landingBookCoverLogoFade var(--logo-fade-dur) ease-out forwards;
+  animation-fill-mode: forwards;
+}
+
 html.landing-animate .landing-book-cover {
   animation-name: landingBookCoverOpen;
   animation-duration: 2.8s;
   animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
-  animation-delay: 2.85s;
+  animation-delay: 2.2s;
   animation-fill-mode: both;
 }
 
@@ -227,7 +244,7 @@ html.landing-animate .landing-book-page--right {
   animation-name: landingBookPageSettle;
   animation-duration: 2.8s;
   animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
-  animation-delay: 2.85s;
+  animation-delay: 2.2s;
   animation-fill-mode: both;
 }
 
@@ -240,6 +257,15 @@ html.landing-animate .landing-book-hero-wordmark {
 html.landing-animate .landing-book-stage {
   transform-origin: center center;
   animation: landingBookStageSettle var(--stage-settle-dur) cubic-bezier(0.22, 0.86, 0.28, 1) var(--cover-open-end) forwards;
+}
+
+@keyframes landingBookCoverLogoFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes landingBookCoverOpen {
@@ -284,7 +310,7 @@ html.landing-animate .landing-book {
   animation-name: landingBookLift;
   animation-duration: 2.8s;
   animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
-  animation-delay: 2.85s;
+  animation-delay: 2.2s;
   animation-fill-mode: both;
 }
 
@@ -515,6 +541,11 @@ html.js-enabled:not(.skip-anim) .landing-legal {
   html.js-enabled .landing-book-page--right {
     transform: rotateY(-8deg) translateZ(1px);
   }
+
+  html.js-enabled .landing-book-cover-front::after {
+    opacity: 1 !important;
+    animation: none !important;
+  }
 }
 
 html.skip-anim .landing-book,
@@ -549,6 +580,11 @@ html.skip-anim .landing-book-cover {
 
 html.skip-anim .landing-book-page--right {
   transform: rotateY(-8deg) translateZ(1px);
+}
+
+html.skip-anim .landing-book-cover-front::after {
+  opacity: 1 !important;
+  animation: none !important;
 }
 
 @media (max-width: 480px) {
