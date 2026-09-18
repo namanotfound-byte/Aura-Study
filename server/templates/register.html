@@ -2,7 +2,7 @@
 {% block title %}Sign up - AuraStudy{% endblock %}
 {% block content %}
   <h1 class="auth-heading">Create your account</h1>
-  <p class="auth-subheading">Sign up and let's start studying.</p>
+  <p class="auth-subheading">Create a free account to sync your timer, sessions, and Mochi across devices.</p>
 
   <div class="auth-alert" id="form-alert" hidden></div>
 
@@ -29,6 +29,12 @@
       <small class="auth-hint">At least 8 characters, with a letter and a number.</small>
       <small class="auth-field-error" data-for="password"></small>
     </label>
+
+    <label class="auth-agree">
+      <input type="checkbox" name="agree" id="agree" required>
+      <span>I agree to the <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.</span>
+    </label>
+    <small class="auth-field-error" data-for="agree"></small>
 
     <button type="submit" class="auth-submit" id="submit-btn">
       <span class="auth-submit-label">Create account</span>

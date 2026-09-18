@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ heading }} - AuraStudy{% endblock %}
+{% block robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 {% block content %}
   <div class="auth-message-icon {% if success %}is-success{% else %}is-error{% endif %}">
     <i data-lucide="{{ 'check' if success else 'x' }}"></i>

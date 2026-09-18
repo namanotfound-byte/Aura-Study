@@ -284,7 +284,11 @@
       var rPwErr = passwordClientError(rPassword);
       if (rEmailErr) fieldError("email", rEmailErr);
       if (rPwErr) fieldError("password", rPwErr);
-      if (rEmailErr || rPwErr) return;
+      var agreeEl = form.querySelector("#agree");
+      if (agreeEl && !agreeEl.checked) {
+        fieldError("agree", "Please agree to the Terms and Privacy Policy.");
+      }
+      if (rEmailErr || rPwErr || (agreeEl && !agreeEl.checked)) return;
 
       setLoading(true);
       apiFetch("/api/auth/register", {

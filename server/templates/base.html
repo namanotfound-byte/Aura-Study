@@ -8,8 +8,19 @@
   <script src="/static/title-lock.js"></script>
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="application-name" content="AuraStudy">
+  <meta name="description" content="{{ site_description }}">
   <meta name="theme-color" content="#6B9080">
   <meta name="apple-mobile-web-app-title" content="AuraStudy">
+  {% block robots %}{% endblock %}
+  <meta property="og:title" content="AuraStudy">
+  <meta property="og:description" content="{{ site_description }}">
+  <meta property="og:image" content="{{ og_image_url }}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ app_base_url }}{{ request.path }}">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="AuraStudy">
+  <meta name="twitter:description" content="{{ site_description }}">
+  <meta name="twitter:image" content="{{ og_image_url }}">
   <link rel="icon" href="/static/brand/favicon-32.png?v=20250916c" type="image/png" sizes="32x32">
   <link rel="icon" href="/static/brand/favicon-48.png?v=20250916c" type="image/png" sizes="48x48">
   <link rel="icon" href="/static/brand/favicon.ico?v=20250916c" sizes="any">
@@ -17,10 +28,11 @@
   <link rel="apple-touch-icon" href="/static/brand/apple-touch-icon.png?v=20250916c">
   <link rel="stylesheet" href="/static/auth.css">
   <script>document.documentElement.classList.add('js-enabled');</script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/lucide@0.469.0"></script>
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
-  <div class="auth-page">
+  <div class="auth-page {% block page_class %}{% endblock %}">
     <div class="auth-card">
       <div class="auth-brand">
         <img src="/static/brand/aurastudy-mascot.png" alt="" class="auth-brand-mascot" width="88" height="88">
@@ -28,7 +40,8 @@
       </div>
       {% block content %}{% endblock %}
     </div>
-    <p class="auth-footnote">{% block footnote %}Focus timer and study tracker.{% endblock %}</p>
+    <p class="auth-footnote">{% block footnote %}{{ site_description }}{% endblock %}</p>
+    <p class="auth-legal-links">{% include "partials/legal_links.html" %}</p>
   </div>
   <script>
     if (window.lucide) { lucide.createIcons(); }

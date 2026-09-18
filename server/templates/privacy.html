@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy - AuraStudy{% endblock %}
+{% block page_class %}is-legal{% endblock %}
+{% block content %}
+  <article class="legal-prose">
+    <h1>Privacy Policy</h1>
+    <p class="legal-updated">Last updated 18 September 2026</p>
+    <p>AuraStudy is a personal study timer. This page describes what we collect, why, and how you can control it. It is written for the live hosted app, not for a copy you run only on your own computer.</p>
+
+    <h2>Who operates AuraStudy</h2>
+    <p>AuraStudy is operated as a small personal project, not a company. If you have an account, you can contact the operator through Help in the app. Guest use does not create an account, so there is no inbox for guest-only questions.</p>
+
+    <h2>What we collect</h2>
+    <ul>
+      <li><strong>Account details</strong> if you sign up: email address, a hashed password (we never store the password itself), optional display name, and an optional public leaderboard name you choose later.</li>
+      <li><strong>Study data you sync</strong>: courses, sessions, todos, badges, pet progress, and similar timer state stored as an opaque backup for your account.</li>
+      <li><strong>Support messages</strong> you send through Help, and any replies.</li>
+      <li><strong>Security logs</strong>: short-lived records of login, signup, and similar attempts (including IP address) used for rate limiting and lockout. These are pruned automatically after about 24 hours.</li>
+      <li><strong>Cookies</strong>: an <code>aurastudy_session</code> cookie after you log in, and an <code>aurastudy_guest</code> cookie if you continue as a guest. Both are strictly necessary for the app to work. We do not use advertising or analytics cookies.</li>
+    </ul>
+    <p>Guest mode keeps your study data in this browser only (local storage). We do not receive that data unless you later create an account and sync.</p>
+
+    <h2>Why we use it</h2>
+    <p>To run the product: authenticate you, send verification and password-reset emails, sync your study data across devices, show the optional leaderboard, answer Help messages, and protect the service from abuse.</p>
+
+    <h2>Who processes it</h2>
+    <p>The hosted app uses:</p>
+    <ul>
+      <li>the hosting provider (currently Render) to run the website</li>
+      <li>Neon to store account and sync data in Postgres</li>
+      <li>Brevo to send transactional email (verification and password reset)</li>
+      <li>Google Fonts, jsDelivr (Chart.js), and unpkg (Lucide icons) to load fonts and scripts in your browser</li>
+    </ul>
+    <p>Those providers see what they need to provide their service (for example, Brevo sees the email address a message is sent to). We do not sell your data.</p>
+
+    <h2>How long we keep it</h2>
+    <p>Account and synced study data stay until you delete the account (Settings) or the operator shuts the service down. Session cookies expire after 30 days of inactivity on the server side. Guest cookies last up to 400 days in the browser. Auth-attempt logs are pruned after about a day.</p>
+
+    <h2>Your choices</h2>
+    <ul>
+      <li>You can use the timer as a guest without creating an account.</li>
+      <li>You can skip the public leaderboard, or pick a public name that is not your real name.</li>
+      <li>You can change your password at any time; that signs out other sessions.</li>
+      <li>You can delete your account in Settings. That permanently removes the account, synced study data, leaderboard rows, sessions, and Help messages. It cannot be undone. Data already sitting in this browser as a guest is not deleted by that action.</li>
+    </ul>
+
+    <h2>Children</h2>
+    <p>AuraStudy is not directed at children under 13, and we do not knowingly collect their personal information.</p>
+
+    <h2>Changes</h2>
+    <p>If this policy changes in a material way, we will update the date above. Continued use of the hosted app after that date means you accept the updated policy.</p>
+  </article>
+{% endblock %}

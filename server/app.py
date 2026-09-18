@@ -64,6 +64,15 @@ def create_app() -> flask.Flask:
     app.register_blueprint(leaderboard_bp, url_prefix="/api")
     app.register_blueprint(support_bp, url_prefix="/api/support")
 
+    @app.context_processor
+    def _public_brand_context():
+        base = cfg.app_base_url.rstrip("/")
+        return {
+            "app_base_url": base,
+            "og_image_url": base + "/static/brand/aurastudy-icon-512.png",
+            "site_description": "Focus timer and study tracker.",
+        }
+
     # Under gunicorn, Flask's app.logger has no handler attached to
     # gunicorn's error stream, so anything it logs -- including the
     # traceback for an unhandled 500 -- is written nowhere. In production
@@ -109,7 +118,7 @@ def create_app() -> flask.Flask:
                 "The server hit an unexpected error. Please try again.",
                 500,
             )
-        return ("Internal Server Error", 500)
+        return flask.render_template("500.html"), 500
 
     @app.errorhandler(HTTPException)
     def _handle_http_exception(err: HTTPException):
@@ -133,6 +142,46 @@ def _register_page_routes(app: flask.Flask) -> None:
     @app.route("/healthz")
     def healthz():
         return flask.jsonify({"status": "ok"})
+
+    @app.route("/robots.txt")
+    def robots_txt():
+        base = get_config().app_base_url.rstrip("/")
+        body = (
+            "User-agent: *\n"
+            "Allow: /\n"
+            "Disallow: /admin\n"
+            "Disallow: /admin/\n"
+            "Disallow: /api/\n"
+            "Disallow: /app\n"
+            "Disallow: /reset\n"
+            "Disallow: /verify\n"
+            "Sitemap: {base}/sitemap.xml\n"
+        ).format(base=base)
+        return flask.Response(body, mimetype="text/plain; charset=utf-8")
+
+    @app.route("/sitemap.xml")
+    def sitemap_xml():
+        base = get_config().app_base_url.rstrip("/")
+        paths = ("/", "/login", "/register", "/privacy", "/terms")
+        urls = "".join(
+            "  <url><loc>{base}{path}</loc></url>\n".format(base=base, path=path)
+            for path in paths
+        )
+        body = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            "{urls}"
+            "</urlset>\n"
+        ).format(urls=urls)
+        return flask.Response(body, mimetype="application/xml; charset=utf-8")
+
+    @app.route("/privacy")
+    def privacy_page():
+        return flask.render_template("privacy.html")
+
+    @app.route("/terms")
+    def terms_page():
+        return flask.render_template("terms.html")
 
     @app.route("/sw.js")
     def service_worker():

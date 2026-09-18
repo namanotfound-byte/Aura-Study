@@ -411,6 +411,102 @@ html.skip-anim .auth-wordmark-letters.is-split .letter {
   margin: 0;
 }
 
+.auth-legal-links {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--aura-text-soft);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-legal-links a {
+  color: var(--aura-accent-dark);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-legal-links a:hover {
+  text-decoration: underline;
+}
+
+.auth-extra-link {
+  margin-top: 14px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-extra-link a {
+  color: var(--aura-accent-dark);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-agree {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--aura-text);
+  cursor: pointer;
+}
+
+.auth-agree input {
+  margin-top: 3px;
+  accent-color: var(--aura-accent);
+}
+
+.auth-agree a {
+  color: var(--aura-accent-dark);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-page.is-legal {
+  max-width: 720px;
+}
+
+.auth-page.is-legal .auth-card {
+  text-align: left;
+}
+
+.legal-prose h1 {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  margin: 0 0 8px;
+}
+
+.legal-prose h2 {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  margin: 22px 0 8px;
+}
+
+.legal-prose p,
+.legal-prose li {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--aura-text);
+}
+
+.legal-prose ul {
+  padding-left: 1.2rem;
+  margin: 0 0 12px;
+}
+
+.legal-prose a {
+  color: var(--aura-accent-dark);
+  font-weight: 700;
+}
+
+.legal-updated {
+  color: var(--aura-text-soft);
+  font-size: 0.8rem !important;
+  margin-bottom: 16px !important;
+}
+
 @media (max-width: 420px) {
   .auth-card { padding: 28px 22px; border-radius: 20px; }
   .auth-heading { font-size: 1.3rem; }
