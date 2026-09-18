@@ -8,7 +8,9 @@
     <script src="/static/title-lock.js"></script>
     <link rel="manifest" href="/manifest.webmanifest">
     <meta name="application-name" content="AuraStudy">
+    <meta name="description" content="Focus timer and study tracker.">
     <meta name="theme-color" content="#6B9080">
+    <meta name="robots" content="noindex, nofollow">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="AuraStudy">
     <link rel="icon" href="/static/brand/favicon-32.png?v=20250916c" type="image/png" sizes="32x32">
@@ -27,7 +29,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/tour.css?v=guest-tour-2">
+    <link rel="stylesheet" href="/static/tour.css?v=20250918">
     <script>
         (function () {
             try {
@@ -38,10 +40,10 @@
         })();
         document.documentElement.classList.add('boot-pending');
     </script>
-    <!-- Chart.js for data analytics -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Lucide Icons library -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js for data analytics (pinned; unpinned latest can break the dashboard) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8"></script>
+    <!-- Lucide Icons library (pinned; @latest is a supply-chain moving target) -->
+    <script src="https://unpkg.com/lucide@0.469.0"></script>
     <style>
         :root {
             /* AuraStudy Zen Shell — cream canvas, sage green, dusty lavender */
@@ -4008,7 +4010,7 @@
                 <button class="btn btn-neon-pink" onclick="triggerManualSaveNotification()">Save Changes</button>
             </div>
 
-            <div class="card" style="max-width: 600px; margin-top: 24px;">
+            <div class="card" id="settings-account-security-card" style="max-width: 600px; margin-top: 24px;">
                 <div class="card-title">Account Security</div>
                 <p class="text-muted" style="font-size: 12px; margin-top: -10px; margin-bottom: 16px;">Your login email is tied to your AuraStudy account and can't be changed here. Update your password instead:</p>
 
@@ -4029,6 +4031,17 @@
 
                 <button class="btn btn-neon-pink" id="settings-change-password-btn" onclick="submitAccountPasswordChange()">Change Password</button>
                 <div id="settings-password-feedback" style="font-size:12px; margin-top:10px; font-weight:700;"></div>
+            </div>
+
+            <div class="card" id="settings-delete-account-card" style="max-width: 600px; margin-top: 24px;">
+                <div class="card-title">Delete account</div>
+                <p class="text-muted" style="font-size: 12px; margin-top: -10px; margin-bottom: 16px;">Permanently removes your AuraStudy account, cloud-synced study data, Help messages, and leaderboard name. This cannot be undone. Data stored only in this browser as a guest is not deleted.</p>
+                <div class="input-group" style="margin-bottom:16px;">
+                    <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:6px; color:var(--text-muted);">Confirm with your password</label>
+                    <input type="password" class="form-control" id="settings-delete-password" autocomplete="current-password">
+                </div>
+                <button class="btn" id="settings-delete-account-btn" type="button" onclick="submitAccountDeletion()" style="background:#c0445a; color:#fff;">Delete my account</button>
+                <div id="settings-delete-feedback" style="font-size:12px; margin-top:10px; font-weight:700;"></div>
             </div>
 
             <div class="card" style="max-width: 600px; margin-top: 24px;">
@@ -7994,6 +8007,54 @@
                 });
         }
 
+        function submitAccountDeletion() {
+            const passwordEl = document.getElementById('settings-delete-password');
+            const feedback = document.getElementById('settings-delete-feedback');
+            const btn = document.getElementById('settings-delete-account-btn');
+            const password = passwordEl ? passwordEl.value : '';
+            if (!feedback || !btn) return;
+            feedback.style.color = '#FF4D6D';
+            if (!password) {
+                feedback.innerText = 'Enter your password to delete the account.';
+                return;
+            }
+            if (!window.confirm('Delete your AuraStudy account and all synced study data? This cannot be undone.')) {
+                return;
+            }
+            btn.disabled = true;
+            const originalLabel = btn.innerText;
+            btn.innerText = 'Deleting…';
+            feedback.innerText = '';
+            fetch('/api/auth/account', {
+                method: 'DELETE',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ password: password })
+            })
+                .then(res => res.json().catch(() => ({})).then(data => ({ res: res, data: data })))
+                .then(({ res, data }) => {
+                    if (res.ok) {
+                        try { localStorage.removeItem('aurastudy_state_v1'); } catch (e) { /* ignore */ }
+                        window.location.replace('/?deleted=1');
+                        return;
+                    }
+                    if (res.status === 401 && data && data.error === 'unauthenticated') {
+                        window.location.replace('/login');
+                        return;
+                    }
+                    feedback.style.color = '#FF4D6D';
+                    feedback.innerText = (data && data.message) || 'Could not delete your account. Please try again.';
+                })
+                .catch(() => {
+                    feedback.style.color = '#FF4D6D';
+                    feedback.innerText = 'Network error -- please try again.';
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerText = originalLabel;
+                });
+        }
+
         function timerGradCssVar(presetKey) {
             return 'var(--timer-grad-' + (presetKey || 'pink-cottoncandy') + ')';
         }
@@ -8168,7 +8229,7 @@
     <!-- Server sync, loaded AFTER the inline app script so appState /
          saveStateToLocalStorageRegister / switchView already exist. -->
     <!-- Guest trial locks load before sync so bootstrap skips server calls. -->
-    <script src="/static/tour.js?v=guest-tour-2"></script>
+    <script src="/static/tour.js?v=20250918"></script>
     <script src="/static/guest.js"></script>
     <script src="/static/sync.js"></script>
     <script src="/static/pip.js"></script>

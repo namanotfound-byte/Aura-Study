@@ -8,6 +8,7 @@
 <script src="/static/title-lock.js"></script>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="application-name" content="AuraStudy">
+<meta name="description" content="{{ site_description }}">
 <meta name="theme-color" content="#6B9080">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AuraStudy">
@@ -16,16 +17,18 @@
 <link rel="icon" href="/static/brand/favicon.ico?v=20250916c" sizes="any">
 <link rel="shortcut icon" href="/favicon.ico?v=20250916c">
 <link rel="apple-touch-icon" href="/static/brand/apple-touch-icon.png?v=20250916c">
+<link rel="canonical" href="{{ app_base_url }}/">
 <meta property="og:title" content="AuraStudy">
-<meta property="og:description" content="Focus timer and study tracker.">
-<meta property="og:image" content="/static/brand/aurastudy-icon-512.png">
+<meta property="og:description" content="{{ site_description }}">
+<meta property="og:image" content="{{ og_image_url }}">
+<meta property="og:url" content="{{ app_base_url }}/">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="AuraStudy">
-<meta name="twitter:description" content="Focus timer and study tracker.">
-<meta name="twitter:image" content="/static/brand/aurastudy-icon-512.png">
-<link rel="stylesheet" href="/static/landing.css">
-<link rel="stylesheet" href="/static/tour.css">
+<meta name="twitter:description" content="{{ site_description }}">
+<meta name="twitter:image" content="{{ og_image_url }}">
+<link rel="stylesheet" href="/static/landing.css?v=20250918">
+<link rel="stylesheet" href="/static/tour.css?v=20250918">
 <script>
 document.documentElement.classList.add('js-enabled');
 (function () {
@@ -50,15 +53,23 @@ document.documentElement.classList.add('js-enabled');
     <div class="landing-glow" aria-hidden="true"></div>
 
     <div class="landing-inner">
-      <div class="landing-brand landing-book-flip" id="landing-brand">
-        <div class="landing-book-stage">
-          <div class="landing-book-spread" id="landing-book-spread">
-            <div class="landing-book-page landing-book-page--logo">
-              <img src="/static/brand/aurastudy-mascot.png" alt="" class="landing-logo landing-mascot" width="132" height="132">
+      <div class="landing-brand" id="landing-brand">
+        <div class="landing-book-stage" id="landing-book-stage">
+          <div class="landing-book" aria-hidden="true">
+            <div class="landing-book-shell">
+              <div class="landing-book-back"></div>
+              <div class="landing-book-page landing-book-page--right"></div>
+              <div class="landing-book-cover">
+                <div class="landing-book-cover-face landing-book-cover-front">
+                  <span class="landing-book-cover-mark" aria-hidden="true">A</span>
+                </div>
+                <div class="landing-book-cover-face landing-book-cover-inside"></div>
+              </div>
             </div>
-            <div class="landing-book-page landing-book-page--wordmark">
-              <img src="/static/brand/aurastudy-wordmark.png" alt="AuraStudy" class="landing-wordmark">
-            </div>
+          </div>
+          <div class="landing-book-hero" id="landing-book-hero">
+            <img src="/static/brand/aurastudy-mascot.png" alt="" class="landing-logo landing-mascot landing-book-hero-mascot" width="132" height="132">
+            <img src="/static/brand/aurastudy-wordmark.png" alt="AuraStudy" class="landing-wordmark landing-book-hero-wordmark">
           </div>
         </div>
       </div>
@@ -75,10 +86,12 @@ document.documentElement.classList.add('js-enabled');
         <a href="/login" class="btn btn-outline" id="login-btn">Log in</a>
         <a href="/register" class="btn btn-outline" id="signup-btn">Sign up</a>
       </div>
+
+      <p class="landing-legal" id="landing-legal">{% include "partials/legal_links.html" %}</p>
     </div>
   </main>
 
-  <script src="/static/tour.js"></script>
-  <script src="/static/landing.js"></script>
+  <script src="/static/tour.js?v=20250918"></script>
+  <script src="/static/landing.js?v=20250918"></script>
 </body>
 </html>

@@ -125,9 +125,17 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     assert "--font-serif" in html
     assert "Fraunces" in html
     landing_css = _read("static", "landing.css")
+    landing_html = _read("server", "templates", "landing.html")
+    landing_js = _read("static", "landing.js")
+    assert '/static/landing.css?v=20250918' in landing_html
+    assert '/static/landing.js?v=20250918' in landing_html
+    assert '/static/tour.css?v=20250918' in landing_html
+    assert "landingBookCoverOpen" in landing_css
+    assert "landing-book-cover" in landing_css
     assert "min-height: 100dvh" in landing_css
     assert ".landing-logo" in landing_css
-    landing_html = _read("server", "templates", "landing.html")
+    assert "landing-book-hero" in landing_html
+    assert "TOTAL_ANIMATION_MS = 5400" in landing_js
     assert landing_html.count("/static/brand/aurastudy-mascot.png") >= 1
     assert landing_html.count("/static/brand/aurastudy-wordmark.png") >= 1
     base_html = _read("server", "templates", "base.html")
@@ -173,10 +181,16 @@ def test_countdown_stepper_and_target_picker_exist():
 def test_tour_overlay_and_storage_key_exist():
     html = _read("index.html")
     tour_js = _read("static", "tour.js")
-    assert '/static/tour.js?v=guest-tour-2' in html
-    assert '/static/tour.css?v=guest-tour-2' in html
+    tour_css = _read("static", "tour.css")
+    assert '/static/tour.js?v=20250918' in html
+    assert '/static/tour.css?v=20250918' in html
     assert "aurastudy_tour_done" in tour_js
     assert "aura-tour-overlay" in tour_js
+    assert "pointer-events: auto" in tour_css
+    assert "z-index: 100000" in tour_css
+    assert "Space — next · Esc — skip" in tour_js
+    assert "ev.key === ' '" in tour_js
+    assert "clickTarget" not in tour_js[tour_js.index("var APP_STEPS"):tour_js.index("function initLandingTour")]
     assert "hasExistingStudyData" in tour_js
     assert "markTourDoneIfReturningUser" in tour_js
     assert "shouldPlayTour" in tour_js

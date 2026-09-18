@@ -15,9 +15,8 @@
     var activeStep = -1;
     var steps = [];
     var tourRunning = false;
-    var onTargetClick = null;
     var keyHandler = null;
-    var outsideHandler = null;
+    var overlayClickHandler = null;
 
     function tourDone() {
         if (isGuestUser()) {
@@ -129,7 +128,7 @@
 
         skipHint = document.createElement('div');
         skipHint.className = 'aura-tour-skip-hint';
-        skipHint.textContent = 'Press Esc to skip the tour';
+        skipHint.textContent = 'Space — next · Esc — skip';
 
         overlay.appendChild(spotlight);
         overlay.appendChild(arrow);
@@ -151,17 +150,10 @@
             document.removeEventListener('keydown', keyHandler, true);
             keyHandler = null;
         }
-        if (outsideHandler) {
-            document.removeEventListener('click', outsideHandler, true);
-            outsideHandler = null;
+        if (overlayClickHandler && overlay) {
+            overlay.removeEventListener('click', overlayClickHandler, true);
+            overlayClickHandler = null;
         }
-        if (onTargetClick) {
-            onTargetClick.el.removeEventListener('click', onTargetClick.fn, true);
-            onTargetClick = null;
-        }
-        document.querySelectorAll('.aura-tour-target-active').forEach(function (el) {
-            el.classList.remove('aura-tour-target-active');
-        });
         if (overlay) {
             overlay.hidden = true;
             overlay.setAttribute('aria-hidden', 'true');
@@ -255,7 +247,6 @@
     }
 
     function paintStep(index, target, step) {
-        target.classList.add('aura-tour-target-active');
         if (step.scroll !== false) {
             try { target.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' }); } catch (e) { /* ignore */ }
         }
@@ -268,15 +259,6 @@
         window.requestAnimationFrame(function () {
             positionUi(target, step);
         });
-
-        if (step.clickTarget !== false) {
-            var clickFn = function (ev) {
-                ev.stopPropagation();
-                advance(1);
-            };
-            target.addEventListener('click', clickFn, true);
-            onTargetClick = { el: target, fn: clickFn };
-        }
     }
 
     function paintStepCentered(index, step) {
@@ -291,14 +273,6 @@
     function renderStep(index) {
         var step = steps[index];
         if (!step) return;
-        document.querySelectorAll('.aura-tour-target-active').forEach(function (el) {
-            el.classList.remove('aura-tour-target-active');
-        });
-        if (onTargetClick) {
-            onTargetClick.el.removeEventListener('click', onTargetClick.fn, true);
-            onTargetClick = null;
-        }
-
         runBeforeShow(step).then(function (ready) {
             if (!ready) {
                 paintStepCentered(index, step);
@@ -351,6 +325,11 @@
                 tourDone();
                 return;
             }
+            if (ev.key === ' ' || ev.key === 'Spacebar') {
+                ev.preventDefault();
+                advance(1);
+                return;
+            }
             if (ev.key === 'ArrowRight') {
                 ev.preventDefault();
                 advance(1);
@@ -363,14 +342,16 @@
         };
         document.addEventListener('keydown', keyHandler, true);
 
-        if (outsideHandler) {
-            document.removeEventListener('click', outsideHandler, true);
+        if (overlayClickHandler && overlay) {
+            overlay.removeEventListener('click', overlayClickHandler, true);
         }
-        outsideHandler = function (ev) {
+        overlayClickHandler = function (ev) {
             if (card && card.contains(ev.target)) return;
-            if (spotlight && ev.target === spotlight) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            advance(1);
         };
-        document.addEventListener('click', outsideHandler, true);
+        overlay.addEventListener('click', overlayClickHandler, true);
 
         window.addEventListener('resize', onResize, { passive: true });
         window.addEventListener('scroll', onResize, { passive: true, capture: true });
@@ -399,13 +380,11 @@
             target: '#guest-btn',
             title: 'Try it free',
             body: 'Continue as guest — no account needed. You can sign up later to sync and appear on the leaderboard.',
-            clickTarget: true
         },
         {
             target: '#login-btn',
             title: 'Or sign in',
-            body: 'Log in or sign up free to unlock sync and your spot on the study board.',
-            clickTarget: true
+            body: 'Log in or sign up free to unlock sync and your spot on the study board.'
         }
     ];
 
@@ -424,8 +403,7 @@
         {
             target: '#nav-item-timer-toggle',
             title: 'Start a session',
-            body: 'Open the timer to begin a countdown or stopwatch study block.',
-            clickTarget: true
+            body: 'Open the timer to begin a countdown or stopwatch study block.'
         },
         {
             target: '#timer-target-trigger',
@@ -437,7 +415,6 @@
                 }
                 return !!document.getElementById('timer-target-trigger');
             },
-            clickTarget: true
         },
         {
             target: '#timer-countdown-stepper',
@@ -470,38 +447,32 @@
         {
             target: '#app-sidebar .nav-item[title="Courses"]',
             title: 'Courses',
-            body: 'Add and manage your subjects here. They appear in the timer target picker.',
-            clickTarget: true
+            body: 'Add and manage your subjects here. They appear in the timer target picker.'
         },
         {
             target: '#app-sidebar .nav-item[title="Sessions"]',
             title: 'Session log',
-            body: 'Every logged block lands here — review what you studied and when.',
-            clickTarget: true
+            body: 'Every logged block lands here — review what you studied and when.'
         },
         {
             target: '#app-sidebar .nav-item[title="Achievements"]',
             title: 'Achievements',
-            body: 'Unlock badges and trophies as you hit study milestones.',
-            clickTarget: true
+            body: 'Unlock badges and trophies as you hit study milestones.'
         },
         {
             target: '#app-sidebar .nav-item[title="Leaderboard"]',
             title: 'Leaderboard',
-            body: 'See how you rank against other studiers — hover rows for study time and pet tier.',
-            clickTarget: true
+            body: 'See how you rank against other studiers — hover rows for study time and pet tier.'
         },
         {
             target: '#nav-item-help-toggle',
             title: 'Help',
-            body: 'Ask questions or send feedback directly to the AuraStudy team.',
-            clickTarget: true
+            body: 'Ask questions or send feedback directly to the AuraStudy team.'
         },
         {
             target: '#app-sidebar .nav-item[title="Settings"]',
             title: 'Settings',
-            body: 'Daily goals, timer defaults, theme, and account preferences live here.',
-            clickTarget: true
+            body: 'Daily goals, timer defaults, theme, and account preferences live here.'
         }
     ];
 
