@@ -209,11 +209,19 @@ body {
 }
 
 html.landing-animate .landing-book-cover {
-  animation: landingBookCoverOpen var(--cover-open-dur) cubic-bezier(0.22, 0.86, 0.28, 1) var(--cover-hold) forwards;
+  animation-name: landingBookCoverOpen;
+  animation-duration: 2.8s;
+  animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
+  animation-delay: 1.85s;
+  animation-fill-mode: both;
 }
 
 html.landing-animate .landing-book-page--right {
-  animation: landingBookPageSettle var(--cover-open-dur) cubic-bezier(0.22, 0.86, 0.28, 1) var(--cover-hold) forwards;
+  animation-name: landingBookPageSettle;
+  animation-duration: 2.8s;
+  animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
+  animation-delay: 1.85s;
+  animation-fill-mode: both;
 }
 
 html.landing-animate .landing-book-hero-wordmark {
@@ -266,7 +274,11 @@ html.landing-animate .landing-book-stage {
 }
 
 html.landing-animate .landing-book {
-  animation: landingBookLift var(--cover-open-dur) cubic-bezier(0.22, 0.86, 0.28, 1) var(--cover-hold) forwards;
+  animation-name: landingBookLift;
+  animation-duration: 2.8s;
+  animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
+  animation-delay: 1.85s;
+  animation-fill-mode: both;
 }
 
 @keyframes landingBookLift {

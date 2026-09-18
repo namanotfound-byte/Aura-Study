@@ -127,7 +127,7 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     landing_css = _read("static", "landing.css")
     landing_html = _read("server", "templates", "landing.html")
     landing_js = _read("static", "landing.js")
-    assert '/static/landing.css?v=20250923' in landing_html
+    assert '/static/landing.css?v=20250924' in landing_html
     assert '/static/landing.js?v=20250923' in landing_html
     assert '/static/tour.css?v=20250920' in landing_html
     assert "landingBookCoverOpen" in landing_css
@@ -148,6 +148,13 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     assert "#F8F5F0" not in cover_front
     assert "#6B9080" not in cover_front
     assert "--cover-hold: 1.85s" in landing_css
+    cover_anim = landing_css[
+        landing_css.index("html.landing-animate .landing-book-cover")
+        : landing_css.index("html.landing-animate .landing-book-page--right")
+    ]
+    assert "animation-delay: 1.85s" in cover_anim
+    assert "animation-fill-mode: both" in cover_anim
+    assert "var(--cover-hold)" not in cover_anim
     assert "landingActionsInFlow" not in landing_css
     assert "landingActionsReveal" in landing_css
     assert "--bg-main: #FFFFFF" in landing_css
