@@ -139,6 +139,18 @@ def test_login_and_register_include_guest_cta(client):
         assert "/app?guest=1" in body
 
 
+def test_guest_app_tour_blocks_timer_space_shortcut():
+    """Space during AuraTour must not reach onTimerKeyboardShortcut (timer start)."""
+    html = _read("index.html")
+    tour_js = _read("static", "tour.js")
+    start_tour = tour_js[tour_js.index("function startTour"):tour_js.index("function onResize")]
+    assert "stopImmediatePropagation" in start_tour
+    assert "ev.key === 'Enter'" in start_tour
+    assert "Block timer shortcuts" in start_tour or "Block all other keyboard" in start_tour
+    timer_shortcut = html[html.index("function onTimerKeyboardShortcut"):html.index("function applyAccountIdentity")]
+    assert "AuraTour.isTourRunning()" in timer_shortcut
+
+
 def test_guest_app_has_no_spotify_ui(client):
     resp = start_guest_trial(client)
     body = resp.get_data(as_text=True)

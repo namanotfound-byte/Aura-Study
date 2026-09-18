@@ -322,23 +322,36 @@
         keyHandler = function (ev) {
             if (ev.key === 'Escape') {
                 ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation();
                 tourDone();
                 return;
             }
-            if (ev.key === ' ' || ev.key === 'Spacebar') {
+            if (ev.key === ' ' || ev.key === 'Spacebar' || ev.key === 'Enter') {
                 ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation();
                 advance(1);
                 return;
             }
             if (ev.key === 'ArrowRight') {
                 ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation();
                 advance(1);
                 return;
             }
             if (ev.key === 'ArrowLeft') {
                 ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation();
                 advance(-1);
+                return;
             }
+            /* Block timer shortcuts, view switches, and all other app keys while tour is open. */
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation();
         };
         document.addEventListener('keydown', keyHandler, true);
 
@@ -496,11 +509,16 @@
         }, 600);
     }
 
+    function isTourRunning() {
+        return tourRunning;
+    }
+
     window.AuraTour = {
         TOUR_DONE_KEY: TOUR_DONE_KEY,
         initLandingTour: initLandingTour,
         initAppTour: initAppTour,
         isTourDone: isTourDone,
+        isTourRunning: isTourRunning,
         isGuestUser: isGuestUser,
         hasExistingStudyData: hasExistingStudyData,
         markTourDoneIfReturningUser: markTourDoneIfReturningUser,

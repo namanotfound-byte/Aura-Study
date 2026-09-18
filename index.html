@@ -29,7 +29,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/tour.css?v=20250918">
+    <link rel="stylesheet" href="/static/tour.css?v=20250919">
     <script>
         (function () {
             try {
@@ -4767,6 +4767,7 @@
         });
 
         function onTimerKeyboardShortcut(e) {
+            if (window.AuraTour && typeof AuraTour.isTourRunning === 'function' && AuraTour.isTourRunning()) return;
             const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
             if (tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable)) return;
             const timerView = document.getElementById('view-timer');
@@ -8229,7 +8230,7 @@
     <!-- Server sync, loaded AFTER the inline app script so appState /
          saveStateToLocalStorageRegister / switchView already exist. -->
     <!-- Guest trial locks load before sync so bootstrap skips server calls. -->
-    <script src="/static/tour.js?v=20250918"></script>
+    <script src="/static/tour.js?v=20250919"></script>
     <script src="/static/guest.js"></script>
     <script src="/static/sync.js"></script>
     <script src="/static/pip.js"></script>

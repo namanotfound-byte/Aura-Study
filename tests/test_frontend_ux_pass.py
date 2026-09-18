@@ -127,9 +127,9 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     landing_css = _read("static", "landing.css")
     landing_html = _read("server", "templates", "landing.html")
     landing_js = _read("static", "landing.js")
-    assert '/static/landing.css?v=20250918' in landing_html
-    assert '/static/landing.js?v=20250918' in landing_html
-    assert '/static/tour.css?v=20250918' in landing_html
+    assert '/static/landing.css?v=20250919' in landing_html
+    assert '/static/landing.js?v=20250919' in landing_html
+    assert '/static/tour.css?v=20250919' in landing_html
     assert "landingBookCoverOpen" in landing_css
     assert "landing-book-cover" in landing_css
     assert "min-height: 100dvh" in landing_css
@@ -138,10 +138,14 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     assert "landing-book-cover-logo" in landing_html
     assert "landing-book-cover-mark" not in landing_html
     assert ">A</span>" not in landing_html
-    assert "TOTAL_ANIMATION_MS = 5400" in landing_js
-    assert landing_html.count("/static/brand/aurastudy-mascot.png") >= 2
+    assert "TOTAL_ANIMATION_MS = 6800" in landing_js
+    assert landing_html.count("/static/brand/aurastudy-mascot.png") == 1
     assert landing_html.count("/static/brand/aurastudy-wordmark.png") >= 1
+    assert "landing-book-hero-mascot" not in landing_html
     assert "landing-book-cover-logo" in landing_css
+    assert "#F8F5F0" in landing_css[landing_css.index(".landing-book-cover-front"):landing_css.index(".landing-book-cover-inside")]
+    assert "#6B9080" not in landing_css[landing_css.index(".landing-book-cover-front"):landing_css.index(".landing-book-cover-inside")]
+    assert "landingBookStageSettle 2.5s" in landing_css
     assert "--book-open-w: min(88vw" in landing_css
     assert "landingBookStageSettle" in landing_css
     assert "landing-actions" in landing_html
@@ -189,14 +193,18 @@ def test_tour_overlay_and_storage_key_exist():
     html = _read("index.html")
     tour_js = _read("static", "tour.js")
     tour_css = _read("static", "tour.css")
-    assert '/static/tour.js?v=20250918' in html
-    assert '/static/tour.css?v=20250918' in html
+    assert '/static/tour.js?v=20250919' in html
+    assert '/static/tour.css?v=20250919' in html
     assert "aurastudy_tour_done" in tour_js
     assert "aura-tour-overlay" in tour_js
     assert "pointer-events: auto" in tour_css
     assert "z-index: 100000" in tour_css
     assert "Space — next · Esc — skip" in tour_js
     assert "ev.key === ' '" in tour_js
+    assert "ev.key === 'Enter'" in tour_js
+    assert "stopImmediatePropagation" in tour_js
+    assert "isTourRunning" in tour_js
+    assert "AuraTour.isTourRunning()" in html
     assert "clickTarget" not in tour_js[tour_js.index("var APP_STEPS"):tour_js.index("function initLandingTour")]
     assert "hasExistingStudyData" in tour_js
     assert "markTourDoneIfReturningUser" in tour_js

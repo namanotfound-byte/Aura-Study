@@ -1,5 +1,5 @@
 /**
- * Measure landing book stage dimensions at closed (~100ms) and settled (~4500ms).
+ * Measure landing book stage dimensions at closed (~100ms) and settled (~7000ms).
  * Usage: node scripts/measure_landing_book.js [baseUrl] [width] [height]
  */
 const { chromium } = require("playwright");
@@ -37,7 +37,7 @@ async function runViewport(page, w, h) {
   await page.setViewportSize({ width: w, height: h });
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
   const closed = await measure(page, "closed", 100);
-  const settled = await measure(page, "settled", 4500);
+  const settled = await measure(page, "settled", 7000);
   return { viewport: `${w}x${h}`, closed, settled };
 }
 
