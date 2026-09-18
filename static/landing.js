@@ -28,7 +28,7 @@
  *     just plays again on the next visit instead of skipping.
  *
  * Landing timing constants are kept in step with landing.css's keyframe
- * animation-delay values (cover hold 0.5s, tagline at ~5.85s, legal at ~6.75s + 0.55s = 7.3s).
+ * animation-delay values (cover hold 1s, tagline at ~6.35s, legal at ~7.25s + 0.55s = 7.8s).
  * Auth timing constants are deliberately much shorter -- see landing.css's
  * neighbour, auth.css, for the matching keyframes.
  */
@@ -80,7 +80,7 @@
 
   // ---------------- 1. Landing page (full reveal) ----------------
 
-  var TOTAL_ANIMATION_MS = 7300; // cover hold + book open + slow settle + hero reveal + tagline/CTA fade-in
+  var TOTAL_ANIMATION_MS = 7800; // cover hold + book open + slow settle + hero reveal + tagline/CTA fade-in
   var INSTANT_NAV_DELAY_MS = 250; // just enough for the finished title to register
 
   function initLanding() {
