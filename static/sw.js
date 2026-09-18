@@ -4,14 +4,14 @@
  * TIMER_CLEAR / TIMER_RESET_DISMISS with wall-clock anchors so this worker
  * can refresh the notification body when the tab is hidden.
  *
- * SW_VERSION: 2026-09-16-notify-v2 — dismiss-respecting fallback chip.
+ * SW_VERSION: 2026-09-18-notify-v3 — single silent ongoing notification.
  */
 "use strict";
 
-var SW_VERSION = "2026-09-16-notify-v2";
+var SW_VERSION = "2026-09-18-notify-v3";
 var TIMER_TAG = "aurastudy-timer-ongoing";
 var ICON = "/static/brand/aurastudy-icon-192.png";
-var UPDATE_INTERVAL_MS = 15000;
+var UPDATE_INTERVAL_MS = 60000;
 
 /** @type {null | {
  *   isRunning: boolean,
@@ -26,6 +26,7 @@ var timerState = null;
 var updateTimerId = null;
 var notificationDismissed = false;
 var notificationActive = false;
+var lastDisplayedKey = "";
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -87,8 +88,17 @@ function startNotificationUpdates() {
   stopNotificationUpdates();
   updateTimerId = setInterval(function () {
     if (!timerState || notificationDismissed) return;
-    showTimerNotification(buildNotificationPayload(timerState)).catch(function () {});
+    refreshTimerNotificationIfChanged().catch(function () {});
   }, UPDATE_INTERVAL_MS);
+}
+
+function refreshTimerNotificationIfChanged(force) {
+  if (notificationDismissed || !timerState) return Promise.resolve();
+  var payload = buildNotificationPayload(timerState);
+  var displayKey = (payload.title || "00:00") + "|" + (payload.body || "");
+  if (!force && displayKey === lastDisplayedKey) return Promise.resolve();
+  lastDisplayedKey = displayKey;
+  return showTimerNotification(payload);
 }
 
 function showTimerNotification(payload) {
@@ -96,7 +106,7 @@ function showTimerNotification(payload) {
   var options = {
     body: payload.body,
     tag: TIMER_TAG,
-    renotify: true,
+    renotify: false,
     silent: true,
     requireInteraction: true,
     icon: ICON,
@@ -115,6 +125,7 @@ function clearTimerNotification() {
   stopNotificationUpdates();
   timerState = null;
   notificationActive = false;
+  lastDisplayedKey = "";
   return self.registration.getNotifications({ tag: TIMER_TAG }).then(function (list) {
     list.forEach(function (n) {
       try {
@@ -154,11 +165,15 @@ function handleTimerMessage(data) {
 
   if (data.type === "TIMER_SHOW") {
     startNotificationUpdates();
-    return showTimerNotification(buildNotificationPayload(timerState));
+    return refreshTimerNotificationIfChanged(true);
   }
 
-  if (!notificationActive) return Promise.resolve();
-  return showTimerNotification(buildNotificationPayload(timerState));
+  if (data.type === "TIMER_UPDATE") {
+    if (!notificationActive) startNotificationUpdates();
+    return refreshTimerNotificationIfChanged(true);
+  }
+
+  return Promise.resolve();
 }
 
 function broadcastToClients(message) {

@@ -384,3 +384,20 @@ def test_service_worker_respects_notification_dismiss_and_actions():
     assert "AURASTUDY_PAUSE" in sw_js
     assert "AURASTUDY_LOG" in sw_js
     assert "AuraStudy —" not in sw_js
+
+
+def test_service_worker_uses_single_silent_ongoing_notification():
+    sw_js = _read("static", "sw.js")
+    assert "renotify: false" in sw_js
+    assert "silent: true" in sw_js
+    assert "UPDATE_INTERVAL_MS = 60000" in sw_js
+    assert "refreshTimerNotificationIfChanged" in sw_js
+    assert "lastDisplayedKey" in sw_js
+
+
+def test_pip_does_not_spam_service_worker_on_every_tick():
+    pip_js = _read("static", "pip.js")
+    on_tick_start = pip_js.index("function onTick()")
+    on_tick_body = pip_js[on_tick_start : pip_js.index("function afterEngineStateChange", on_tick_start)]
+    assert "syncPersistentSessionNotification" not in on_tick_body
+    assert "lastSwTimerPostMs" not in pip_js

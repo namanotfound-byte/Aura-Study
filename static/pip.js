@@ -146,7 +146,6 @@
     permissionRequestInFlight: false,
     swRegistration: null,
     swReady: false,
-    lastSwTimerPostMs: 0,
     persistentNotificationActive: false,
     wakeLockSentinel: null,
     // True only while control is synchronously inside the wrapped
@@ -347,7 +346,7 @@
     }
   }
 
-  function syncPersistentSessionNotification(force) {
+  function syncPersistentSessionNotification() {
     if (!prefs().notify || !isEngineActivelyRunning) {
       if (!isEngineActivelyRunning) clearPersistentSessionNotification();
       return;
@@ -369,13 +368,7 @@
       return;
     }
 
-    var now = Date.now();
     var type = STATE.persistentNotificationActive ? "TIMER_UPDATE" : "TIMER_SHOW";
-    if (!force && type === "TIMER_UPDATE" && now - STATE.lastSwTimerPostMs < 1000) {
-      updateMediaSession();
-      return;
-    }
-    STATE.lastSwTimerPostMs = now;
 
     postTimerMessageToServiceWorker(type).then(function (posted) {
       if (posted) {
@@ -390,7 +383,6 @@
 
   function clearPersistentSessionNotification() {
     STATE.persistentNotificationActive = false;
-    STATE.lastSwTimerPostMs = 0;
     postTimerMessageToServiceWorker("TIMER_CLEAR");
     clearActiveNotification();
     clearMediaSession();
@@ -415,7 +407,7 @@
   function showBackgroundControls() {
     if (!isEngineActivelyRunning || isPageVisible()) return;
     if (prefs().floatTimer && attemptOpenFloatingWindow("tabswitch")) return;
-    syncPersistentSessionNotification(true);
+    syncPersistentSessionNotification();
   }
 
   function clearActiveNotification() {
@@ -894,7 +886,12 @@
       if (isEngineActivelyRunning && prefs().notify) updateMediaSession();
       return;
     }
-    syncPersistentSessionNotification(false);
+    if (STATE.activeNotification) {
+      try {
+        STATE.activeNotification.body = buildNotificationBody();
+      } catch (e) {}
+    }
+    if (isEngineActivelyRunning && prefs().notify) updateMediaSession();
   }
 
   // Opens the floating window the moment the user navigates AWAY from the
