@@ -28,8 +28,8 @@
   --book-settled-h: calc(var(--book-settled-w) / var(--book-aspect));
   --book-settle-scale: 0.45;
   --logo-fade-dur: 1.15s;
-  --logo-stay: 0.5s;
-  --cover-hold: 1.65s;
+  --logo-stay: 0s;
+  --cover-hold: 0.9s;
   --cover-open-dur: 2.8s;
   --stage-settle-dur: 2.5s;
   --cover-open-end: calc(var(--cover-hold) + var(--cover-open-dur));
@@ -233,7 +233,7 @@ html.landing-animate .landing-book-cover {
   animation-name: landingBookCoverOpen;
   animation-duration: 2.8s;
   animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
-  animation-delay: 1.65s;
+  animation-delay: 0.9s;
   animation-fill-mode: both;
 }
 
@@ -241,7 +241,7 @@ html.landing-animate .landing-book-page--right {
   animation-name: landingBookPageSettle;
   animation-duration: 2.8s;
   animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
-  animation-delay: 1.65s;
+  animation-delay: 0.9s;
   animation-fill-mode: both;
 }
 
@@ -298,7 +298,7 @@ html.landing-animate .landing-book {
   animation-name: landingBookLift;
   animation-duration: 2.8s;
   animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
-  animation-delay: 1.65s;
+  animation-delay: 0.9s;
   animation-fill-mode: both;
 }
 
