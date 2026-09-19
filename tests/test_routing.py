@@ -32,7 +32,7 @@ def test_root_serves_landing_page_unauthenticated(client):
     assert "/app?guest=1" in body
     assert "landing-book-cover" in body
     assert "landing-book-cover-logo" in body
-    assert "landing-book-cover-veil" in body
+    assert "landing-book-cover-veil" not in body
     assert "aurastudy-mascot.png" in body
     assert "aurastudy-wordmark.png" in body
     assert "landing-book-hero-mascot" not in body

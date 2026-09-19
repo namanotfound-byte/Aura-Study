@@ -178,23 +178,14 @@ body {
 
 .landing-book-cover-front {
   position: relative;
-  background-color: #FFFFFF;
-  background-image: url("/static/brand/aurastudy-mascot.png");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 58% auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #FFFFFF;
+  transform-style: flat;
+  backface-visibility: hidden;
   border: 1px solid rgba(227, 221, 211, 0.55);
   box-shadow: none;
-}
-
-.landing-book-cover-veil {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: #FFFFFF;
-  opacity: 1;
-  pointer-events: none;
-  z-index: 1;
 }
 
 .landing-book-cover-inside {
@@ -205,12 +196,14 @@ body {
 }
 
 .landing-book-cover-logo {
-  position: absolute;
-  width: 0;
-  height: 0;
+  display: block;
+  width: min(58%, 400px);
+  height: auto;
+  max-height: 76%;
+  object-fit: contain;
   opacity: 0;
-  overflow: hidden;
-  pointer-events: none;
+  position: relative;
+  z-index: 2;
 }
 
 .landing-book-hero {
@@ -225,8 +218,12 @@ body {
   z-index: 2;
 }
 
-html.landing-animate .landing-book-cover-veil {
-  animation: landingBookCoverVeilLift var(--logo-fade-dur) ease-out forwards;
+html.landing-animate .landing-book-cover-logo {
+  animation-name: landingBookCoverLogoFade;
+  animation-duration: 0.7s;
+  animation-timing-function: ease-out;
+  animation-delay: 0s;
+  animation-fill-mode: forwards;
 }
 
 html.landing-animate .landing-book-cover {
@@ -256,12 +253,12 @@ html.landing-animate .landing-book-stage {
   animation: landingBookStageSettle var(--stage-settle-dur) cubic-bezier(0.22, 0.86, 0.28, 1) var(--cover-open-end) forwards;
 }
 
-@keyframes landingBookCoverVeilLift {
+@keyframes landingBookCoverLogoFade {
   from {
-    opacity: 1;
+    opacity: 0;
   }
   to {
-    opacity: 0;
+    opacity: 1;
   }
 }
 
@@ -336,6 +333,7 @@ html.landing-animate .landing-book {
 
 .landing-book-hero-wordmark {
   width: min(520px, 82%);
+  opacity: 0;
 }
 
 .wordmark {
@@ -539,8 +537,8 @@ html.js-enabled:not(.skip-anim) .landing-legal {
     transform: rotateY(-8deg) translateZ(1px);
   }
 
-  html.js-enabled .landing-book-cover-veil {
-    opacity: 0 !important;
+  html.js-enabled .landing-book-cover-logo {
+    opacity: 1 !important;
     animation: none !important;
   }
 }
@@ -579,8 +577,8 @@ html.skip-anim .landing-book-page--right {
   transform: rotateY(-8deg) translateZ(1px);
 }
 
-html.skip-anim .landing-book-cover-veil {
-  opacity: 0 !important;
+html.skip-anim .landing-book-cover-logo {
+  opacity: 1 !important;
   animation: none !important;
 }
 

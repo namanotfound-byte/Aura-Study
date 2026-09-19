@@ -3,6 +3,8 @@
  * Usage: node scripts/verify_landing_animation.js [baseUrl]
  */
 const { chromium } = require("playwright");
+const fs = require("fs");
+const path = require("path");
 
 const BASE = process.argv[2] || "http://127.0.0.1:5055";
 
@@ -14,20 +16,15 @@ async function verifyCoverClockMidFade(page) {
   await page.waitForTimeout(400);
 
   const clock = await page.evaluate(() => {
-    const cover = document.querySelector(".landing-book-cover-front");
-    const veil = document.querySelector(".landing-book-cover-veil");
-    if (!cover || !veil) return { ok: false, reason: "missing cover or veil" };
-    const coverStyle = getComputedStyle(cover);
-    const veilStyle = getComputedStyle(veil);
-    const bgImage = coverStyle.backgroundImage || "";
-    const veilOpacity = parseFloat(veilStyle.opacity);
+    const logo = document.querySelector(".landing-book-cover-logo");
+    if (!logo) return { ok: false, reason: "missing cover logo img" };
+    const logoStyle = getComputedStyle(logo);
+    const logoOpacity = parseFloat(logoStyle.opacity);
+    const logoWidth = logo.getBoundingClientRect().width;
     return {
-      ok:
-        bgImage.includes("aurastudy-mascot") &&
-        veilOpacity < 1 &&
-        veilOpacity >= 0,
-      bgImage,
-      veilOpacity,
+      ok: logoOpacity > 0 && logoWidth > 80,
+      logoOpacity,
+      logoWidth,
     };
   });
 
@@ -37,11 +34,37 @@ async function verifyCoverClockMidFade(page) {
     );
   }
 
-  return clock;
+  await page.waitForTimeout(1800);
+  const holdShot = path.join(__dirname, "landing_clock_hold.png");
+  await page.screenshot({ path: holdShot, fullPage: false });
+
+  const holdCheck = await page.evaluate(() => {
+    const logo = document.querySelector(".landing-book-cover-logo");
+    if (!logo) return { ok: false, reason: "missing cover logo img" };
+    const logoStyle = getComputedStyle(logo);
+    const logoOpacity = parseFloat(logoStyle.opacity);
+    const logoWidth = logo.getBoundingClientRect().width;
+    const coverFront = document.querySelector(".landing-book-cover-front");
+    const coverStyle = coverFront ? getComputedStyle(coverFront) : null;
+    return {
+      ok: logoOpacity >= 0.95 && logoWidth > 80,
+      logoOpacity,
+      logoWidth,
+      coverBg: coverStyle ? coverStyle.backgroundImage : null,
+    };
+  });
+
+  if (!holdCheck.ok) {
+    throw new Error(
+      `Cover clock not fully visible during hold: ${JSON.stringify(holdCheck)}`
+    );
+  }
+
+  return { midFade: clock, hold: holdCheck, screenshot: holdShot };
 }
 
 async function measureMidFlight(page) {
-  await verifyCoverClockMidFade(page);
+  const clock = await verifyCoverClockMidFade(page);
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(900);
 
@@ -133,7 +156,7 @@ async function measureMidFlight(page) {
     );
   }
 
-  return { firstLoad: snapshot, secondReload: second };
+  return { clock, firstLoad: snapshot, secondReload: second };
 }
 
 async function main() {
