@@ -27,9 +27,9 @@
   --book-settled-w: min(500px, 92vw);
   --book-settled-h: calc(var(--book-settled-w) / var(--book-aspect));
   --book-settle-scale: 0.45;
-  --logo-fade-dur: 0.7s;
+  --logo-fade-dur: 1.15s;
   --logo-stay: 1.5s;
-  --cover-hold: 2.2s;
+  --cover-hold: 2.65s;
   --cover-open-dur: 2.8s;
   --stage-settle-dur: 2.5s;
   --cover-open-end: calc(var(--cover-hold) + var(--cover-open-dur));
@@ -221,9 +221,10 @@ body {
 }
 
 html.landing-animate .landing-book-cover-logo {
-  animation-name: landingBookCoverLogoFade;
-  animation-duration: 0.7s;
-  animation-timing-function: ease-out;
+  transform: translateY(14px);
+  animation-name: landingBookHeroWordmark;
+  animation-duration: 1.15s;
+  animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
   animation-delay: 0s;
   animation-fill-mode: forwards;
 }
@@ -232,7 +233,7 @@ html.landing-animate .landing-book-cover {
   animation-name: landingBookCoverOpen;
   animation-duration: 2.8s;
   animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
-  animation-delay: 2.2s;
+  animation-delay: 2.65s;
   animation-fill-mode: both;
 }
 
@@ -240,28 +241,19 @@ html.landing-animate .landing-book-page--right {
   animation-name: landingBookPageSettle;
   animation-duration: 2.8s;
   animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
-  animation-delay: 2.2s;
+  animation-delay: 2.65s;
   animation-fill-mode: both;
 }
 
 html.landing-animate .landing-book-hero-wordmark {
   opacity: 0;
   transform: translateY(14px);
-  animation: landingBookHeroWordmark 1.15s cubic-bezier(0.22, 0.86, 0.28, 1) calc(var(--cover-hold) + 1.85s) forwards;
+  animation: landingBookHeroWordmark 1.15s cubic-bezier(0.22, 0.86, 0.28, 1) calc(var(--cover-hold) + 1.35s) forwards;
 }
 
 html.landing-animate .landing-book-stage {
   transform-origin: center center;
   animation: landingBookStageSettle var(--stage-settle-dur) cubic-bezier(0.22, 0.86, 0.28, 1) var(--cover-open-end) forwards;
-}
-
-@keyframes landingBookCoverLogoFade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 
 @keyframes landingBookCoverOpen {
@@ -306,7 +298,7 @@ html.landing-animate .landing-book {
   animation-name: landingBookLift;
   animation-duration: 2.8s;
   animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
-  animation-delay: 2.2s;
+  animation-delay: 2.65s;
   animation-fill-mode: both;
 }
 
