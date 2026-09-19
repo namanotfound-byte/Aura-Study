@@ -127,7 +127,7 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     landing_css = _read("static", "landing.css")
     landing_html = _read("server", "templates", "landing.html")
     landing_js = _read("static", "landing.js")
-    assert '/static/landing.css?v=20260923' in landing_html
+    assert '/static/landing.css?v=20260924' in landing_html
     assert '/static/landing.js?v=20260923' in landing_html
     assert '<link rel="preload" as="image" href="/static/brand/aurastudy-mascot.png">' in landing_html
     assert 'fetchpriority="high"' in landing_html
@@ -158,8 +158,11 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
         : landing_css.index(".landing-book-cover-inside")
     ]
     assert "#FFFFFF" in cover_front or "#fff" in cover_front.lower()
-    assert "position: relative" in cover_front
+    assert "position: absolute" in cover_front
+    assert "inset: 0" in cover_front
     assert "display: flex" in cover_front
+    assert "align-items: center" in cover_front
+    assert "justify-content: center" in cover_front
     assert "transform-style: flat" in cover_front
     assert "background-image:" not in cover_front
     assert ".landing-book-cover-front::after" not in landing_css
