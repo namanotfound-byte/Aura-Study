@@ -631,7 +631,6 @@ html.skip-anim .landing-book-cover-logo {
   .landing-book-cover-inside {
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
-    -webkit-transform-style: preserve-3d;
   }
 
   .landing-book-shell,
