@@ -33,8 +33,8 @@ def test_root_serves_landing_page_unauthenticated(client):
     assert "landing-book-cover" in body
     assert "landing-book-cover-logo" in body
     assert "landing-book-cover-veil" not in body
-    assert "aurastudy-mascot.png" in body
-    assert "aurastudy-wordmark.png" in body
+    assert "aurastudy-mascot-sm.png" in body
+    assert "aurastudy-wordmark-sm.png" in body
     assert "landing-book-hero-mascot" not in body
     assert "landing-book-cover-mark" not in body
     # The landing page, not the study app.
