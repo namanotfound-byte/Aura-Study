@@ -28,14 +28,39 @@
 <meta name="twitter:description" content="{{ site_description }}">
 <meta name="twitter:image" content="{{ og_image_url }}">
 <link rel="preload" as="image" href="/static/brand/aurastudy-mascot.png">
-<link rel="stylesheet" href="/static/landing.css?v=20260920c">
+<link rel="stylesheet" href="/static/landing.css?v=20260920d">
 <link rel="stylesheet" href="/static/tour.css?v=20250920">
+<style>
+@media (max-width: 900px), (max-width: 1024px) and (orientation: portrait) {
+  html.js-enabled .tagline,
+  html.js-enabled .guest-trial-copy,
+  html.js-enabled .cta-row,
+  html.js-enabled .landing-legal,
+  html.js-enabled .landing-actions,
+  html.js-enabled .landing-book-cover-logo,
+  html.js-enabled .landing-book-hero-wordmark {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    animation: none !important;
+    transform: none !important;
+  }
+}
+</style>
 <script>
 document.documentElement.classList.add('js-enabled');
 (function () {
   try {
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       document.documentElement.classList.add('skip-anim');
+    }
+    var isMobile = !!(
+      window.matchMedia('(max-width: 900px)').matches ||
+      (window.matchMedia('(max-width: 1024px)').matches &&
+       window.matchMedia('(orientation: portrait)').matches)
+    );
+    if (isMobile) {
+      document.documentElement.classList.add('landing-mobile', 'skip-anim');
     }
   } catch (e) { /* landing.js starts animation after cover logo is ready */ }
 })();
@@ -90,6 +115,6 @@ document.documentElement.classList.add('js-enabled');
   </main>
 
   <script src="/static/tour.js?v=20250920"></script>
-  <script src="/static/landing.js?v=20260920c"></script>
+  <script src="/static/landing.js?v=20260920d"></script>
 </body>
 </html>

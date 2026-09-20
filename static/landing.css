@@ -599,40 +599,35 @@ html.skip-anim .landing-book-cover-logo {
     min-height: 220px;
   }
 
-  .landing-book,
-  .landing-book-shell,
-  .landing-book-cover,
-  .landing-book-page--right,
-  .landing-book-back {
+  html.landing-mobile .landing-book,
+  html.landing-mobile .landing-book-cover,
+  html.landing-mobile .landing-book-shell,
+  html.landing-mobile .landing-book-stage,
+  html.landing-mobile .landing-book-page--right,
+  html.skip-anim .landing-book-cover {
     transform: none !important;
-    -webkit-transform: none !important;
+    animation: none !important;
+    perspective: none !important;
     transform-style: flat !important;
-    -webkit-transform-style: flat !important;
+    -webkit-transform: none !important;
   }
 
-  html.landing-animate .landing-book,
-  html.landing-animate .landing-book-cover,
-  html.landing-animate .landing-book-page--right,
-  html.landing-animate .landing-book-stage {
+  html.js-enabled .tagline,
+  html.js-enabled .guest-trial-copy,
+  html.js-enabled .cta-row,
+  html.js-enabled .landing-legal,
+  html.js-enabled .landing-actions,
+  html.js-enabled .landing-book-cover-logo,
+  html.js-enabled .landing-book-hero-wordmark {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
     animation: none !important;
+    transform: none !important;
   }
 
   .landing-book-cover-logo {
     opacity: 1;
-  }
-
-  html.landing-animate .landing-book-cover-logo {
-    opacity: 1;
-    transform: none;
-    animation: none !important;
-  }
-
-  html.landing-animate .landing-book-hero-wordmark {
-    animation-name: landingBookHeroWordmark;
-    animation-duration: 1.15s;
-    animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
-    animation-delay: 1.4s;
-    animation-fill-mode: forwards;
   }
 
   .landing-inner {

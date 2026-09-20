@@ -41,9 +41,14 @@
     window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   );
 
-  var isMobileLanding = !!(
-    window.matchMedia && window.matchMedia('(max-width: 900px), (max-width: 1024px) and (orientation: portrait)').matches
-  );
+  var isMobileLanding = false;
+  try {
+    isMobileLanding = !!(
+      window.matchMedia('(max-width: 900px)').matches ||
+      (window.matchMedia('(max-width: 1024px)').matches &&
+       window.matchMedia('(orientation: portrait)').matches)
+    );
+  } catch (e) {}
 
   function sessionSeen(key) {
     try {
@@ -89,63 +94,71 @@
   var COVER_LOGO_FALLBACK_MS = 2000; // start animation anyway if cover image fails to load
 
   function initLanding() {
-    var brand = document.getElementById('landing-brand');
-    if (!brand) return; // not the landing page
+    try {
+      var brand = document.getElementById('landing-brand');
+      if (!brand) return; // not the landing page
 
-    var root = document.documentElement;
-    var body = document.body;
-    var authenticated = body.getAttribute('data-authenticated') === 'true';
+      var root = document.documentElement;
+      var body = document.body;
+      var authenticated = body.getAttribute('data-authenticated') === 'true';
 
-    function goToApp() {
-      window.location.href = '/app';
-    }
-
-    if (prefersReducedMotion) {
-      root.classList.add('skip-anim');
-      root.classList.remove('landing-animate');
-      if (authenticated) window.setTimeout(goToApp, INSTANT_NAV_DELAY_MS);
-      return;
-    }
-
-    var animationStarted = false;
-
-    function startAnimation() {
-      if (animationStarted) return;
-      animationStarted = true;
-      root.classList.add('landing-animate');
-      if (authenticated) window.setTimeout(goToApp, TOTAL_ANIMATION_MS);
-    }
-
-    if (isMobileLanding) {
-      startAnimation();
-      return;
-    }
-
-    var coverLogo = document.querySelector('.landing-book-cover-logo');
-    if (!coverLogo) {
-      startAnimation();
-      return;
-    }
-
-    var fallbackTimer = window.setTimeout(startAnimation, COVER_LOGO_FALLBACK_MS);
-
-    function onCoverLogoReady() {
-      window.clearTimeout(fallbackTimer);
-      if (coverLogo.decode && typeof coverLogo.decode === 'function') {
-        coverLogo.decode().then(startAnimation).catch(startAnimation);
-      } else {
-        startAnimation();
+      function goToApp() {
+        window.location.href = '/app';
       }
-    }
 
-    if (coverLogo.complete && coverLogo.naturalWidth > 0) {
-      onCoverLogoReady();
-    } else {
-      coverLogo.addEventListener('load', onCoverLogoReady, { once: true });
-      coverLogo.addEventListener('error', function onCoverLogoError() {
-        window.clearTimeout(fallbackTimer);
+      if (prefersReducedMotion) {
+        root.classList.add('skip-anim');
+        root.classList.remove('landing-animate');
+        if (authenticated) window.setTimeout(goToApp, INSTANT_NAV_DELAY_MS);
+        return;
+      }
+
+      if (isMobileLanding) {
+        root.classList.add('skip-anim', 'landing-mobile');
+        root.classList.remove('landing-animate');
+        if (authenticated) window.setTimeout(goToApp, INSTANT_NAV_DELAY_MS);
+        return;
+      }
+
+      var animationStarted = false;
+
+      function startAnimation() {
+        if (animationStarted) return;
+        animationStarted = true;
+        root.classList.add('landing-animate');
+        if (authenticated) window.setTimeout(goToApp, TOTAL_ANIMATION_MS);
+      }
+
+      var coverLogo = document.querySelector('.landing-book-cover-logo');
+      if (!coverLogo) {
         startAnimation();
-      }, { once: true });
+        return;
+      }
+
+      var fallbackTimer = window.setTimeout(startAnimation, COVER_LOGO_FALLBACK_MS);
+
+      function onCoverLogoReady() {
+        window.clearTimeout(fallbackTimer);
+        if (coverLogo.decode && typeof coverLogo.decode === 'function') {
+          coverLogo.decode().then(startAnimation).catch(startAnimation);
+        } else {
+          startAnimation();
+        }
+      }
+
+      if (coverLogo.complete && coverLogo.naturalWidth > 0) {
+        onCoverLogoReady();
+      } else {
+        coverLogo.addEventListener('load', onCoverLogoReady, { once: true });
+        coverLogo.addEventListener('error', function onCoverLogoError() {
+          window.clearTimeout(fallbackTimer);
+          startAnimation();
+        }, { once: true });
+      }
+    } catch (e) {
+      var rootEl = document.documentElement;
+      rootEl.classList.add('skip-anim', 'landing-mobile');
+      rootEl.classList.remove('landing-animate');
     }
   }
 

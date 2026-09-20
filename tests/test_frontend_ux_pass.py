@@ -127,8 +127,8 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     landing_css = _read("static", "landing.css")
     landing_html = _read("server", "templates", "landing.html")
     landing_js = _read("static", "landing.js")
-    assert '/static/landing.css?v=20260920c' in landing_html
-    assert '/static/landing.js?v=20260920c' in landing_html
+    assert '/static/landing.css?v=20260920d' in landing_html
+    assert '/static/landing.js?v=20260920d' in landing_html
     assert '<link rel="preload" as="image" href="/static/brand/aurastudy-mascot.png">' in landing_html
     assert 'fetchpriority="high"' in landing_html
     assert "classList.add('landing-animate')" not in landing_html
@@ -147,6 +147,9 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     assert landing_html.count("/static/brand/aurastudy-mascot.png") == 2
     assert "COVER_LOGO_FALLBACK_MS" in landing_js
     assert "isMobileLanding" in landing_js
+    assert "landing-mobile" in landing_js
+    assert "classList.add('skip-anim', 'landing-mobile')" in landing_js
+    assert "classList.add('landing-mobile', 'skip-anim')" in landing_html
     assert landing_html.count("/static/brand/aurastudy-wordmark.png") >= 1
     assert "landing-book-hero-mascot" not in landing_html
     assert "landing-book-cover-logo" in landing_css
@@ -286,6 +289,7 @@ def test_tour_overlay_and_storage_key_exist():
 def test_landing_mobile_portrait_preserves_desktop_animation_tokens():
     """Phone/portrait iPad overrides live in a scoped media query; laptop tokens stay at :root."""
     landing_css = _read("static", "landing.css")
+    landing_html = _read("server", "templates", "landing.html")
     root_end = landing_css.index("}", landing_css.index(":root {"))
     root_block = landing_css[landing_css.index(":root {"): root_end + 1]
     assert "--book-settle-scale: 0.45" in root_block
@@ -315,12 +319,18 @@ def test_landing_mobile_portrait_preserves_desktop_animation_tokens():
     assert "animation: none !important" in mobile_block
     assert "transform-style: flat !important" in mobile_block
     assert "-webkit-transform-style: preserve-3d" not in mobile_block
-    assert "animation-delay: 1.4s" in mobile_block
+    assert "html.landing-mobile .landing-book" in mobile_block
+    assert "html.js-enabled .landing-actions" in mobile_block
+    assert "opacity: 1 !important" in mobile_block
+    assert "visibility: visible !important" in mobile_block
+    assert "animation-delay: 1.4s" not in mobile_block
     mobile_faces = mobile_block[
         mobile_block.index(".landing-book-cover-front,")
         : mobile_block.index(".landing-book-cover-logo {")
     ]
     assert "transform-style" not in mobile_faces
+    assert "@media (max-width: 900px)" in landing_html
+    assert "html.js-enabled .landing-actions" in landing_html
     assert "translateY(var(--book-settle-y, -8vh))" in landing_css
 
 
