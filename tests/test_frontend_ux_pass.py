@@ -127,7 +127,7 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     landing_css = _read("static", "landing.css")
     landing_html = _read("server", "templates", "landing.html")
     landing_js = _read("static", "landing.js")
-    assert '/static/landing.css?v=20260929' in landing_html
+    assert '/static/landing.css?v=20260920' in landing_html
     assert '/static/landing.js?v=20260927' in landing_html
     assert '<link rel="preload" as="image" href="/static/brand/aurastudy-mascot.png">' in landing_html
     assert 'fetchpriority="high"' in landing_html
@@ -298,12 +298,16 @@ def test_landing_mobile_portrait_preserves_desktop_animation_tokens():
         : landing_css.index("html.landing-animate .landing-book-page--right")
     ]
     assert "animation-delay: 0.9s" in cover_anim
-    mobile_marker = "@media (max-width: 900px), ((max-width: 1024px) and (orientation: portrait))"
+    mobile_marker = "@media (max-width: 900px), (max-width: 1024px) and (orientation: portrait)"
     assert mobile_marker in landing_css
+    assert "((max-width: 1024px)" not in landing_css
     mobile_block = landing_css[landing_css.index(mobile_marker):]
     assert "--book-settle-scale: 0.78" in mobile_block
     assert "--book-settle-y: -5vh" in mobile_block
     assert "--book-open-w: min(92vw" in mobile_block
+    assert "--book-open-h: min(58vh" in mobile_block
+    assert "58dvh" not in mobile_block
+    assert "min-height: 220px" in mobile_block
     assert "-webkit-backface-visibility: hidden" in mobile_block
     assert "-webkit-transform-style: preserve-3d" in mobile_block
     mobile_faces = mobile_block[

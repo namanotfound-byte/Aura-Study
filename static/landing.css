@@ -577,13 +577,17 @@ html.skip-anim .landing-book-cover-logo {
 }
 
 /* Phone + portrait tablet — laptop landscape (e.g. 1280×800) unchanged */
-@media (max-width: 900px), ((max-width: 1024px) and (orientation: portrait)) {
+@media (max-width: 900px), (max-width: 1024px) and (orientation: portrait) {
   :root {
     --book-aspect: 1.08;
     --book-open-w: min(92vw, 460px);
-    --book-open-h: min(58dvh, calc(var(--book-open-w) / var(--book-aspect)), 660px);
+    --book-open-h: min(58vh, calc(var(--book-open-w) / var(--book-aspect)), 660px);
     --book-settle-scale: 0.78;
     --book-settle-y: -5vh;
+  }
+
+  .landing-book-stage {
+    min-height: 220px;
   }
 
   .landing {
