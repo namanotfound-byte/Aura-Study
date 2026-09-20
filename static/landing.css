@@ -290,7 +290,7 @@ html.landing-animate .landing-book-stage {
     transform: scale(1) translateY(0);
   }
   to {
-    transform: scale(var(--book-settle-scale)) translateY(-8vh);
+    transform: scale(var(--book-settle-scale)) translateY(var(--book-settle-y, -8vh));
   }
 }
 
@@ -515,7 +515,7 @@ html.js-enabled:not(.skip-anim) .landing-legal {
   }
 
   html.js-enabled .landing-book-stage {
-    transform: scale(var(--book-settle-scale)) translateY(-8vh);
+    transform: scale(var(--book-settle-scale)) translateY(var(--book-settle-y, -8vh));
   }
 
   html.js-enabled .landing-actions {
@@ -555,7 +555,7 @@ html.skip-anim .landing-legal {
 }
 
 html.skip-anim .landing-book-stage {
-  transform: scale(var(--book-settle-scale)) translateY(-8vh);
+  transform: scale(var(--book-settle-scale)) translateY(var(--book-settle-y, -8vh));
 }
 
 html.skip-anim .landing-actions {
@@ -574,6 +574,71 @@ html.skip-anim .landing-book-page--right {
 html.skip-anim .landing-book-cover-logo {
   opacity: 1 !important;
   animation: none !important;
+}
+
+/* Phone + portrait tablet — laptop landscape (e.g. 1280×800) unchanged */
+@media (max-width: 900px), ((max-width: 1024px) and (orientation: portrait)) {
+  :root {
+    --book-aspect: 1.08;
+    --book-open-w: min(92vw, 460px);
+    --book-open-h: min(58dvh, calc(var(--book-open-w) / var(--book-aspect)), 660px);
+    --book-settle-scale: 0.78;
+    --book-settle-y: -5vh;
+  }
+
+  .landing {
+    padding: 16px;
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  .landing-inner {
+    min-height: calc(100dvh - 32px);
+    gap: 12px;
+    padding-bottom: 210px;
+  }
+
+  .landing-brand {
+    flex: 0 1 auto;
+  }
+
+  .landing-actions {
+    gap: 12px;
+    width: min(36rem, 96vw);
+    max-width: min(36rem, 96vw);
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .guest-trial-copy {
+    font-size: clamp(0.8rem, 2.1vw, 0.92rem);
+    line-height: 1.45;
+  }
+
+  .tagline {
+    font-size: clamp(0.98rem, 2.5vw, 1.12rem);
+  }
+
+  .cta-row {
+    gap: 10px;
+  }
+
+  .btn {
+    padding: 12px 20px;
+    font-size: 15px;
+  }
+
+  .landing-book-cover-front,
+  .landing-book-cover-inside {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-transform-style: preserve-3d;
+  }
+
+  .landing-book-shell,
+  .landing-book-cover {
+    -webkit-transform-style: preserve-3d;
+  }
+
 }
 
 @media (max-width: 480px) {

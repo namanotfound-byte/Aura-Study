@@ -127,7 +127,7 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     landing_css = _read("static", "landing.css")
     landing_html = _read("server", "templates", "landing.html")
     landing_js = _read("static", "landing.js")
-    assert '/static/landing.css?v=20260927' in landing_html
+    assert '/static/landing.css?v=20260928' in landing_html
     assert '/static/landing.js?v=20260927' in landing_html
     assert '<link rel="preload" as="image" href="/static/brand/aurastudy-mascot.png">' in landing_html
     assert 'fetchpriority="high"' in landing_html
@@ -280,6 +280,32 @@ def test_tour_overlay_and_storage_key_exist():
     dashboard_step = tour_js[tour_js.index("title: 'Dashboard'"):tour_js.index("title: 'Dashboard'") + 520]
     assert "switchView('dashboard'" in dashboard_step
     assert "aurastudy_active_view" not in dashboard_step
+
+
+def test_landing_mobile_portrait_preserves_desktop_animation_tokens():
+    """Phone/portrait iPad overrides live in a scoped media query; laptop tokens stay at :root."""
+    landing_css = _read("static", "landing.css")
+    root_end = landing_css.index("}", landing_css.index(":root {"))
+    root_block = landing_css[landing_css.index(":root {"): root_end + 1]
+    assert "--book-settle-scale: 0.45" in root_block
+    assert "--cover-hold: 0.9s" in root_block
+    assert "--logo-fade-dur: 1.15s" in root_block
+    assert "--stage-settle-dur: 2.5s" in root_block
+    assert "--book-aspect: 1.4286" in root_block
+    assert "--book-open-w: min(88vw" in root_block
+    cover_anim = landing_css[
+        landing_css.index("html.landing-animate .landing-book-cover {")
+        : landing_css.index("html.landing-animate .landing-book-page--right")
+    ]
+    assert "animation-delay: 0.9s" in cover_anim
+    mobile_marker = "@media (max-width: 900px), ((max-width: 1024px) and (orientation: portrait))"
+    assert mobile_marker in landing_css
+    mobile_block = landing_css[landing_css.index(mobile_marker):]
+    assert "--book-settle-scale: 0.78" in mobile_block
+    assert "--book-settle-y: -5vh" in mobile_block
+    assert "--book-open-w: min(92vw" in mobile_block
+    assert "-webkit-backface-visibility: hidden" in mobile_block
+    assert "translateY(var(--book-settle-y, -8vh))" in landing_css
 
 
 def test_landing_page_does_not_start_spotlight_tour():
