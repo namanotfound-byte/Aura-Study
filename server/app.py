@@ -21,6 +21,7 @@ from .db import init_db, get_db
 from .hardening import init_hardening
 from .security import (
     ApiError,
+    SESSION_COOKIE_NAME,
     create_session,
     current_user,
     hash_token,
@@ -232,7 +233,8 @@ def _register_page_routes(app: flask.Flask) -> None:
         # landing.html/landing.js skip straight through to /app once the
         # arrival animation finishes for a user who's already logged in,
         # instead of making them click "Log in" again.
-        return flask.render_template("landing.html", authenticated=current_user() is not None)
+        has_session = bool(flask.request.cookies.get(SESSION_COOKIE_NAME))
+        return flask.render_template("landing.html", authenticated=has_session)
 
     def _serve_study_app(guest_ctx):
         index_path = os.path.join(root_dir, "index.html")
