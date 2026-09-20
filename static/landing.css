@@ -584,16 +584,55 @@ html.skip-anim .landing-book-cover-logo {
     --book-open-h: min(58vh, calc(var(--book-open-w) / var(--book-aspect)), 660px);
     --book-settle-scale: 0.78;
     --book-settle-y: -5vh;
-  }
-
-  .landing-book-stage {
-    min-height: 220px;
+    --cta-fade-start: 1.8s;
   }
 
   .landing {
+    overflow: visible;
     padding: 16px;
     padding-top: max(16px, env(safe-area-inset-top));
     padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  .landing-book-stage {
+    perspective: none !important;
+    min-height: 220px;
+  }
+
+  .landing-book,
+  .landing-book-shell,
+  .landing-book-cover,
+  .landing-book-page--right,
+  .landing-book-back {
+    transform: none !important;
+    -webkit-transform: none !important;
+    transform-style: flat !important;
+    -webkit-transform-style: flat !important;
+  }
+
+  html.landing-animate .landing-book,
+  html.landing-animate .landing-book-cover,
+  html.landing-animate .landing-book-page--right,
+  html.landing-animate .landing-book-stage {
+    animation: none !important;
+  }
+
+  .landing-book-cover-logo {
+    opacity: 1;
+  }
+
+  html.landing-animate .landing-book-cover-logo {
+    opacity: 1;
+    transform: none;
+    animation: none !important;
+  }
+
+  html.landing-animate .landing-book-hero-wordmark {
+    animation-name: landingBookHeroWordmark;
+    animation-duration: 1.15s;
+    animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1);
+    animation-delay: 1.4s;
+    animation-fill-mode: forwards;
   }
 
   .landing-inner {
@@ -635,11 +674,6 @@ html.skip-anim .landing-book-cover-logo {
   .landing-book-cover-inside {
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
-  }
-
-  .landing-book-shell,
-  .landing-book-cover {
-    -webkit-transform-style: preserve-3d;
   }
 
 }

@@ -41,6 +41,10 @@
     window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   );
 
+  var isMobileLanding = !!(
+    window.matchMedia && window.matchMedia('(max-width: 900px), (max-width: 1024px) and (orientation: portrait)').matches
+  );
+
   function sessionSeen(key) {
     try {
       return window.sessionStorage.getItem(key) === '1';
@@ -110,6 +114,11 @@
       animationStarted = true;
       root.classList.add('landing-animate');
       if (authenticated) window.setTimeout(goToApp, TOTAL_ANIMATION_MS);
+    }
+
+    if (isMobileLanding) {
+      startAnimation();
+      return;
     }
 
     var coverLogo = document.querySelector('.landing-book-cover-logo');
