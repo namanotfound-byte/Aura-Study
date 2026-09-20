@@ -127,8 +127,8 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     landing_css = _read("static", "landing.css")
     landing_html = _read("server", "templates", "landing.html")
     landing_js = _read("static", "landing.js")
-    assert '/static/landing.css?v=20260920e' in landing_html
-    assert '/static/landing.js?v=20260920d' in landing_html
+    assert '/static/landing.css?v=20260920f' in landing_html
+    assert '/static/landing.js?v=20260920f' in landing_html
     assert 'rel="preload"' not in landing_html
     assert 'fetchpriority="high"' in landing_html
     assert 'decoding="async"' in landing_html
@@ -317,24 +317,34 @@ def test_landing_mobile_portrait_preserves_desktop_animation_tokens():
     assert "--book-open-w: min(92vw" in mobile_block
     assert "--book-open-h: min(58vh" in mobile_block
     assert "58dvh" not in mobile_block
-    assert "min-height: 220px" in mobile_block
-    assert "perspective: none !important" in mobile_block
     assert "overflow: visible" in mobile_block
-    assert "animation: none !important" in mobile_block
-    assert "transform-style: flat !important" in mobile_block
-    assert "-webkit-transform-style: preserve-3d" not in mobile_block
+    assert "display: none" in mobile_block
+    assert ".landing-book-back" in mobile_block
+    assert ".landing-book-page" in mobile_block
+    assert ".landing-book-cover-inside" in mobile_block
+    assert "perspective: none" in mobile_block
     assert "html.landing-mobile .landing-book" in mobile_block
     assert "html.js-enabled .landing-actions" in mobile_block
-    assert "opacity: 1 !important" in mobile_block
-    assert "visibility: visible !important" in mobile_block
-    assert "animation-delay: 1.4s" not in mobile_block
-    mobile_faces = mobile_block[
-        mobile_block.index(".landing-book-cover-front,")
-        : mobile_block.index(".landing-book-cover-logo {")
+    assert "landingMobileFade" in mobile_block
+    assert "animation-delay: 0.12s" in mobile_block
+    assert "animation-delay: 0.28s" in mobile_block
+    assert "0s, 2s" in mobile_block
+    assert "landingMobileShowFallback" in mobile_block
+    mobile_fade_block = mobile_block.split("@media (prefers-reduced-motion: reduce)")[0]
+    assert "opacity: 1 !important" not in mobile_fade_block
+    js_fade_slice = mobile_fade_block[
+        mobile_fade_block.index("html.js-enabled .landing-book-cover-logo,")
+        : mobile_fade_block.index("@keyframes landingMobileFade")
     ]
-    assert "transform-style" not in mobile_faces
+    assert "animation: none !important" not in js_fade_slice
+    assert "opacity: 1 !important" not in js_fade_slice
+    assert "padding-bottom: 210px" not in mobile_block
+    assert "position: relative" in mobile_block
+    assert "bottom: auto" in mobile_block
+    assert "classList.remove('landing-animate')" in _read("static", "landing.js")
     assert "@media (max-width: 900px)" in landing_html
     assert "html.js-enabled .landing-actions" in landing_html
+    assert "html:not(.js-enabled)" in landing_html
     assert "translateY(var(--book-settle-y, -8vh))" in landing_css
 
 

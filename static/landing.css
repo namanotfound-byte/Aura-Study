@@ -535,46 +535,46 @@ html.js-enabled:not(.skip-anim) .landing-legal {
   }
 }
 
-html.skip-anim .landing-book,
-html.skip-anim .landing-book-cover,
-html.skip-anim .landing-book-page--right,
-html.skip-anim .landing-book-hero-wordmark,
-html.skip-anim .landing-book-stage,
-html.skip-anim .landing-actions,
-html.skip-anim .wordmark .letters,
-html.skip-anim .wordmark .letters.is-split .letter,
-html.skip-anim .tagline,
-html.skip-anim .guest-trial-copy,
-html.skip-anim .cta-row,
-html.skip-anim .landing-legal {
+html.skip-anim:not(.landing-mobile) .landing-book,
+html.skip-anim:not(.landing-mobile) .landing-book-cover,
+html.skip-anim:not(.landing-mobile) .landing-book-page--right,
+html.skip-anim:not(.landing-mobile) .landing-book-hero-wordmark,
+html.skip-anim:not(.landing-mobile) .landing-book-stage,
+html.skip-anim:not(.landing-mobile) .landing-actions,
+html.skip-anim:not(.landing-mobile) .wordmark .letters,
+html.skip-anim:not(.landing-mobile) .wordmark .letters.is-split .letter,
+html.skip-anim:not(.landing-mobile) .tagline,
+html.skip-anim:not(.landing-mobile) .guest-trial-copy,
+html.skip-anim:not(.landing-mobile) .cta-row,
+html.skip-anim:not(.landing-mobile) .landing-legal {
   opacity: 1 !important;
   transform: none !important;
   animation: none !important;
 }
 
-html.skip-anim .landing-book-stage {
+html.skip-anim:not(.landing-mobile) .landing-book-stage {
   transform: scale(var(--book-settle-scale)) translateY(var(--book-settle-y, -8vh));
 }
 
-html.skip-anim .landing-actions {
+html.skip-anim:not(.landing-mobile) .landing-actions {
   visibility: visible;
   pointer-events: auto;
 }
 
-html.skip-anim .landing-book-cover {
+html.skip-anim:not(.landing-mobile) .landing-book-cover {
   transform: rotateY(-155deg);
 }
 
-html.skip-anim .landing-book-page--right {
+html.skip-anim:not(.landing-mobile) .landing-book-page--right {
   transform: rotateY(-8deg) translateZ(1px);
 }
 
-html.skip-anim .landing-book-cover-logo {
+html.skip-anim:not(.landing-mobile) .landing-book-cover-logo {
   opacity: 1 !important;
   animation: none !important;
 }
 
-/* Phone + portrait tablet — laptop landscape (e.g. 1280×800) unchanged */
+/* Phone + portrait tablet — simple fade, no 3D book; laptop landscape unchanged */
 @media (max-width: 900px), (max-width: 1024px) and (orientation: portrait) {
   :root {
     --book-aspect: 1.08;
@@ -592,46 +592,36 @@ html.skip-anim .landing-book-cover-logo {
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
 
-  .landing-book-stage {
-    perspective: none !important;
-    min-height: 220px;
+  .landing-book-back,
+  .landing-book-page,
+  .landing-book-cover-inside {
+    display: none;
   }
 
-  html.landing-mobile .landing-book,
-  html.landing-mobile .landing-book-cover,
-  html.landing-mobile .landing-book-shell,
-  html.landing-mobile .landing-book-stage,
-  html.landing-mobile .landing-book-page--right,
-  html.skip-anim .landing-book-cover {
-    transform: none !important;
-    animation: none !important;
-    perspective: none !important;
-    transform-style: flat !important;
-    -webkit-transform: none !important;
+  .landing-book-stage,
+  .landing-book,
+  .landing-book-shell,
+  .landing-book-cover,
+  .landing-book-cover-front {
+    position: relative;
+    inset: auto;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    transform: none;
+    perspective: none;
   }
 
-  html.js-enabled .tagline,
-  html.js-enabled .guest-trial-copy,
-  html.js-enabled .cta-row,
-  html.js-enabled .landing-legal,
-  html.js-enabled .landing-actions,
-  html.js-enabled .landing-book-cover-logo,
-  html.js-enabled .landing-book-hero-wordmark {
-    opacity: 1 !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-    animation: none !important;
-    transform: none !important;
-  }
-
-  .landing-book-cover-logo {
-    opacity: 1;
+  .landing-book-hero {
+    position: relative;
+    inset: auto;
+    z-index: 1;
+    pointer-events: auto;
   }
 
   .landing-inner {
     min-height: calc(100dvh - 32px);
     gap: 12px;
-    padding-bottom: 210px;
   }
 
   .landing-brand {
@@ -639,10 +629,108 @@ html.skip-anim .landing-book-cover-logo {
   }
 
   .landing-actions {
+    position: relative;
+    bottom: auto;
     gap: 12px;
     width: min(36rem, 96vw);
     max-width: min(36rem, 96vw);
-    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  html.landing-mobile .landing-book,
+  html.landing-mobile .landing-book-cover,
+  html.landing-mobile .landing-book-shell,
+  html.landing-mobile .landing-book-stage,
+  html.landing-mobile .landing-book-page--right,
+  html.landing-mobile.skip-anim .landing-book-cover {
+    transform: none !important;
+    animation: none !important;
+    perspective: none !important;
+    transform-style: flat !important;
+    -webkit-transform: none !important;
+  }
+
+  html.js-enabled .landing-actions {
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  html.js-enabled .landing-book-cover-logo,
+  html.js-enabled .landing-book-hero-wordmark,
+  html.js-enabled .tagline,
+  html.js-enabled .guest-trial-copy,
+  html.js-enabled .cta-row,
+  html.js-enabled .landing-legal {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  html.js-enabled .landing-book-cover-logo {
+    animation-name: landingMobileFade, landingMobileShowFallback;
+    animation-duration: 1.15s, 0.01s;
+    animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1), linear;
+    animation-delay: 0s, 2s;
+    animation-fill-mode: forwards, forwards;
+  }
+
+  html.js-enabled .landing-book-hero-wordmark {
+    animation-name: landingMobileFade, landingMobileShowFallback;
+    animation-duration: 1.15s, 0.01s;
+    animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1), linear;
+    animation-delay: 0.12s, 2s;
+    animation-fill-mode: forwards, forwards;
+  }
+
+  html.js-enabled .tagline,
+  html.js-enabled .guest-trial-copy {
+    animation-name: landingMobileFade, landingMobileShowFallback;
+    animation-duration: 1.15s, 0.01s;
+    animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1), linear;
+    animation-delay: 0.2s, 2s;
+    animation-fill-mode: forwards, forwards;
+  }
+
+  html.js-enabled .cta-row {
+    animation-name: landingMobileFade, landingMobileShowFallback;
+    animation-duration: 1.15s, 0.01s;
+    animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1), linear;
+    animation-delay: 0.28s, 2s;
+    animation-fill-mode: forwards, forwards;
+  }
+
+  html.js-enabled .landing-legal {
+    animation-name: landingMobileFade, landingMobileShowFallback;
+    animation-duration: 1.15s, 0.01s;
+    animation-timing-function: cubic-bezier(0.22, 0.86, 0.28, 1), linear;
+    animation-delay: 0.36s, 2s;
+    animation-fill-mode: forwards, forwards;
+  }
+
+  @keyframes landingMobileFade {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes landingMobileShowFallback {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  html:not(.js-enabled) .landing-book-cover-logo,
+  html:not(.js-enabled) .landing-book-hero-wordmark,
+  html:not(.js-enabled) .tagline,
+  html:not(.js-enabled) .guest-trial-copy,
+  html:not(.js-enabled) .cta-row,
+  html:not(.js-enabled) .landing-legal {
+    opacity: 1;
+    transform: none;
   }
 
   .guest-trial-copy {
@@ -663,12 +751,18 @@ html.skip-anim .landing-book-cover-logo {
     font-size: 15px;
   }
 
-  .landing-book-cover-front,
-  .landing-book-cover-inside {
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
+  @media (prefers-reduced-motion: reduce) {
+    html.js-enabled .landing-book-cover-logo,
+    html.js-enabled .landing-book-hero-wordmark,
+    html.js-enabled .tagline,
+    html.js-enabled .guest-trial-copy,
+    html.js-enabled .cta-row,
+    html.js-enabled .landing-legal {
+      opacity: 1 !important;
+      transform: none !important;
+      animation: none !important;
+    }
   }
-
 }
 
 @media (max-width: 480px) {

@@ -27,21 +27,21 @@
 <meta name="twitter:title" content="AuraStudy">
 <meta name="twitter:description" content="{{ site_description }}">
 <meta name="twitter:image" content="{{ og_image_url }}">
-<link rel="stylesheet" href="/static/landing.css?v=20260920e">
+<link rel="stylesheet" href="/static/landing.css?v=20260920f">
 <style>
 @media (max-width: 900px), (max-width: 1024px) and (orientation: portrait) {
-  html.js-enabled .tagline,
-  html.js-enabled .guest-trial-copy,
-  html.js-enabled .cta-row,
-  html.js-enabled .landing-legal,
-  html.js-enabled .landing-actions,
-  html.js-enabled .landing-book-cover-logo,
-  html.js-enabled .landing-book-hero-wordmark {
-    opacity: 1 !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-    animation: none !important;
-    transform: none !important;
+  html:not(.js-enabled) .landing-book-cover-logo,
+  html:not(.js-enabled) .landing-book-hero-wordmark,
+  html:not(.js-enabled) .tagline,
+  html:not(.js-enabled) .guest-trial-copy,
+  html:not(.js-enabled) .cta-row,
+  html:not(.js-enabled) .landing-legal {
+    opacity: 1;
+    transform: none;
+  }
+  html.js-enabled .landing-actions {
+    visibility: visible;
+    pointer-events: auto;
   }
 }
 </style>
@@ -112,6 +112,6 @@ document.documentElement.classList.add('js-enabled');
     </div>
   </main>
 
-  <script src="/static/landing.js?v=20260920d"></script>
+  <script src="/static/landing.js?v=20260920f"></script>
 </body>
 </html>
