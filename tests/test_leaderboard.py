@@ -868,11 +868,35 @@ def test_monthly_leaderboard_ranks_current_month_only(client, outbox):
     assert lb["entries"][0]["form"]
 
 
-def test_monthly_leaderboard_accepts_lifetime_and_all_aliases(client, outbox):
-    register_verify(client, outbox, "monthly-b@example.com")
-    set_name(client, "Alias Ace")
-    put_state(client, [session_today(2 * 3600)])
+def test_lifetime_leaderboard_accepts_lifetime_and_all_aliases(client, outbox):
+    from server.db import utcnow
+    register_verify(client, outbox, "lifetime-a@example.com")
+    set_name(client, "Lifetime Ace")
+    today = utcnow().date()
+    last_month = (today.replace(day=1) - datetime.timedelta(days=1)).isoformat()
+    put_state(client, [
+        session_today(2 * 3600),
+        {"date": last_month, "course": "Math", "type": "Stopwatch", "durationSeconds": 3 * 3600, "timestamp": "10:00 AM", "hourOfDayExecuted": 10},
+    ])
     for alias in ("all", "lifetime"):
         lb = client.get("/api/leaderboard?period={}".format(alias), headers=JSON_HEADERS).get_json()
-        assert lb["period"] == "month"
-        assert lb["you"]["seconds"] == 2 * 3600
+        assert lb["period"] == "lifetime"
+        assert lb["you"]["seconds"] == 5 * 3600
+
+
+def test_month_board_current_month_only_lifetime_sums_all_time(client, outbox):
+    from server.db import utcnow
+    register_verify(client, outbox, "lifetime-b@example.com")
+    set_name(client, "Split Ace")
+    today = utcnow().date()
+    last_month = (today.replace(day=1) - datetime.timedelta(days=1)).isoformat()
+    put_state(client, [
+        session_today(4 * 3600),
+        {"date": last_month, "course": "Math", "type": "Stopwatch", "durationSeconds": 6 * 3600, "timestamp": "10:00 AM", "hourOfDayExecuted": 10},
+    ])
+    month_lb = client.get("/api/leaderboard?period=month", headers=JSON_HEADERS).get_json()
+    assert month_lb["period"] == "month"
+    assert month_lb["you"]["seconds"] == 4 * 3600
+    lifetime_lb = client.get("/api/leaderboard?period=lifetime", headers=JSON_HEADERS).get_json()
+    assert lifetime_lb["period"] == "lifetime"
+    assert lifetime_lb["you"]["seconds"] == 10 * 3600

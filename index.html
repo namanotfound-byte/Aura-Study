@@ -3112,6 +3112,7 @@
         }
         .lb-period-tabs {
             display: flex;
+            flex-wrap: wrap;
             gap: 6px;
             margin: 12px 0 0;
         }
@@ -3880,6 +3881,7 @@
                             <button type="button" class="lb-period-tab" id="lb-period-day" onclick="setLeaderboardPeriod('day')">Daily</button>
                             <button type="button" class="lb-period-tab active" id="lb-period-week" onclick="setLeaderboardPeriod('week')">Weekly</button>
                             <button type="button" class="lb-period-tab" id="lb-period-month" onclick="setLeaderboardPeriod('month')">Monthly</button>
+                            <button type="button" class="lb-period-tab" id="lb-period-lifetime" onclick="setLeaderboardPeriod('lifetime')">Lifetime</button>
                         </div>
                     </div>
                     <label class="lb-opt-row" for="leaderboard-opt-toggle">
@@ -7025,6 +7027,10 @@
                     emptyMessage = isGuestViewer
                         ? "No one is ranked yet this month."
                         : "No one is ranked yet this month.";
+                } else if (leaderboardPeriod === 'lifetime') {
+                    emptyMessage = isGuestViewer
+                        ? "No one is ranked on the lifetime board yet."
+                        : "No one is ranked on the lifetime board yet.";
                 } else if (isGuestViewer) {
                     emptyMessage = "No one has logged study time yet. Sign up free to appear on the board once you start studying.";
                 } else if (!you.public_name) {
@@ -7092,13 +7098,15 @@
         }
 
         function setLeaderboardPeriod(period) {
-            leaderboardPeriod = period === 'day' ? 'day' : (period === 'month' ? 'month' : 'week');
+            leaderboardPeriod = period === 'day' ? 'day' : (period === 'month' ? 'month' : (period === 'lifetime' ? 'lifetime' : 'week'));
             const dayBtn = document.getElementById('lb-period-day');
             const weekBtn = document.getElementById('lb-period-week');
             const monthBtn = document.getElementById('lb-period-month');
+            const lifetimeBtn = document.getElementById('lb-period-lifetime');
             if (dayBtn) dayBtn.classList.toggle('active', leaderboardPeriod === 'day');
             if (weekBtn) weekBtn.classList.toggle('active', leaderboardPeriod === 'week');
             if (monthBtn) monthBtn.classList.toggle('active', leaderboardPeriod === 'month');
+            if (lifetimeBtn) lifetimeBtn.classList.toggle('active', leaderboardPeriod === 'lifetime');
             const heading = document.getElementById('lb-heading');
             const copy = document.getElementById('lb-copy');
             const chartTitle = document.getElementById('lb-chart-title');
@@ -7110,6 +7118,10 @@
                 if (heading) heading.textContent = "This Month's Leaderboard";
                 if (copy) copy.textContent = "Total study time this calendar month, across everyone who's opted in and set a public name. Resets on the 1st in your timezone.";
                 if (chartTitle) chartTitle.textContent = 'Top 20 This Month';
+            } else if (leaderboardPeriod === 'lifetime') {
+                if (heading) heading.textContent = 'Lifetime Leaderboard';
+                if (copy) copy.textContent = "All-time study time, across everyone who's opted in and set a public name. This board does not reset.";
+                if (chartTitle) chartTitle.textContent = 'Top 20 All Time';
             } else {
                 if (heading) heading.textContent = "This Week's Leaderboard";
                 if (copy) copy.textContent = "Total study time this week, across everyone who's opted in and set a public name. Resets every Monday.";
@@ -7187,7 +7199,8 @@
             const list = document.getElementById('leaderboard-list');
             list.innerHTML = '';
             if (!entries.length) {
-                list.innerHTML = '<div class="lb-state-panel" style="padding:20px 12px;">No one is ranked yet ' + (leaderboardPeriod === 'day' ? 'today' : 'this week') + '.</div>';
+                var emptyWhen = leaderboardPeriod === 'day' ? 'today' : (leaderboardPeriod === 'month' ? 'this month' : (leaderboardPeriod === 'lifetime' ? 'on the lifetime board' : 'this week'));
+                list.innerHTML = '<div class="lb-state-panel" style="padding:20px 12px;">No one is ranked yet ' + emptyWhen + '.</div>';
                 return;
             }
             const yourRank = (!isGuestViewer && you && you.rank) || null;
