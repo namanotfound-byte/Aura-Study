@@ -16,7 +16,10 @@ def test_leaderboard_has_daily_weekly_monthly_toggle_and_no_auto_open_name_edito
     assert 'id="lb-period-week"' in html
     assert 'id="lb-period-month"' in html
     assert 'id="lb-period-lifetime"' in html
+    assert 'class="lb-period-tab active" id="lb-period-lifetime"' in html
+    assert "let leaderboardPeriod = 'lifetime';" in html
     assert "setLeaderboardPeriod('day')" in html
+    assert "setLeaderboardPeriod('week')" in html
     assert "setLeaderboardPeriod('month')" in html
     assert "setLeaderboardPeriod('lifetime')" in html
     assert "This Month's Leaderboard" in html

@@ -3875,13 +3875,13 @@
             <div class="card" style="margin-bottom: 24px;">
                 <div class="lb-header-row">
                     <div>
-                        <h3 style="font-weight: 800; font-size: 18px; color: var(--text-main);" id="lb-heading">This Week's Leaderboard</h3>
-                        <p class="lb-copy" id="lb-copy">Total study time this week, across everyone who's opted in and set a public name. Resets every Monday. Your public name is shown to everyone on the board.</p>
+                        <h3 style="font-weight: 800; font-size: 18px; color: var(--text-main);" id="lb-heading">Lifetime Leaderboard</h3>
+                        <p class="lb-copy" id="lb-copy">All-time study time, across everyone who's opted in and set a public name. This board does not reset.</p>
                         <div class="lb-period-tabs" role="tablist" aria-label="Leaderboard period">
                             <button type="button" class="lb-period-tab" id="lb-period-day" onclick="setLeaderboardPeriod('day')">Daily</button>
-                            <button type="button" class="lb-period-tab active" id="lb-period-week" onclick="setLeaderboardPeriod('week')">Weekly</button>
+                            <button type="button" class="lb-period-tab" id="lb-period-week" onclick="setLeaderboardPeriod('week')">Weekly</button>
                             <button type="button" class="lb-period-tab" id="lb-period-month" onclick="setLeaderboardPeriod('month')">Monthly</button>
-                            <button type="button" class="lb-period-tab" id="lb-period-lifetime" onclick="setLeaderboardPeriod('lifetime')">Lifetime</button>
+                            <button type="button" class="lb-period-tab active" id="lb-period-lifetime" onclick="setLeaderboardPeriod('lifetime')">Lifetime</button>
                         </div>
                     </div>
                     <label class="lb-opt-row" for="leaderboard-opt-toggle">
@@ -3920,7 +3920,7 @@
             <div id="leaderboard-content" style="display: none;">
                 <div class="card" style="margin-bottom: 24px;">
                     <div class="card-title">
-                        <span id="lb-chart-title">Top 20 This Week</span>
+                        <span id="lb-chart-title">Top 20 All Time</span>
                         <span id="lb-participants-label" style="text-transform: none; letter-spacing: normal; font-weight: 700;"></span>
                     </div>
                     <div class="lb-chart-wrap"><canvas id="leaderboardChart"></canvas></div>
@@ -6736,7 +6736,7 @@
         let leaderboardHasLoadedOnce = false;
         let leaderboardOptTogglePending = false;
         let leaderboardYouState = {};
-        let leaderboardPeriod = 'week';
+        let leaderboardPeriod = 'lifetime';
 
         function startLeaderboardPolling() {
             stopLeaderboardPolling();
