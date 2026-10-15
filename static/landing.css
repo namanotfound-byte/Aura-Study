@@ -796,3 +796,26 @@ html.skip-anim:not(.landing-mobile) .landing-book-cover-logo {
 .landing-legal a:hover {
   text-decoration: underline;
 }
+
+.landing-deleted-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  padding: 12px 20px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--sage-dark);
+  background: rgba(255, 252, 245, 0.96);
+  border-bottom: 1px solid rgba(var(--sage-rgb), 0.35);
+  box-shadow: 0 4px 18px rgba(var(--sage-rgb), 0.12);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+.landing-deleted-banner--fade {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}

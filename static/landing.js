@@ -210,6 +210,30 @@
     }
   }
 
+  function showAccountDeletedBannerIfNeeded() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('deleted') !== '1') return;
+      var cleanUrl = window.location.pathname + (window.location.hash || '');
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', cleanUrl);
+      }
+      var banner = document.createElement('div');
+      banner.className = 'landing-deleted-banner';
+      banner.setAttribute('role', 'status');
+      banner.textContent =
+        'Your AuraStudy account and cloud data have been permanently deleted.';
+      document.body.insertBefore(banner, document.body.firstChild);
+      window.setTimeout(function () {
+        banner.classList.add('landing-deleted-banner--fade');
+      }, 9000);
+      window.setTimeout(function () {
+        if (banner.parentNode) banner.parentNode.removeChild(banner);
+      }, 10000);
+    } catch (e) { /* non-fatal */ }
+  }
+
+  showAccountDeletedBannerIfNeeded();
   initLanding();
   initAuthWordmark();
 })();

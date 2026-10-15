@@ -856,8 +856,18 @@ def backfill_lifetime_from_user_state(db) -> None:
     the study leaderboard. Without this, those people (e.g. Sur) stay
     invisible on the pet board until they happen to sync again.
     """
-    rows = db.execute("SELECT user_id, payload FROM user_state").fetchall()
+    rows = db.execute(
+        """
+        SELECT us.user_id, us.payload
+        FROM user_state us
+        LEFT JOIN leaderboard_lifetime ll ON ll.user_id = us.user_id
+        WHERE ll.user_id IS NULL
+        """
+    ).fetchall()
+    if not rows:
+        return
     now = utcnow_iso()
+    wrote = False
     for row in rows:
         payload = _payload_from_user_state_row(row["payload"])
         if payload is None:
@@ -867,13 +877,13 @@ def backfill_lifetime_from_user_state(db) -> None:
             """
             INSERT INTO leaderboard_lifetime (user_id, seconds, updated_at)
             VALUES (%s, %s, %s)
-            ON CONFLICT (user_id) DO UPDATE SET
-                seconds = excluded.seconds,
-                updated_at = excluded.updated_at
+            ON CONFLICT (user_id) DO NOTHING
             """,
             (row["user_id"], seconds, now),
         )
-    db.commit()
+        wrote = True
+    if wrote:
+        db.commit()
 
 
 def backfill_months_from_user_state(db, local_date=None) -> None:

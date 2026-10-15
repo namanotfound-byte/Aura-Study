@@ -403,3 +403,31 @@ def change_password():
     delete_other_sessions(user["id"], keep_raw_token=current_token)
 
     return flask.jsonify({"ok": True})
+
+
+@bp.route("/account", methods=["DELETE"])
+@login_required
+def delete_account():
+    """Permanently delete the signed-in user and cascaded rows (state,
+    sessions, tokens, leaderboard, support messages). Requires the current
+    password so a stolen session cookie alone cannot wipe the account."""
+    require_csrf()
+    data = flask.request.get_json(silent=True) or {}
+    password = data.get("password") or ""
+    user = flask.g.user
+
+    rate_key = "delete_account:{}".format(user["id"])
+    if count_attempts(rate_key, since_minutes=15) >= 5:
+        return json_error("rate_limited", "Too many attempts. Please try again later.", 429)
+
+    if not verify_password(password, user["password_hash"]):
+        record_attempt(rate_key)
+        return json_error("invalid_credentials", "Password is incorrect.", 401)
+
+    db = get_db()
+    db.execute("DELETE FROM users WHERE id = %s", (user["id"],))
+    db.commit()
+
+    resp = flask.jsonify({"ok": True})
+    clear_session_cookie(resp)
+    return resp

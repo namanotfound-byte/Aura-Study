@@ -953,3 +953,48 @@ def test_change_password_requires_login(client):
         headers=JSON_HEADERS,
     )
     assert resp.status_code == 401
+
+
+def test_delete_account_requires_password_and_removes_the_user(client, app, outbox):
+    _verify_user(client, outbox)
+    login(client, "user@example.com", "pw123456")
+
+    wrong = client.delete(
+        "/api/auth/account",
+        data=json.dumps({"password": "wrongpw1"}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert wrong.status_code == 401
+
+    ok = client.delete(
+        "/api/auth/account",
+        data=json.dumps({"password": "pw123456"}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert ok.status_code == 200
+    assert ok.get_json()["ok"] is True
+
+    me = client.get("/api/auth/me", headers=JSON_HEADERS)
+    assert me.status_code == 401
+
+    from server.db import get_db
+
+    with app.app_context():
+        db = get_db()
+        row = db.execute(
+            "SELECT COUNT(*) AS c FROM users WHERE email = %s",
+            ("user@example.com",),
+        ).fetchone()
+        assert row["c"] == 0
+
+
+def test_delete_account_requires_login(client):
+    resp = client.delete(
+        "/api/auth/account",
+        data=json.dumps({"password": "pw123456"}),
+        content_type="application/json",
+        headers=JSON_HEADERS,
+    )
+    assert resp.status_code == 401

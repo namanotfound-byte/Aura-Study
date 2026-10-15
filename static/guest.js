@@ -48,6 +48,11 @@
       '<button type="button" class="btn guest-account-modal-dismiss" id="guest-account-modal-close">Not now</button>' +
       "</div></div>";
     document.body.appendChild(el);
+    if (typeof isTimerElementFullscreen === "function" && isTimerElementFullscreen()) {
+      var fsHost = document.getElementById("timer-view-container");
+      if (fsHost) fsHost.appendChild(el);
+      else if (typeof syncFullscreenOverlays === "function") syncFullscreenOverlays();
+    }
     el.addEventListener("click", function (e) {
       if (e.target === el) hideAccountModal();
     });
@@ -87,6 +92,10 @@
         if (window.lucide) lucide.createIcons();
       }
     }
+    var securityCard = document.getElementById("settings-account-security-card");
+    if (securityCard) securityCard.hidden = true;
+    var deleteCard = document.getElementById("settings-delete-account-card");
+    if (deleteCard) deleteCard.hidden = true;
   }
 
   function guestAccountMessage(featureLabel) {

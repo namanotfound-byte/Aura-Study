@@ -160,6 +160,8 @@ def test_security_headers_present_on_every_response(client):
     assert "frame-ancestors 'none'" in csp
     assert "https://cdn.jsdelivr.net" in csp  # Chart.js
     assert "https://unpkg.com" in csp  # Lucide
+    assert "https://fonts.googleapis.com" in csp
+    assert "https://fonts.gstatic.com" in csp
     assert "spotify.com" not in csp
     assert "scdn.co" not in csp
 

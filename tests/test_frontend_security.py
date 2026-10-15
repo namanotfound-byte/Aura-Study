@@ -114,3 +114,12 @@ def test_safe_next_path_rejects_absolute_and_protocol_relative_urls():
 
     for good in ["/", "/dashboard", "/settings?tab=focus"]:
         assert accepted(good), "safeNextPath should accept {!r}".format(good)
+
+
+def test_third_party_scripts_are_version_pinned():
+    html = _read("index.html")
+    base = _read("server", "templates", "base.html")
+    assert "lucide@latest" not in html
+    assert "lucide@latest" not in base
+    assert "unpkg.com/lucide@0.469.0" in html
+    assert "cdn.jsdelivr.net/npm/chart.js@4.4.8" in html

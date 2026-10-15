@@ -93,7 +93,7 @@ def test_pip_timer_hides_seconds_and_keeps_one_line_at_one_hour():
     assert "function isHourLongDisplay()" in pip_js
     assert "af-time--hours" in pip_js
     assert "white-space:nowrap" in pip_js
-    paint_block = pip_js[pip_js.index("function paintDocumentPip"):pip_js.index("function paintDocumentPipCompletion")]
+    paint_block = pip_js[pip_js.index("function paintDocumentPip"):pip_js.index("function ensureVideoPipElements")]
     assert "isHourLongDisplay()" in paint_block
     assert 'classList.add("af-time--hours")' in paint_block
 

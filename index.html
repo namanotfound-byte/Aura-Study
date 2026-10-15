@@ -4700,6 +4700,7 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => {
+            if (window.AuraGuest && typeof AuraGuest.applyGuestNav === 'function') AuraGuest.applyGuestNav();
             handleVerifiedRedirectParam();
             const bootFinishTimer = setTimeout(finishAppBoot, 8000);
             // LOCAL-FIRST: never wait on Render/auth to restore a live timer. If the
@@ -4758,6 +4759,10 @@
                 refreshHeaderGreeting();
             }).catch(() => {
                 accountHydrated = true;
+                if (window.AuraGuest && typeof AuraGuest.applyGuestNav === 'function') AuraGuest.applyGuestNav();
+                initTimerColourPopover();
+                if (typeof AuraFocus !== 'undefined') AuraFocus.init();
+                completeBootSequence(appState);
                 clearTimeout(bootFinishTimer);
                 finishAppBoot();
             });
@@ -5388,7 +5393,7 @@
         function reparentTimerOverlaysForFullscreen() {
             const containerNode = document.getElementById('timer-view-container');
             if (!containerNode) return;
-            ['aura-confirm-modal', 'toast-alert'].forEach(function (id) {
+            ['aura-confirm-modal', 'toast-alert', 'guest-account-modal', 'pet-gallery-modal'].forEach(function (id) {
                 const el = document.getElementById(id);
                 if (!el || el.parentElement === containerNode) return;
                 fullscreenOverlayAnchors.set(id, { parent: el.parentNode, next: el.nextSibling });
@@ -5397,7 +5402,7 @@
         }
 
         function restoreTimerOverlaysFromFullscreen() {
-            ['aura-confirm-modal', 'toast-alert'].forEach(function (id) {
+            ['aura-confirm-modal', 'toast-alert', 'guest-account-modal', 'pet-gallery-modal'].forEach(function (id) {
                 const el = document.getElementById(id);
                 const anchor = fullscreenOverlayAnchors.get(id);
                 if (!el || !anchor || !anchor.parent) return;
@@ -5513,6 +5518,7 @@
         // Post-It Popover Window Next to Timer controls view bounds
         function toggleBrainDumpPostitPopoverState() {
             const popover = document.getElementById('timer-popover-postit-note');
+            if (!popover) return;
             popover.classList.toggle('visible');
         }
         function saveStickyScratchpadContent() {
@@ -5638,8 +5644,10 @@
                 closeTimerColourPopover();
             }
 
+            const targetEl = document.getElementById(`view-${targetPanelKey}`);
+            if (!targetEl) return;
             document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
-            document.getElementById(`view-${targetPanelKey}`).classList.add('active');
+            targetEl.classList.add('active');
             if (clickedAnchorRef) {
                 document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
                 clickedAnchorRef.classList.add('active');

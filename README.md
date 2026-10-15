@@ -180,6 +180,9 @@ All `/api/*` responses are JSON. Errors are shaped `{"error": "<snake_case_code>
 | GET | `/forgot` | Renders the "forgot password" page. |
 | GET | `/reset?token=…` | Renders the "set a new password" page for a reset token. |
 | GET | `/verify?token=…` | Consumes an email verification token and renders a success/failure message page. |
+| GET | `/privacy` | Privacy Policy. |
+| GET | `/terms` | Terms of Use. |
+| GET | `/robots.txt` | Crawler rules. |
 | GET | `/static/<path>` | Static files (`auth.css`, `auth.js`, `sync.js`, …). |
 | GET | `/healthz` | `{"status":"ok"}`, no auth required. |
 
@@ -195,6 +198,7 @@ All `/api/*` responses are JSON. Errors are shaped `{"error": "<snake_case_code>
 | POST | `/api/auth/forgot-password` | `{email}` | `202 {"ok":true}` |
 | POST | `/api/auth/reset-password` | `{token, password}` | `200 {"ok":true}` |
 | POST | `/api/auth/change-password` | `{current_password, new_password}` (login required) | `200 {"ok":true}`; revokes every other session |
+| DELETE | `/api/auth/account` | `{password}` (login required) | `200 {"ok":true}`; deletes the account and clears the session cookie |
 
 `register`, `forgot-password` and `resend-verification` always return the same generic success response whether or not the email exists (enumeration resistance). Login failures: `invalid_credentials` (401), `email_unverified` (403), `rate_limited` (429), `validation_error` (400).
 
@@ -309,7 +313,7 @@ This machine has no `gh` CLI and no git credentials already configured, so you'l
 3. Push:
 
    ```bash
-   cd "/Users/namanarora/Downloads/Projects/Study Timer"
+   cd /path/to/aurastudy
    git remote add origin https://github.com/<you>/aurastudy.git   # or the git@ SSH URL
    git branch -M main
    git push -u origin main
@@ -357,7 +361,7 @@ Neon's free tier doesn't expire (unlike Render's own free Postgres, which is del
 Required in production — `server/config.py` refuses to boot without it (see [Configuration](#configuration)). Run this from the project root:
 
 ```bash
-cd "/Users/namanarora/Downloads/Projects/Study Timer"
+cd /path/to/aurastudy
 
 # SECRET_KEY -- Flask's session-signing secret. Any 64 hex chars of real randomness works.
 .venv/bin/python -c "import secrets; print(secrets.token_hex(32))"
@@ -393,7 +397,7 @@ This is a community-run free-subdomain service ([is-a.dev](https://is-a.dev)); y
    {
      "owner": {
        "username": "<your-github-username>",
-       "email": "naman@aihifusion.com"
+       "email": "<your-email>"
      },
      "records": {
        "CNAME": "aurastudy.onrender.com"

@@ -318,44 +318,25 @@ def test_timer_display_still_floors_before_rendering():
 
 
 def test_pip_reset_button_does_not_call_reset_unconditionally():
-    """The bug: the floating window's Reset button called
-    resetEngineDisplayState() directly, which shows a branded confirm modal on
-    the MAIN window -- easy to miss entirely when the floating window is on
-    top of (or the only thing the user can see over) the main one, making
-    Reset look like it silently did nothing."""
+    """PiP intentionally exposes Log (not Reset) so logging never triggers an
+    unconfirmed resetEngineDisplayState() from the floating window."""
     pip_js = _read("static", "pip.js")
-    assert 'els.resetBtn.addEventListener("click", function () {\n      resetEngineDisplayState();\n    });' not in pip_js
-    assert "els.resetBtn.addEventListener(\"click\", handlePipResetClick)" in pip_js
+    build_block = pip_js[pip_js.index("function buildPipDom"):pip_js.index("function wirePipEvents")]
+    assert 'id="af-log-btn"' in build_block
+    assert "resetBtn" not in build_block
+    assert "resetEngineDisplayState()" not in build_block
+    wire_block = pip_js[pip_js.index("function wirePipEvents"):pip_js.index("function syncPipTheme")]
+    assert "els.logBtn.addEventListener" in wire_block
+    assert "saveEngineWorkspaceBlockData()" in wire_block
+    assert "resetBtn" not in wire_block
 
 
 def test_pip_reset_confirms_inside_the_floating_window_when_something_is_at_stake():
+    """PiP has no Reset control; stale reset-in-PiP confirm flow was removed."""
     pip_js = _read("static", "pip.js")
-    m = re.search(r"function handlePipResetClick\(\)\s*\{", pip_js)
-    assert m, "handlePipResetClick not found"
-    start = m.end()
-    depth = 1
-    i = start
-    while depth > 0:
-        if pip_js[i] == "{":
-            depth += 1
-        elif pip_js[i] == "}":
-            depth -= 1
-        i += 1
-    body = pip_js[start:i - 1]
-
-    # Mirrors the same "is there something to lose" threshold as
-    # resetEngineDisplayState's own guard (elapsedOnClock >= 60 there).
-    assert "elapsedOnClock >= 60" in body
-    # The confirm must be shown on the FLOATING window, not the bare global
-    # `confirm(...)` (which would be the main window's, the exact bug).
-    assert "STATE.pipWindow.confirm" in body or re.search(r"confirmFn\.call\(\s*STATE\.pipWindow", body)
-    assert re.search(r"^\s*confirm\(", body, re.MULTILINE) is None
-    # Once confirmed inside the floating window, the main window must not
-    # show a second, possibly-hidden prompt of its own.
-    assert "resetEngineDisplayState(true)" in body
-    # A cancelled confirm must return without ever calling reset -- never a
-    # silent discard the other way either.
-    assert re.search(r"if\s*\(!ok\)\s*return;", body)
+    assert "function handlePipResetClick" not in pip_js
+    assert "af-log-btn" in pip_js
+    assert re.search(r'id="af-.*reset', pip_js, re.I) is None
 
 
 def test_break_completion_does_not_log_sessions():

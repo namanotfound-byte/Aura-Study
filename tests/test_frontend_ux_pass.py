@@ -27,7 +27,7 @@ def test_leaderboard_has_daily_weekly_monthly_toggle_and_no_auto_open_name_edito
     assert "function syncFullscreenIcon" in html
     assert "function celebrateNewUnlocks" in html
     assert "function openPetGallery" in html
-    assert "mSum / 3600" in html
+    assert "totalSeconds / 3600" in html or "formatDurationHM(reachHours * 3600)" in html
     assert "Reach at " in html
     assert "text-decoration: none" in html
     assert "hue-sun" in html and "trophyHueClass" in html
@@ -113,7 +113,7 @@ def test_timer_colors_on_timer_view_not_appearance_theme_in_settings():
     assert 'id="timer-colour-control-wrap"' in timer_view
     assert 'id="timer-colour-trigger-btn"' in timer_view
     assert 'id="timer-colour-popover"' in timer_view
-    assert 'onclick="openTimerColourPopover()"' in timer_view
+    assert "function openTimerColourPopover" in html
     assert "function initTimerColourPopover" in html
     assert "z-index: 130" in html[html.index(".timer-colour-control-wrap"):html.index(".timer-colour-control-wrap") + 220]
     assert 'data-ambient-key="pink-mintrefresh"' in html

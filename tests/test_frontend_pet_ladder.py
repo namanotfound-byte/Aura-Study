@@ -76,8 +76,8 @@ def test_jungle_form_names_present():
 def test_xp_label_uses_format_duration_hm():
     html = _read("index.html")
     body = _extract_function_body(html, "updatePetEvolutionState")
-    assert "formatDurationHM(progressSeconds)" in body
-    assert "formatDurationHM(nextCostSeconds)" in body
+    assert "formatDurationHMProgress(progressSeconds)" in body
+    assert "formatDurationHMProgress(nextCostSeconds)" in body
     assert "toward ${nextForm.name}" in body
     assert 'id="pet-xp-numerical-label">0h 0m / 2h 0m toward Beetle<' in html
 
